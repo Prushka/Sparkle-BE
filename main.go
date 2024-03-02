@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 )
 
@@ -16,9 +17,11 @@ const (
 	HANDBRAKE = "./HandBrakeCLI"
 	FFPROBE   = "./ffprobe"
 	FFMPEG    = "/usr/local/bin/ffmpeg"
-	INPUT     = "./test2.mkv"
 	OUTPUT    = "./output"
+	Av1Preset = "8"
 )
+
+var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}
 
 type Job struct {
 	id            string
@@ -120,7 +123,7 @@ func convertVideoToSVTAV1(job Job) error {
 		"--encoder", "svt_av1_10bit", // Use AV1 encoder
 		"--vfr",           // Variable frame rate
 		"--quality", "21", // Constant quality RF 22
-		"--encoder-preset", "4", // Encoder preset
+		"--encoder-preset", Av1Preset, // Encoder preset
 		"--audio", "none", // No audio tracks
 		"--subtitle", "none", // No subtitles
 	)
@@ -147,7 +150,6 @@ func convertVideoToSVTAV1(job Job) error {
 	return nil
 }
 
-// printOutput reads from the given reader (representing either stdout or stderr) and prints the output line by line
 func printOutput(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -160,8 +162,8 @@ func printOutput(r io.Reader) {
 
 func pipeline(inputFile string) error {
 	job := Job{
-		id:          randomString(8),
-		fileRawPath: "./test2.mkv",
+		id:          randomString(32),
+		fileRawPath: inputFile,
 	}
 	s := strings.Split(job.fileRawPath, "/")
 	file := s[len(s)-1]
@@ -169,6 +171,9 @@ func pipeline(inputFile string) error {
 	s = strings.Split(file, ".")
 	job.fileRawName = s[0]
 	job.fileRawExt = s[1]
+	if !slices.Contains(ValidExtensions, job.fileRawExt) {
+		return fmt.Errorf("unsupported file extension: %s", job.fileRawExt)
+	}
 	job.input = fmt.Sprintf("%s/%s.%s", job.fileRawFolder, job.id, job.fileRawExt)
 	err := os.Rename(job.fileRawPath, job.input)
 	if err != nil {
@@ -203,7 +208,7 @@ func randomString(length int) string {
 func main() {
 	log.SetLevel(log.WarnLevel)
 
-	err := pipeline(INPUT)
+	err := pipeline("./test2.mkv")
 	if err != nil {
 		log.Fatalf("error scanning input file: %v", err)
 	}
