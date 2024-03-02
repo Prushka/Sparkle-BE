@@ -1,9 +1,14 @@
 package main
 
 import (
+	"Sparkle/cleanup"
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/redis/rueidis"
+
 	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
@@ -24,13 +29,14 @@ const (
 var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}
 
 type Job struct {
-	id            string
-	fileRawPath   string
-	fileRawFolder string
-	fileRawName   string
-	fileRawExt    string
-	input         string
-	outputPath    string
+	Id            string
+	FileRawPath   string
+	FileRawFolder string
+	FileRawName   string
+	FileRawExt    string
+	Input         string
+	OutputPath    string
+	State         string
 }
 
 func handbrakeScan(input string) error {
@@ -65,13 +71,13 @@ func handbrakeScan(input string) error {
 }
 
 func extractStream(job Job, stream StreamInfo, streamType string) error {
-	outputFile := fmt.Sprintf("%s/%d-%s", job.outputPath, stream.Index, streamType)
+	outputFile := fmt.Sprintf("%s/%d-%s", job.OutputPath, stream.Index, streamType)
 	var cmd *exec.Cmd
 	if streamType == "audio" {
 		// "-profile:a", "aac_he_v2",
-		cmd = exec.Command(FFMPEG, "-i", job.input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
+		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
 	} else if streamType == "subtitle" {
-		cmd = exec.Command(FFMPEG, "-i", job.input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+".vtt")
+		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+".vtt")
 	} else {
 		return fmt.Errorf("unsupported stream type: %s", streamType)
 	}
@@ -80,7 +86,7 @@ func extractStream(job Job, stream StreamInfo, streamType string) error {
 	return err
 }
 func extractStreams(job Job) error {
-	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", job.input)
+	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", job.Input)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
@@ -114,11 +120,11 @@ func extractStreams(job Job) error {
 }
 
 func convertVideoToSVTAV1(job Job) error {
-	outputFile := fmt.Sprintf("%s/out.mkv", job.outputPath)
-	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.input, outputFile)
+	outputFile := fmt.Sprintf("%s/out.mkv", job.OutputPath)
+	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
 	cmd := exec.Command(
 		HANDBRAKE,
-		"-i", job.input, // Input file
+		"-i", job.Input, // Input file
 		"-o", outputFile, // Output file
 		"--encoder", "svt_av1_10bit", // Use AV1 encoder
 		"--vfr",           // Variable frame rate
@@ -162,26 +168,31 @@ func printOutput(r io.Reader) {
 
 func pipeline(inputFile string) error {
 	job := Job{
-		id:          randomString(32),
-		fileRawPath: inputFile,
+		Id:          randomString(32),
+		FileRawPath: inputFile,
 	}
-	s := strings.Split(job.fileRawPath, "/")
+	s := strings.Split(job.FileRawPath, "/")
 	file := s[len(s)-1]
-	job.fileRawFolder = strings.Join(s[:len(s)-1], "/")
+	job.FileRawFolder = strings.Join(s[:len(s)-1], "/")
 	s = strings.Split(file, ".")
-	job.fileRawName = s[0]
-	job.fileRawExt = s[1]
-	if !slices.Contains(ValidExtensions, job.fileRawExt) {
-		return fmt.Errorf("unsupported file extension: %s", job.fileRawExt)
+	job.FileRawName = s[0]
+	job.FileRawExt = s[1]
+	if !slices.Contains(ValidExtensions, job.FileRawExt) {
+		return fmt.Errorf("unsupported file extension: %s", job.FileRawExt)
 	}
-	job.input = fmt.Sprintf("%s/%s.%s", job.fileRawFolder, job.id, job.fileRawExt)
-	err := os.Rename(job.fileRawPath, job.input)
+	job.Input = fmt.Sprintf("%s/%s.%s", job.FileRawFolder, job.Id, job.FileRawExt)
+	err := os.Rename(job.FileRawPath, job.Input)
 	if err != nil {
 		return err
 	}
-	job.outputPath = fmt.Sprintf("%s/%s", OUTPUT, job.id)
+	job.OutputPath = fmt.Sprintf("%s/%s", OUTPUT, job.Id)
 	log.Infof("Processing Job: %+v", job)
-	err = os.MkdirAll(job.outputPath, 0755)
+	err = os.MkdirAll(job.OutputPath, 0755)
+	if err != nil {
+		return err
+	}
+	job.State = "incomplete"
+	err = persistJob(job)
 	if err != nil {
 		return err
 	}
@@ -189,7 +200,17 @@ func pipeline(inputFile string) error {
 	if err != nil {
 		return err
 	}
+	job.State = "streams_extracted"
+	err = persistJob(job)
+	if err != nil {
+		return err
+	}
 	err = convertVideoToSVTAV1(job)
+	if err != nil {
+		return err
+	}
+	job.State = "complete"
+	err = persistJob(job)
 	if err != nil {
 		return err
 	}
@@ -205,10 +226,39 @@ func randomString(length int) string {
 	return string(b)
 }
 
+var rdb rueidis.Client
+
+func persistJob(job Job) error {
+	key := fmt.Sprintf("job:%s", job.Id)
+	ctx := context.Background()
+	log.Info(rdb)
+	err := rdb.Do(ctx, rdb.B().JsonSet().Key(key).Path(".").Value(rueidis.JSON(job)).Build()).Error()
+	if err != nil {
+		log.Errorf("error persisting job: %v", err)
+		return err
+	}
+	return nil
+}
+
 func main() {
+	cleanup.InitSignalCallback()
+	var err error
+	rdb, err = rueidis.NewClient(rueidis.ClientOption{
+		InitAddress: []string{"192.168.50.200:6379"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
+		rdb.Close()
+	})
+	persistJob(Job{
+		Id:    "test",
+		Input: "test.mkv",
+	})
 	log.SetLevel(log.WarnLevel)
 
-	err := pipeline("./test2.mkv")
+	err = pipeline("./test2.mkv")
 	if err != nil {
 		log.Fatalf("error scanning input file: %v", err)
 	}
