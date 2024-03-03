@@ -2,17 +2,13 @@ package main
 
 import (
 	"Sparkle/cleanup"
-	"bufio"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
 	"github.com/redis/rueidis"
 
 	log "github.com/sirupsen/logrus"
-	"io"
 	"os"
 	"os/exec"
 	"slices"
@@ -30,42 +26,20 @@ const (
 	Audios      = ""
 )
 
-var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}
-
-type Job struct {
-	Id            string
-	FileRawPath   string
-	FileRawFolder string
-	FileRawName   string
-	FileRawExt    string
-	Input         string
-	OutputPath    string
-	State         string
-	SHA256        string
-	AudioStreams  []string
-	Subtitles     []string
-}
+var rdb rueidis.Client
 
 func extractStream(job Job, stream StreamInfo, streamType string) error {
 	outputFile := fmt.Sprintf("%s/%d-%s", job.OutputPath, stream.Index, streamType)
-
 	var cmd *exec.Cmd
-	if streamType == "audio" {
-		// "-profile:a", "aac_he_v2",
-		// cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
-		// job.AudioStreams = append(job.AudioStreams, outputFile)
-		// audio is handled by handbrake and merged into video
-		return nil
-	} else if streamType == "subtitle" {
+	if streamType == "subtitle" {
 		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+SubtitleExt)
 		job.Subtitles = append(job.Subtitles, outputFile)
-	} else {
-		return fmt.Errorf("unsupported stream type: %s", streamType)
 	}
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
 	return err
 }
+
 func extractStreams(job Job) error {
 	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", job.Input)
 	out, err := cmd.CombinedOutput()
@@ -82,12 +56,6 @@ func extractStreams(job Job) error {
 	for _, stream := range probeOutput.Streams {
 		log.Debugf("Stream: %+v", stream)
 		switch stream.CodecType {
-		case "audio":
-			log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
-			err = extractStream(job, stream, "audio")
-			if err != nil {
-				return err
-			}
 		case "subtitle":
 			log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
 			err = extractStream(job, stream, "subtitle")
@@ -96,7 +64,6 @@ func extractStreams(job Job) error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -116,46 +83,9 @@ func convertVideoToSVTAV1(job Job) error {
 		"--audio-lang-list", "any",
 		"--all-audio",
 	)
-
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
 	return err
-}
-
-func printOutput(r io.Reader) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading from pipe:", err)
-	}
-}
-
-func calculateFileSHA256(filePath string) (string, error) {
-	// Open the file for reading
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Errorf("error closing file: %v", err)
-		}
-	}(file)
-
-	// Create a new SHA256 hash instance
-	hash := sha256.New()
-
-	// Copy the file content into the hash instance, computing the checksum as it reads
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-
-	// Compute the final checksum and return it as a hexadecimal string
-	checksum := hex.EncodeToString(hash.Sum(nil))
-	return checksum, nil
 }
 
 func pipeline(inputFile string) error {
@@ -213,8 +143,6 @@ func pipeline(inputFile string) error {
 	}
 	return nil
 }
-
-var rdb rueidis.Client
 
 func persistJob(job Job) error {
 	key := fmt.Sprintf("job:%s", job.Id)
