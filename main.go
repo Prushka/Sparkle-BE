@@ -28,6 +28,7 @@ const (
 	Av1Preset   = "8"
 	SubtitleExt = ".vtt"
 	VideoExt    = ".mp4"
+	Audios      = ""
 )
 
 var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}
@@ -46,45 +47,15 @@ type Job struct {
 	Subtitles     []string
 }
 
-func handbrakeScan(input string) error {
-	cmd := exec.Command(HANDBRAKE, "--input", input, "--scan", "--json")
-	out, err := cmd.Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-	strOut := string(out)
-
-	strOut = strings.ReplaceAll(strOut, "Progress:", ",\"Progress\":")
-	strOut = strings.ReplaceAll(strOut, "Version:", "\"Version\":")
-	strOut = strings.ReplaceAll(strOut, "JSON Title Set:", ",\"JSON Title Set\":")
-	strOut = strings.Replace(strOut, ",\"Progress\":", ",\"Progress\":[", 1)
-	strOut = strings.Replace(strOut, ",\"JSON Title Set\":", "],\"JSON Title Set\":", 1)
-	strOut = strings.ReplaceAll(strOut, ",\"Progress\": ", ",")
-
-	strOut = "{" + strOut + "}"
-	print(strOut)
-	result := Result{}
-	err = json.Unmarshal([]byte(strOut), &result)
-	if err != nil {
-		log.Fatalf("error decoding JSON: %v", err)
-	}
-
-	fmt.Printf("Decoded JSON: %+v\n", result)
-
-	if len(result.JSONTitleSet.TitleList) == 0 {
-		return fmt.Errorf("no titles found")
-	}
-	return nil
-}
-
 func extractStream(job Job, stream StreamInfo, streamType string) error {
 	outputFile := fmt.Sprintf("%s/%d-%s", job.OutputPath, stream.Index, streamType)
 
 	var cmd *exec.Cmd
 	if streamType == "audio" {
 		// "-profile:a", "aac_he_v2",
-		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
-		job.AudioStreams = append(job.AudioStreams, outputFile)
+		// cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
+		// job.AudioStreams = append(job.AudioStreams, outputFile)
+		// audio is handled by handbrake and merged into video
 	} else if streamType == "subtitle" {
 		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+SubtitleExt)
 		job.Subtitles = append(job.Subtitles, outputFile)
@@ -138,10 +109,12 @@ func convertVideoToSVTAV1(job Job) error {
 		"-o", outputFile, // Output file
 		"--encoder", "svt_av1_10bit", // Use AV1 encoder
 		"--vfr",           // Variable frame rate
-		"--quality", "21", // Constant quality RF 22
+		"--quality", "23", // Constant quality RF 22
 		"--encoder-preset", Av1Preset, // Encoder preset
-		"--audio", "none", // No audio tracks
 		"--subtitle", "none", // No subtitles
+		"--aencoder", "opus",
+		"--audio-lang-list", "any",
+		"--all-audio",
 	)
 
 	stdout, err := cmd.StdoutPipe()
@@ -301,5 +274,5 @@ func main() {
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
 	})
-	REST()
+	test()
 }
