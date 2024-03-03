@@ -4,6 +4,8 @@ import (
 	"Sparkle/cleanup"
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -37,6 +39,7 @@ type Job struct {
 	Input         string
 	OutputPath    string
 	State         string
+	SHA256        string
 }
 
 func handbrakeScan(input string) error {
@@ -166,6 +169,32 @@ func printOutput(r io.Reader) {
 	}
 }
 
+func calculateFileSHA256(filePath string) (string, error) {
+	// Open the file for reading
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Errorf("error closing file: %v", err)
+		}
+	}(file)
+
+	// Create a new SHA256 hash instance
+	hash := sha256.New()
+
+	// Copy the file content into the hash instance, computing the checksum as it reads
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	// Compute the final checksum and return it as a hexadecimal string
+	checksum := hex.EncodeToString(hash.Sum(nil))
+	return checksum, nil
+}
+
 func pipeline(inputFile string) error {
 	job := Job{
 		Id:          randomString(32),
@@ -185,6 +214,11 @@ func pipeline(inputFile string) error {
 	if err != nil {
 		return err
 	}
+	job.SHA256, err = calculateFileSHA256(job.Input)
+	if err != nil {
+		return err
+	}
+
 	job.OutputPath = fmt.Sprintf("%s/%s", OUTPUT, job.Id)
 	log.Infof("Processing Job: %+v", job)
 	err = os.MkdirAll(job.OutputPath, 0755)
@@ -251,10 +285,6 @@ func main() {
 	}
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
-	})
-	persistJob(Job{
-		Id:    "test",
-		Input: "test.mkv",
 	})
 	log.SetLevel(log.WarnLevel)
 
