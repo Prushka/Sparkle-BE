@@ -109,7 +109,7 @@ func convertVideoToSVTAV1(job Job) error {
 		"-o", outputFile, // Output file
 		"--encoder", "svt_av1_10bit", // Use AV1 encoder
 		"--vfr",           // Variable frame rate
-		"--quality", "23", // Constant quality RF 22
+		"--quality", "24", // Constant quality RF 22
 		"--encoder-preset", Av1Preset, // Encoder preset
 		"--subtitle", "none", // No subtitles
 		"--aencoder", "opus",
@@ -117,26 +117,9 @@ func convertVideoToSVTAV1(job Job) error {
 		"--all-audio",
 	)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	go printOutput(stdout)
-	go printOutput(stderr)
-
-	if err := cmd.Wait(); err != nil {
-		fmt.Println("Error waiting for command execution:", err)
-	}
-	return nil
+	out, err := cmd.CombinedOutput()
+	log.Debugf("output: %s", out)
+	return err
 }
 
 func printOutput(r io.Reader) {
@@ -246,7 +229,7 @@ func persistJob(job Job) error {
 }
 
 func test() {
-	err := pipeline("./test2.mp4")
+	err := pipeline("./A Sign of Affection - S01E01 - Yuki's World WEBDL-1080p.mkv")
 	if err != nil {
 		log.Fatalf("error scanning input file: %v", err)
 	}
@@ -265,5 +248,5 @@ func main() {
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
 	})
-	REST()
+	test()
 }
