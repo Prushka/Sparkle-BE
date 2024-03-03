@@ -15,14 +15,15 @@ import (
 )
 
 var scheduler = gocron.NewScheduler(time.Now().Location())
-
 var wss = make(map[string]map[string]*Player)
+var e *echo.Echo
 
 type Player struct {
 	ws    *websocket.Conn
 	state *PlayerState
 	id    string
 }
+
 type PlayerState struct {
 	Time   *float64 `json:"time,omitempty"`
 	Paused *bool    `json:"paused,omitempty"`
@@ -79,12 +80,23 @@ func REST() {
 			}
 		})
 	scheduler.StartAsync()
-	e := echo.New()
+	e = echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
 	}), middleware.GzipWithConfig(middleware.DefaultGzipConfig), middleware.Logger(), middleware.Recover())
 	e.Static("/static", OUTPUT)
+	routes()
+	cleanup.AddOnStopFunc(cleanup.Echo, func(_ os.Signal) {
+		err := e.Close()
+		if err != nil {
+			return
+		}
+	})
+	e.Logger.Fatal(e.Start(":1323"))
+}
+
+func routes() {
 	e.GET("/all", func(c echo.Context) error {
 		ctx := c.Request().Context()
 		keys, err := rdb.Do(ctx, rdb.B().Keys().Pattern("job:*").Build()).ToAny()
@@ -106,10 +118,9 @@ func REST() {
 				log.Errorf("error getting job: %v", err)
 				return c.String(http.StatusInternalServerError, err.Error())
 			}
-			if job.State == "complete" {
+			if job.State == Complete {
 				existingJobs = append(existingJobs, job)
 			}
-
 		}
 		return c.JSON(http.StatusOK, existingJobs)
 	})
@@ -214,11 +225,4 @@ func REST() {
 		}).ServeHTTP(c.Response(), c.Request())
 		return nil
 	})
-	cleanup.AddOnStopFunc(cleanup.Echo, func(_ os.Signal) {
-		err := e.Close()
-		if err != nil {
-			return
-		}
-	})
-	e.Logger.Fatal(e.Start(":1323"))
 }

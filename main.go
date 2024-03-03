@@ -118,7 +118,7 @@ func pipeline(inputFile string) error {
 	if err != nil {
 		return err
 	}
-	job.State = "incomplete"
+	job.State = Incomplete
 	err = persistJob(job)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func pipeline(inputFile string) error {
 	if err != nil {
 		return err
 	}
-	job.State = "streams_extracted"
+	job.State = StreamsExtracted
 	err = persistJob(job)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func pipeline(inputFile string) error {
 	if err != nil {
 		return err
 	}
-	job.State = "complete"
+	job.State = Complete
 	err = persistJob(job)
 	if err != nil {
 		return err

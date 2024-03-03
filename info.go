@@ -1,5 +1,11 @@
 package main
 
+const (
+	Complete         = "complete"
+	Incomplete       = "incomplete"
+	StreamsExtracted = "streams_extracted"
+)
+
 // StreamInfo holds information about a stream in a media file
 type StreamInfo struct {
 	Index     int    `json:"index"`
