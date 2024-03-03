@@ -13,7 +13,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"io"
-	"math/rand"
 	"os"
 	"os/exec"
 	"slices"
@@ -22,10 +21,10 @@ import (
 
 const (
 	HANDBRAKE   = "./HandBrakeCLI"
-	FFPROBE     = "./ffprobe"
-	FFMPEG      = "/usr/local/bin/ffmpeg"
+	FFPROBE     = "ffprobe"
+	FFMPEG      = "ffmpeg"
 	OUTPUT      = "./output"
-	Av1Preset   = "8"
+	Av1Preset   = "6"
 	SubtitleExt = ".vtt"
 	VideoExt    = ".mp4"
 	Audios      = ""
@@ -56,6 +55,7 @@ func extractStream(job Job, stream StreamInfo, streamType string) error {
 		// cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
 		// job.AudioStreams = append(job.AudioStreams, outputFile)
 		// audio is handled by handbrake and merged into video
+		return nil
 	} else if streamType == "subtitle" {
 		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+SubtitleExt)
 		job.Subtitles = append(job.Subtitles, outputFile)
@@ -177,7 +177,7 @@ func calculateFileSHA256(filePath string) (string, error) {
 
 func pipeline(inputFile string) error {
 	job := Job{
-		Id:          randomString(32),
+		Id:          RandomString(32),
 		FileRawPath: inputFile,
 	}
 	s := strings.Split(job.FileRawPath, "/")
@@ -231,15 +231,6 @@ func pipeline(inputFile string) error {
 	return nil
 }
 
-func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
 var rdb rueidis.Client
 
 func persistJob(job Job) error {
@@ -262,7 +253,7 @@ func test() {
 }
 
 func main() {
-	log.SetLevel(log.WarnLevel)
+	log.SetLevel(log.InfoLevel)
 	cleanup.InitSignalCallback()
 	var err error
 	rdb, err = rueidis.NewClient(rueidis.ClientOption{
@@ -274,5 +265,5 @@ func main() {
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
 	})
-	test()
+	REST()
 }
