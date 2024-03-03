@@ -21,11 +21,13 @@ import (
 )
 
 const (
-	HANDBRAKE = "./HandBrakeCLI"
-	FFPROBE   = "./ffprobe"
-	FFMPEG    = "/usr/local/bin/ffmpeg"
-	OUTPUT    = "./output"
-	Av1Preset = "8"
+	HANDBRAKE   = "./HandBrakeCLI"
+	FFPROBE     = "./ffprobe"
+	FFMPEG      = "/usr/local/bin/ffmpeg"
+	OUTPUT      = "./output"
+	Av1Preset   = "8"
+	SubtitleExt = ".vtt"
+	VideoExt    = ".mp4"
 )
 
 var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}
@@ -40,6 +42,8 @@ type Job struct {
 	OutputPath    string
 	State         string
 	SHA256        string
+	AudioStreams  []string
+	Subtitles     []string
 }
 
 func handbrakeScan(input string) error {
@@ -75,12 +79,15 @@ func handbrakeScan(input string) error {
 
 func extractStream(job Job, stream StreamInfo, streamType string) error {
 	outputFile := fmt.Sprintf("%s/%d-%s", job.OutputPath, stream.Index, streamType)
+
 	var cmd *exec.Cmd
 	if streamType == "audio" {
 		// "-profile:a", "aac_he_v2",
 		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "libfdk_aac", "-vbr", "4", outputFile+".m4a")
+		job.AudioStreams = append(job.AudioStreams, outputFile)
 	} else if streamType == "subtitle" {
-		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+".vtt")
+		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+SubtitleExt)
+		job.Subtitles = append(job.Subtitles, outputFile)
 	} else {
 		return fmt.Errorf("unsupported stream type: %s", streamType)
 	}
@@ -123,7 +130,7 @@ func extractStreams(job Job) error {
 }
 
 func convertVideoToSVTAV1(job Job) error {
-	outputFile := fmt.Sprintf("%s/out.mkv", job.OutputPath)
+	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, VideoExt)
 	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
 	cmd := exec.Command(
 		HANDBRAKE,
@@ -274,7 +281,15 @@ func persistJob(job Job) error {
 	return nil
 }
 
+func test() {
+	err := pipeline("./test2.mp4")
+	if err != nil {
+		log.Fatalf("error scanning input file: %v", err)
+	}
+}
+
 func main() {
+	log.SetLevel(log.WarnLevel)
 	cleanup.InitSignalCallback()
 	var err error
 	rdb, err = rueidis.NewClient(rueidis.ClientOption{
@@ -286,10 +301,5 @@ func main() {
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
 	})
-	log.SetLevel(log.WarnLevel)
-
-	err = pipeline("./test2.mkv")
-	if err != nil {
-		log.Fatalf("error scanning input file: %v", err)
-	}
+	REST()
 }
