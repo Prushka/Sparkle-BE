@@ -3,13 +3,18 @@ package main
 import (
 	"Sparkle/cleanup"
 	"encoding/json"
+	"github.com/go-co-op/gocron"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
 	"net/http"
 	"os"
+	"sort"
+	"time"
 )
+
+var scheduler = gocron.NewScheduler(time.Now().Location())
 
 var wss = make(map[string]map[string]*Player)
 
@@ -21,13 +26,18 @@ type Player struct {
 type PlayerState struct {
 	Time   *float64 `json:"time,omitempty"`
 	Paused *bool    `json:"paused,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	Reason string   `json:"reason,omitempty"`
 }
 
-func Sync(maxTime *float64, paused *bool, player *Player) {
+func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
 	if maxTime == player.state.Time && paused == player.state.Paused {
 		return
 	}
-	syncTo := &PlayerState{Time: maxTime, Paused: paused}
+	if player.state.Name == "" {
+		return
+	}
+	syncTo := &PlayerState{Time: maxTime, Paused: paused, Reason: reason}
 	syncToStr, err := json.Marshal(syncTo)
 	if err != nil {
 		log.Error(err)
@@ -41,24 +51,67 @@ func Sync(maxTime *float64, paused *bool, player *Player) {
 }
 
 func REST() {
+	scheduler.Every(2).Second().Do(
+		func() {
+			for _, players := range wss {
+				playersStatusListSorted := make([]PlayerState, 0)
+				for _, player := range players {
+					if player.state.Name == "" {
+						continue
+					}
+					playersStatusListSorted = append(playersStatusListSorted, *player.state)
+				}
+				sort.Slice(playersStatusListSorted, func(i, j int) bool {
+					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
+				})
+				playersStatusListSortedStr, err := json.Marshal(playersStatusListSorted)
+				if err != nil {
+					log.Error(err)
+					return
+				}
+				for _, player := range players {
+					err = websocket.Message.Send(player.ws, string(playersStatusListSortedStr))
+					if err != nil {
+						log.Error(err)
+						return
+					}
+				}
+			}
+		})
+	scheduler.StartAsync()
 	e := echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
 	}), middleware.GzipWithConfig(middleware.DefaultGzipConfig), middleware.Logger(), middleware.Recover())
-
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
 	e.Static("/static", OUTPUT)
 	e.GET("/all", func(c echo.Context) error {
 		ctx := c.Request().Context()
-		keys, err := rdb.Do(ctx, rdb.B().Keys().Pattern("job:*").Build()).ToArray()
+		keys, err := rdb.Do(ctx, rdb.B().Keys().Pattern("job:*").Build()).ToAny()
 		if err != nil {
 			log.Errorf("error getting keys: %v", err)
 			return c.String(http.StatusInternalServerError, err.Error())
 		}
-		return c.JSON(http.StatusOK, keys)
+		existingJobs := make([]Job, 0)
+		for _, key := range keys.([]interface{}) {
+			job := Job{}
+			s, err := rdb.Do(ctx, rdb.B().JsonGet().Key(key.(string)).Build()).ToString()
+			if err != nil {
+				log.Errorf("error getting job: %v", err)
+				return c.String(http.StatusInternalServerError, err.Error())
+			}
+			log.Infof("job: %s", s)
+			err = json.Unmarshal([]byte(s), &job)
+			if err != nil {
+				log.Errorf("error getting job: %v", err)
+				return c.String(http.StatusInternalServerError, err.Error())
+			}
+			if job.State == "complete" {
+				existingJobs = append(existingJobs, job)
+			}
+
+		}
+		return c.JSON(http.StatusOK, existingJobs)
 	})
 	e.GET("/job", func(c echo.Context) error {
 		name := c.QueryParam("name")
@@ -110,6 +163,9 @@ func REST() {
 				if state.Paused != nil {
 					currentPlayer.state.Paused = state.Paused
 				}
+				if state.Name != "" {
+					currentPlayer.state.Name = state.Name
+				}
 				PrintAsJson(currentPlayer.state)
 
 				minTime := 999999999999.0
@@ -136,13 +192,13 @@ func REST() {
 				p := !existsPlaying
 				log.Infof("minTime: %f, maxTime: %f, diff: %f, existsPlaying: %t, existsPaused: %t", minTime, maxTime, diff, existsPlaying, existsPaused)
 				if currentPlayer.state.Paused == nil { // new player
-					Sync(&maxTime, &p, currentPlayer)
+					Sync(&maxTime, &p, currentPlayer, "player is new")
 				} else if diff > 5 {
 					for _, player := range wss[room] {
 						if player.id == id {
 							continue
 						}
-						Sync(currentPlayer.state.Time, &p, player)
+						Sync(currentPlayer.state.Time, &p, player, "latest player update has >5s difference")
 					}
 				} else if diff < 5 && !(existsPaused && existsPlaying) {
 
@@ -151,7 +207,7 @@ func REST() {
 						if player.id == id {
 							continue
 						}
-						Sync(state.Time, state.Paused, player)
+						Sync(state.Time, state.Paused, player, "regular sync")
 					}
 				}
 			}
