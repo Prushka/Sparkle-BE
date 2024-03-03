@@ -32,7 +32,6 @@ type Job struct {
 	OutputPath    string
 	State         string
 	SHA256        string
-	AudioStreams  []string
 	Subtitles     []string
 }
 

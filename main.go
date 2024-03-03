@@ -28,7 +28,7 @@ const (
 
 var rdb rueidis.Client
 
-func extractStream(job Job, stream StreamInfo, streamType string) error {
+func extractStream(job *Job, stream StreamInfo, streamType string) error {
 	outputFile := fmt.Sprintf("%s/%d-%s", job.OutputPath, stream.Index, streamType)
 	var cmd *exec.Cmd
 	if streamType == "subtitle" {
@@ -40,7 +40,7 @@ func extractStream(job Job, stream StreamInfo, streamType string) error {
 	return err
 }
 
-func extractStreams(job Job) error {
+func extractStreams(job *Job) error {
 	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", job.Input)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -123,7 +123,7 @@ func pipeline(inputFile string) error {
 	if err != nil {
 		return err
 	}
-	err = extractStreams(job)
+	err = extractStreams(&job)
 	if err != nil {
 		return err
 	}
