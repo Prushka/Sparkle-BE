@@ -12,6 +12,7 @@ import (
 
 const (
 	Redis = iota
+	Echo
 )
 
 type OnStop func(sig os.Signal)
