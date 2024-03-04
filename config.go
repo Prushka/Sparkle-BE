@@ -14,7 +14,7 @@ type Config struct {
 	Mode string `env:"MODE" envDefault:"rest"`
 }
 
-var TheConfig *Config = &Config{}
+var TheConfig = &Config{}
 
 func configure() {
 

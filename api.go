@@ -18,6 +18,10 @@ var scheduler = gocron.NewScheduler(time.Now().Location())
 var wss = make(map[string]map[string]*Player)
 var e *echo.Echo
 
+const (
+	NewPlayer = "new player"
+)
+
 type Player struct {
 	ws    *websocket.Conn
 	state *PlayerState
@@ -52,7 +56,7 @@ func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
 }
 
 func REST() {
-	scheduler.Every(2).Second().Do(
+	scheduler.Every(1).Second().Do(
 		func() {
 			for _, players := range wss {
 				playersStatusListSorted := make([]PlayerState, 0)
@@ -202,7 +206,10 @@ func routes() {
 				diff := maxTime - minTime
 				p := !existsPlaying
 				log.Infof("minTime: %f, maxTime: %f, diff: %f, existsPlaying: %t, existsPaused: %t", minTime, maxTime, diff, existsPlaying, existsPaused)
-				if currentPlayer.state.Paused == nil { // new player
+				if currentPlayer.state.Name == "" {
+					continue
+				}
+				if state.Reason == NewPlayer {
 					Sync(&maxTime, &p, currentPlayer, "player is new")
 				} else if diff > 5 {
 					for _, player := range wss[room] {

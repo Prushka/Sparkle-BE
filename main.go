@@ -158,11 +158,19 @@ func persistJob(job Job) error {
 	return nil
 }
 
-func test() {
-	err := pipeline("./A Sign of Affection - S01E01 - Yuki's World WEBDL-1080p.mkv")
+func test() error {
+	// get all files under INPUT
+	files, err := os.ReadDir(INPUT)
 	if err != nil {
-		log.Fatalf("error scanning input file: %v", err)
+		return err
 	}
+	for _, file := range files {
+		err := pipeline(fmt.Sprintf("%s/%s", INPUT, file.Name()))
+		if err != nil {
+			log.Errorf("error processing file: %v", err)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -182,7 +190,10 @@ func main() {
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
-		test()
+		err := test()
+		if err != nil {
+			log.Errorf("error: %v", err)
+		}
 	case RESTMode:
 		REST()
 	}
