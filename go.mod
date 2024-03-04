@@ -3,6 +3,7 @@ module Sparkle
 go 1.22
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/go-co-op/gocron v1.37.0
 	github.com/labstack/echo/v4 v4.11.4

@@ -20,20 +20,22 @@ const (
 	FFPROBE     = "ffprobe"
 	FFMPEG      = "ffmpeg"
 	OUTPUT      = "./output"
-	Av1Preset   = "6"
+	INPUT       = "./input"
+	Av1Preset   = "4"
+	Av1Quality  = "22"
 	SubtitleExt = ".vtt"
 	VideoExt    = ".mp4"
-	Audios      = ""
 )
 
 var rdb rueidis.Client
 
 func extractStream(job *Job, stream StreamInfo, streamType string) error {
-	outputFile := fmt.Sprintf("%s/%d-%s", job.OutputPath, stream.Index, streamType)
+	id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
+	outputFile := fmt.Sprintf("%s/%s", job.OutputPath, id)
 	var cmd *exec.Cmd
 	if streamType == "subtitle" {
-		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+"_"+stream.Tags.Language+SubtitleExt)
-		job.Subtitles = append(job.Subtitles, outputFile)
+		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+SubtitleExt)
+		job.Subtitles = append(job.Subtitles, id)
 	}
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
@@ -75,8 +77,8 @@ func convertVideoToSVTAV1(job Job) error {
 		"-i", job.Input, // Input file
 		"-o", outputFile, // Output file
 		"--encoder", "svt_av1_10bit", // Use AV1 encoder
-		"--vfr",           // Variable frame rate
-		"--quality", "24", // Constant quality RF 22
+		"--vfr",                 // Variable frame rate
+		"--quality", Av1Quality, // Constant quality RF 22
 		"--encoder-preset", Av1Preset, // Encoder preset
 		"--subtitle", "none", // No subtitles
 		"--aencoder", "opus",
@@ -176,5 +178,12 @@ func main() {
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
 	})
-	test()
+	configure()
+	log.Infof("Starting in %s mode", TheConfig.Mode)
+	switch TheConfig.Mode {
+	case EncodingMode:
+		test()
+	case RESTMode:
+		REST()
+	}
 }
