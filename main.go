@@ -173,6 +173,11 @@ func test() error {
 			log.Errorf("error processing file: %v", err)
 		}
 		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
+		// remove file
+		err = os.Remove(fmt.Sprintf("%s/%s", INPUT, file.Name()))
+		if err != nil {
+			log.Errorf("error removing file: %v", err)
+		}
 	}
 	return nil
 }
