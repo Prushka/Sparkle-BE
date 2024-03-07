@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/redis/rueidis"
 
@@ -21,7 +22,7 @@ const (
 	FFMPEG      = "ffmpeg"
 	OUTPUT      = "./output"
 	INPUT       = "./input"
-	Av1Preset   = "4"
+	Av1Preset   = "6"
 	Av1Quality  = "22"
 	SubtitleExt = ".vtt"
 	VideoExt    = ".mp4"
@@ -165,20 +166,25 @@ func test() error {
 		return err
 	}
 	for _, file := range files {
+		startTime := time.Now()
+		log.Infof("Processing file: %s", file.Name())
 		err := pipeline(fmt.Sprintf("%s/%s", INPUT, file.Name()))
 		if err != nil {
 			log.Errorf("error processing file: %v", err)
 		}
+		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 	}
 	return nil
 }
 
 func main() {
 	log.SetLevel(log.InfoLevel)
+	configure()
 	cleanup.InitSignalCallback()
 	var err error
 	rdb, err = rueidis.NewClient(rueidis.ClientOption{
-		InitAddress: []string{"192.168.50.200:6379"},
+		InitAddress: []string{TheConfig.Redis},
+		Password:    TheConfig.RedisPassword,
 	})
 	if err != nil {
 		panic(err)
@@ -186,7 +192,6 @@ func main() {
 	cleanup.AddOnStopFunc(cleanup.Redis, func(_ os.Signal) {
 		rdb.Close()
 	})
-	configure()
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
