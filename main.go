@@ -17,11 +17,6 @@ import (
 )
 
 const (
-	HANDBRAKE   = "./HandBrakeCLI"
-	FFPROBE     = "ffprobe"
-	FFMPEG      = "ffmpeg"
-	OUTPUT      = "./output"
-	INPUT       = "./input"
 	Av1Preset   = "6"
 	Av1Quality  = "22"
 	SubtitleExt = ".vtt"
@@ -35,7 +30,7 @@ func extractStream(job *Job, stream StreamInfo, streamType string) error {
 	outputFile := fmt.Sprintf("%s/%s", job.OutputPath, id)
 	var cmd *exec.Cmd
 	if streamType == "subtitle" {
-		cmd = exec.Command(FFMPEG, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+SubtitleExt)
+		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+SubtitleExt)
 		job.Subtitles = append(job.Subtitles, id)
 	}
 	out, err := cmd.CombinedOutput()
@@ -44,7 +39,7 @@ func extractStream(job *Job, stream StreamInfo, streamType string) error {
 }
 
 func extractStreams(job *Job) error {
-	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", job.Input)
+	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", job.Input)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
@@ -74,7 +69,7 @@ func convertVideoToSVTAV1(job Job) error {
 	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, VideoExt)
 	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
 	cmd := exec.Command(
-		HANDBRAKE,
+		TheConfig.HandbrakeCli,
 		"-i", job.Input, // Input file
 		"-o", outputFile, // Output file
 		"--encoder", "svt_av1_10bit", // Use AV1 encoder
@@ -115,7 +110,7 @@ func pipeline(inputFile string) error {
 		return err
 	}
 
-	job.OutputPath = fmt.Sprintf("%s/%s", OUTPUT, job.Id)
+	job.OutputPath = fmt.Sprintf("%s/%s", TheConfig.Output, job.Id)
 	log.Infof("Processing Job: %+v", job)
 	err = os.MkdirAll(job.OutputPath, 0755)
 	if err != nil {
@@ -161,20 +156,20 @@ func persistJob(job Job) error {
 
 func test() error {
 	// get all files under INPUT
-	files, err := os.ReadDir(INPUT)
+	files, err := os.ReadDir(TheConfig.Input)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())
-		err := pipeline(fmt.Sprintf("%s/%s", INPUT, file.Name()))
+		err := pipeline(fmt.Sprintf("%s/%s", TheConfig.Input, file.Name()))
 		if err != nil {
 			log.Errorf("error processing file: %v", err)
 		}
 		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		// remove file
-		err = os.Remove(fmt.Sprintf("%s/%s", INPUT, file.Name()))
+		err = os.Remove(fmt.Sprintf("%s/%s", TheConfig.Input, file.Name()))
 		if err != nil {
 			log.Errorf("error removing file: %v", err)
 		}
