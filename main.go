@@ -86,7 +86,7 @@ func convertVideoToSVTAV1(job Job) error {
 	return err
 }
 
-func pipeline(inputFile string) error {
+func pipeline(inputFile string) (*Job, error) {
 	job := Job{
 		Id:          RandomString(32),
 		FileRawPath: inputFile,
@@ -98,48 +98,48 @@ func pipeline(inputFile string) error {
 	job.FileRawName = s[0]
 	job.FileRawExt = s[1]
 	if !slices.Contains(ValidExtensions, job.FileRawExt) {
-		return fmt.Errorf("unsupported file extension: %s", job.FileRawExt)
+		return &job, fmt.Errorf("unsupported file extension: %s", job.FileRawExt)
 	}
 	job.Input = fmt.Sprintf("%s/%s.%s", job.FileRawFolder, job.Id, job.FileRawExt)
 	err := os.Rename(job.FileRawPath, job.Input)
 	if err != nil {
-		return err
+		return &job, err
 	}
 	job.SHA256, err = calculateFileSHA256(job.Input)
 	if err != nil {
-		return err
+		return &job, err
 	}
 
 	job.OutputPath = fmt.Sprintf("%s/%s", TheConfig.Output, job.Id)
 	log.Infof("Processing Job: %+v", job)
 	err = os.MkdirAll(job.OutputPath, 0755)
 	if err != nil {
-		return err
+		return &job, err
 	}
 	job.State = Incomplete
 	err = persistJob(job)
 	if err != nil {
-		return err
+		return &job, err
 	}
 	err = extractStreams(&job)
 	if err != nil {
-		return err
+		return &job, err
 	}
 	job.State = StreamsExtracted
 	err = persistJob(job)
 	if err != nil {
-		return err
+		return &job, err
 	}
 	err = convertVideoToSVTAV1(job)
 	if err != nil {
-		return err
+		return &job, err
 	}
 	job.State = Complete
 	err = persistJob(job)
 	if err != nil {
-		return err
+		return &job, err
 	}
-	return nil
+	return &job, nil
 }
 
 func persistJob(job Job) error {
@@ -163,13 +163,13 @@ func test() error {
 	for _, file := range files {
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())
-		err := pipeline(fmt.Sprintf("%s/%s", TheConfig.Input, file.Name()))
+		job, err := pipeline(fmt.Sprintf("%s/%s", TheConfig.Input, file.Name()))
 		if err != nil {
 			log.Errorf("error processing file: %v", err)
 		}
 		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		// remove file
-		err = os.Remove(fmt.Sprintf("%s/%s", TheConfig.Input, file.Name()))
+		err = os.Remove(job.Input)
 		if err != nil {
 			log.Errorf("error removing file: %v", err)
 		}
