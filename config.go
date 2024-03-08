@@ -19,6 +19,10 @@ type Config struct {
 	Ffmpeg        string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe       string `env:"FFPROBE" envDefault:"ffprobe"`
 	HandbrakeCli  string `env:"HANDBRAKE_CLI" envDefault:"./HandBrakeCLI"`
+	Av1Preset     string `env:"AV1_PRESET" envDefault:"6"`
+	Av1Quality    string `env:"AV1_QUALITY" envDefault:"21"`
+	SubtitleExt   string `env:"SUBTITLE_EXT" envDefault:".vtt"`
+	VideoExt      string `env:"VIDEO_EXT" envDefault:".mp4"`
 }
 
 var TheConfig = &Config{}

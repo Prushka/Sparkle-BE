@@ -16,13 +16,6 @@ import (
 	"strings"
 )
 
-const (
-	Av1Preset   = "6"
-	Av1Quality  = "22"
-	SubtitleExt = ".vtt"
-	VideoExt    = ".mp4"
-)
-
 var rdb rueidis.Client
 
 func extractStream(job *Job, stream StreamInfo, streamType string) error {
@@ -30,7 +23,7 @@ func extractStream(job *Job, stream StreamInfo, streamType string) error {
 	outputFile := fmt.Sprintf("%s/%s", job.OutputPath, id)
 	var cmd *exec.Cmd
 	if streamType == "subtitle" {
-		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+SubtitleExt)
+		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+TheConfig.SubtitleExt)
 		job.Subtitles = append(job.Subtitles, id)
 	}
 	out, err := cmd.CombinedOutput()
@@ -66,17 +59,17 @@ func extractStreams(job *Job) error {
 }
 
 func convertVideoToSVTAV1(job Job) error {
-	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, VideoExt)
+	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, TheConfig.VideoExt)
 	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
 	cmd := exec.Command(
 		TheConfig.HandbrakeCli,
-		"-i", job.Input, // Input file
-		"-o", outputFile, // Output file
-		"--encoder", "svt_av1_10bit", // Use AV1 encoder
-		"--vfr",                 // Variable frame rate
-		"--quality", Av1Quality, // Constant quality RF 22
-		"--encoder-preset", Av1Preset, // Encoder preset
-		"--subtitle", "none", // No subtitles
+		"-i", job.Input,
+		"-o", outputFile,
+		"--encoder", "svt_av1_10bit",
+		"--vfr",
+		"--quality", TheConfig.Av1Quality,
+		"--encoder-preset", TheConfig.Av1Preset,
+		"--subtitle", "none",
 		"--aencoder", "opus",
 		"--audio-lang-list", "any",
 		"--all-audio",
