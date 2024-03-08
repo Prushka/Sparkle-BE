@@ -66,6 +66,9 @@ func REST() {
 					}
 					playersStatusListSorted = append(playersStatusListSorted, *player.state)
 				}
+				if len(playersStatusListSorted) == 0 {
+					continue
+				}
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
 					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
 				})
