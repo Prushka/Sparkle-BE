@@ -19,11 +19,11 @@ import (
 var rdb rueidis.Client
 
 func extractStream(job *Job, stream StreamInfo, streamType string) error {
-	id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
+	id := fmt.Sprintf("%d-%s%s", stream.Index, stream.Tags.Language, TheConfig.SubtitleExt)
 	outputFile := fmt.Sprintf("%s/%s", job.OutputPath, id)
 	var cmd *exec.Cmd
 	if streamType == "subtitle" {
-		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile+TheConfig.SubtitleExt)
+		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
 		job.Subtitles = append(job.Subtitles, id)
 	}
 	out, err := cmd.CombinedOutput()
@@ -73,6 +73,29 @@ func convertVideoToSVTAV1(job Job) error {
 		"--aencoder", "opus",
 		"--audio-lang-list", "any",
 		"--all-audio",
+	)
+	out, err := cmd.CombinedOutput()
+	log.Debugf("output: %s", out)
+	return err
+}
+
+func convertVideoToSVTAV1FFMPEG(job Job) error {
+	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, TheConfig.VideoExt)
+	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
+	// ffmpeg -i input_video.mp4 -map 0:v -map 0:a -c:v libsvtav1 -preset 6 -crf 22 -c:a libopus -vbr on -sn -vf "format=yuv420p10le" output_video.mkv
+	cmd := exec.Command(
+		TheConfig.Ffmpeg,
+		"-i", job.Input,
+		"-map", "0:v",
+		"-map", "0:a",
+		"-c:v", "libsvtav1",
+		"-preset", TheConfig.Av1Preset,
+		"-crf", TheConfig.Av1Quality,
+		"-c:a", "libopus",
+		"-vbr", "on",
+		"-sn",
+		"-vf", "format=yuv420p10le",
+		outputFile,
 	)
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
