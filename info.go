@@ -40,9 +40,10 @@ type Job struct {
 }
 
 type Stream struct {
-	Bitrate   int    `json:"bitrate"`
-	CodecName string `json:"codec_name"`
-	CodecType string `json:"codec_type"`
+	Bitrate       int    `json:"bitrate"`
+	CodecName     string `json:"codec_name"`
+	CodecType     string `json:"codec_type"`
+	ExtractedFile string `json:"extracted_file"`
 }
 
 type Video struct {

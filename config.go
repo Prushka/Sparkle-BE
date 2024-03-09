@@ -18,6 +18,7 @@ type Config struct {
 	Input         string `env:"INPUT" envDefault:"./input"`
 	Ffmpeg        string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe       string `env:"FFPROBE" envDefault:"ffprobe"`
+	Opusenc       string `env:"OPUSENC" envDefault:"opusenc"`
 	HandbrakeCli  string `env:"HANDBRAKE_CLI" envDefault:"./HandBrakeCLI"`
 	Av1Preset     string `env:"AV1_PRESET" envDefault:"6"`
 	Av1Quality    string `env:"AV1_QUALITY" envDefault:"21"`

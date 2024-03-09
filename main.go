@@ -28,15 +28,16 @@ func extractStream(job *Job, stream StreamInfo) error {
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
 		job.Subtitles = append(job.Subtitles, idd)
 	} else if stream.CodecType == "audio" {
-		idd := fmt.Sprintf("%s.wav", id)
+		idd := fmt.Sprintf("%s.%s", id, stream.CodecName)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
 		log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
-		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:a:%d", stream.Index), "-c:a", "copy", outputFile)
+		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
 		job.RawAudios = append(job.RawAudios, Audio{
 			Channels: stream.Channels,
 			Stream: Stream{
-				CodecType: stream.CodecType,
-				CodecName: stream.CodecName,
+				CodecType:     stream.CodecType,
+				CodecName:     stream.CodecName,
+				ExtractedFile: idd,
 			},
 		})
 	} else {
@@ -71,6 +72,18 @@ func extractStreams(job *Job) error {
 			return err
 		}
 	}
+	//for _, audio := range job.RawAudios {
+	//	if audio.Stream.ExtractedFile != "" {
+	//		cmd := exec.Command(TheConfig.Opusenc, fmt.Sprintf("%s/%s", job.OutputPath, audio.Stream.ExtractedFile), fmt.Sprintf("%s/%s.opus", job.OutputPath, audio.Stream.ExtractedFile))
+	//		out, err := cmd.CombinedOutput()
+	//		if err != nil {
+	//			log.Errorf("output: %s", out)
+	//		} else {
+	//			log.Debugf("output: %s", out)
+	//			return err
+	//		}
+	//	}
+	//}
 	return nil
 }
 
@@ -86,9 +99,10 @@ func convertVideoToSVTAV1(job Job) error {
 		"--quality", TheConfig.Av1Quality,
 		"--encoder-preset", TheConfig.Av1Preset,
 		"--subtitle", "none",
-		"--aencoder", "opus",
-		"--audio-lang-list", "any",
-		"--all-audio",
+		"--audio", "none",
+		//"--aencoder", "opus",
+		//"--audio-lang-list", "any",
+		//"--all-audio",
 	)
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
@@ -102,19 +116,20 @@ func convertVideoToSVTAV1FFMPEG(job Job) error {
 	cmd := exec.Command(
 		TheConfig.Ffmpeg,
 		"-i", job.Input,
-		"-map", "0:v",
 		"-c:v", "libsvtav1",
 		"-preset", TheConfig.Av1Preset,
 		"-crf", TheConfig.Av1Quality,
+		"-c:a", "libopus",
 		"-vbr", "on",
 		"-sn",
-		"-an",
 		"-vf", "\"format=yuv420p10le\"",
+		"-filter:a", "\"channelmap=FL-FL|FR-FR|FC-FC|LFE-LFE|SL-BL|SR-BR:5.1\"",
 		outputFile,
 	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Errorf("output: %s", out)
+		log.Errorf("command: %s", cmd.String())
 	} else {
 		log.Debugf("output: %s", out)
 	}
