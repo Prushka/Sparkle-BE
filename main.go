@@ -27,7 +27,7 @@ func extractStream(job *Job, stream StreamInfo) error {
 		log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
 		job.Subtitles = append(job.Subtitles, idd)
-	} else if stream.CodecType == "audio" {
+	} else if stream.CodecType == "audio" && !TheConfig.SkipAudioExtraction {
 		idd := fmt.Sprintf("%s.%s", id, stream.CodecName)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
 		log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
@@ -72,18 +72,6 @@ func extractStreams(job *Job) error {
 			return err
 		}
 	}
-	//for _, audio := range job.RawAudios {
-	//	if audio.Stream.ExtractedFile != "" {
-	//		cmd := exec.Command(TheConfig.Opusenc, fmt.Sprintf("%s/%s", job.OutputPath, audio.Stream.ExtractedFile), fmt.Sprintf("%s/%s.opus", job.OutputPath, audio.Stream.ExtractedFile))
-	//		out, err := cmd.CombinedOutput()
-	//		if err != nil {
-	//			log.Errorf("output: %s", out)
-	//		} else {
-	//			log.Debugf("output: %s", out)
-	//			return err
-	//		}
-	//	}
-	//}
 	return nil
 }
 
@@ -99,10 +87,9 @@ func convertVideoToSVTAV1(job Job) error {
 		"--quality", TheConfig.Av1Quality,
 		"--encoder-preset", TheConfig.Av1Preset,
 		"--subtitle", "none",
-		"--audio", "none",
-		//"--aencoder", "opus",
-		//"--audio-lang-list", "any",
-		//"--all-audio",
+		"--aencoder", "opus",
+		"--audio-lang-list", "any",
+		"--all-audio",
 	)
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
@@ -180,7 +167,7 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = convertVideoToSVTAV1FFMPEG(job)
+	err = convertVideoToSVTAV1(job)
 	if err != nil {
 		return &job, err
 	}
