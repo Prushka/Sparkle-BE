@@ -122,8 +122,8 @@ func convertVideoToSVTAV1FFMPEG(job Job) error {
 		"-c:a", "libopus",
 		"-vbr", "on",
 		"-sn",
-		"-vf", "\"format=yuv420p10le\"",
-		"-filter:a", "\"channelmap=FL-FL|FR-FR|FC-FC|LFE-LFE|SL-BL|SR-BR:5.1\"",
+		"-vf", "format=yuv420p10le",
+		"-filter:a", "channelmap=FL-FL|FR-FR|FC-FC|LFE-LFE|SL-BL|SR-BR:5.1",
 		outputFile,
 	)
 	out, err := cmd.CombinedOutput()
