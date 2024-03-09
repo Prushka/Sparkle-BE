@@ -18,16 +18,36 @@ import (
 
 var rdb rueidis.Client
 
-func extractStream(job *Job, stream StreamInfo, streamType string) error {
-	id := fmt.Sprintf("%d-%s%s", stream.Index, stream.Tags.Language, TheConfig.SubtitleExt)
-	outputFile := fmt.Sprintf("%s/%s", job.OutputPath, id)
+func extractStream(job *Job, stream StreamInfo) error {
+	id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
 	var cmd *exec.Cmd
-	if streamType == "subtitle" {
+	if stream.CodecType == "subtitle" {
+		idd := fmt.Sprintf("%s%s", id, TheConfig.SubtitleExt)
+		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
+		log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
-		job.Subtitles = append(job.Subtitles, id)
+		job.Subtitles = append(job.Subtitles, idd)
+	} else if stream.CodecType == "audio" {
+		idd := fmt.Sprintf("%s.wav", id)
+		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
+		log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
+		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:a:%d", stream.Index), "-c:a", "copy", outputFile)
+		job.RawAudios = append(job.RawAudios, Audio{
+			Channels: stream.Channels,
+			Stream: Stream{
+				CodecType: stream.CodecType,
+				CodecName: stream.CodecName,
+			},
+		})
+	} else {
+		return nil
 	}
 	out, err := cmd.CombinedOutput()
-	log.Debugf("output: %s", out)
+	if err != nil {
+		log.Errorf("output: %s", out)
+	} else {
+		log.Debugf("output: %s", out)
+	}
 	return err
 }
 
@@ -46,13 +66,9 @@ func extractStreams(job *Job) error {
 	log.Debugf("%+v", string(out))
 	for _, stream := range probeOutput.Streams {
 		log.Debugf("Stream: %+v", stream)
-		switch stream.CodecType {
-		case "subtitle":
-			log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
-			err = extractStream(job, stream, "subtitle")
-			if err != nil {
-				return err
-			}
+		err = extractStream(job, stream)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -87,18 +103,21 @@ func convertVideoToSVTAV1FFMPEG(job Job) error {
 		TheConfig.Ffmpeg,
 		"-i", job.Input,
 		"-map", "0:v",
-		"-map", "0:a",
 		"-c:v", "libsvtav1",
 		"-preset", TheConfig.Av1Preset,
 		"-crf", TheConfig.Av1Quality,
-		"-c:a", "libopus",
 		"-vbr", "on",
 		"-sn",
-		"-vf", "format=yuv420p10le",
+		"-an",
+		"-vf", "\"format=yuv420p10le\"",
 		outputFile,
 	)
 	out, err := cmd.CombinedOutput()
-	log.Debugf("output: %s", out)
+	if err != nil {
+		log.Errorf("output: %s", out)
+	} else {
+		log.Debugf("output: %s", out)
+	}
 	return err
 }
 
@@ -146,7 +165,7 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = convertVideoToSVTAV1(job)
+	err = convertVideoToSVTAV1FFMPEG(job)
 	if err != nil {
 		return &job, err
 	}
@@ -185,9 +204,17 @@ func test() error {
 		}
 		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		// remove file
-		err = os.Remove(job.Input)
-		if err != nil {
-			log.Errorf("error removing file: %v", err)
+		if job.State == Complete {
+			err = os.Remove(job.Input)
+			if err != nil {
+				log.Errorf("error removing file: %v", err)
+			}
+		} else {
+			// rename back
+			err = os.Rename(job.Input, fmt.Sprintf("%s/%s", TheConfig.Input, file.Name()))
+			if err != nil {
+				log.Errorf("error renaming file: %v", err)
+			}
 		}
 	}
 	return nil
