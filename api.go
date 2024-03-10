@@ -71,11 +71,7 @@ func SyncChats(room string) {
 		if chats[room] == nil {
 			chats[room] = make([]Chat, 0)
 		}
-		c := make([]Chat, 0)
-		for _, chat := range chats[room] {
-			c = append(c, chat)
-		}
-		chatsStr, err := json.Marshal(c)
+		chatsStr, err := json.Marshal(chats[room])
 		if err != nil {
 			log.Error(err)
 			return
