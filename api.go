@@ -276,7 +276,7 @@ func routes() {
 					}
 					err := discordwebhook.SendMessage(TheConfig.DiscordWebhook, message)
 					if err != nil {
-						log.Fatal(err)
+						log.Errorf("error sending message to discord: %v", err)
 					}
 					continue
 				}

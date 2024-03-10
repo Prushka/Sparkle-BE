@@ -27,7 +27,7 @@ type Config struct {
 	SkipAudioExtraction bool   `env:"SKIP_AUDIO_EXTRACTION" envDefault:"true"`
 	DiscordUserName     string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook      string `env:"DISCORD_WEBHOOK" envDefault:""`
-	Host                string `env:"HOST" envDefault:"localhost"`
+	Host                string `env:"HOST" envDefault:"http://localhost"`
 }
 
 var TheConfig = &Config{}
