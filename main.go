@@ -75,23 +75,41 @@ func extractStreams(job *Job) error {
 	return nil
 }
 
-func convertVideoToSVTAV1(job Job) error {
+func handbrakeTranscode(job Job) error {
 	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, TheConfig.VideoExt)
 	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
-	cmd := exec.Command(
-		TheConfig.HandbrakeCli,
-		"-i", job.Input,
-		"-o", outputFile,
-		"--encoder", "svt_av1_10bit",
-		"--vfr",
-		"--quality", TheConfig.Av1Quality,
-		"--encoder-preset", TheConfig.Av1Preset,
-		"--subtitle", "none",
-		"--aencoder", "opus",
-		"--audio-lang-list", "any",
-		"--all-audio",
-		"--mixdown", "stereo",
-	)
+	var cmd *exec.Cmd
+	if TheConfig.Encoder == "svt_av1_10bit" {
+		cmd = exec.Command(
+			TheConfig.HandbrakeCli,
+			"-i", job.Input,
+			"-o", outputFile,
+			"--encoder", TheConfig.Encoder,
+			"--vfr",
+			"--quality", TheConfig.ConstantQuality,
+			"--encoder-preset", TheConfig.Av1Preset,
+			"--subtitle", "none",
+			"--aencoder", "opus",
+			"--audio-lang-list", "any",
+			"--all-audio",
+			"--mixdown", "stereo",
+		)
+	} else {
+		cmd = exec.Command(
+			TheConfig.HandbrakeCli,
+			"-i", job.Input,
+			"-o", outputFile,
+			"--encoder", TheConfig.Encoder,
+			"--vfr",
+			"--quality", TheConfig.ConstantQuality,
+			"--encoder-preset", TheConfig.NvencPreset,
+			"--subtitle", "none",
+			"--aencoder", "opus",
+			"--audio-lang-list", "any",
+			"--all-audio",
+			"--mixdown", "stereo",
+		)
+	}
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
 	return err
@@ -106,7 +124,7 @@ func convertVideoToSVTAV1FFMPEG(job Job) error {
 		"-i", job.Input,
 		"-c:v", "libsvtav1",
 		"-preset", TheConfig.Av1Preset,
-		"-crf", TheConfig.Av1Quality,
+		"-crf", TheConfig.ConstantQuality,
 		"-c:a", "libopus",
 		"-vbr", "on",
 		"-sn",
@@ -168,7 +186,7 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = convertVideoToSVTAV1(job)
+	err = handbrakeTranscode(job)
 	if err != nil {
 		return &job, err
 	}
