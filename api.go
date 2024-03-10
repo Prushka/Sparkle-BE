@@ -69,13 +69,11 @@ func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
 func SyncChats(room string) {
 	for _, player := range wss[room] {
 		if chats[room] == nil {
-			return
+			chats[room] = make([]Chat, 0)
 		}
 		c := make([]Chat, 0)
 		for _, chat := range chats[room] {
-			//if chat.Timestamp > time.Now().Add(-3*time.Hour).Unix() {
 			c = append(c, chat)
-			//}
 		}
 		chatsStr, err := json.Marshal(c)
 		if err != nil {
@@ -100,9 +98,6 @@ func REST() {
 						continue
 					}
 					playersStatusListSorted = append(playersStatusListSorted, *player.state)
-				}
-				if len(playersStatusListSorted) == 0 {
-					continue
 				}
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
 					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
