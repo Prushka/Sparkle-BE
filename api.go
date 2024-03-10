@@ -269,12 +269,15 @@ func routes() {
 					SyncChats(room)
 					content := FormatSecondsToTime(*currentPlayer.state.Time) + ": " + state.Chat
 					avatarUrl := TheConfig.Host + "/static/pfp/" + id + ".png"
+					_, err := os.Stat(TheConfig.Output + "/pfp/" + id + ".png")
 					message := discordwebhook.Message{
-						Username:  &currentPlayer.state.Name,
-						Content:   &content,
-						AvatarUrl: &avatarUrl,
+						Username: &currentPlayer.state.Name,
+						Content:  &content,
 					}
-					err := discordwebhook.SendMessage(TheConfig.DiscordWebhook, message)
+					if err == nil {
+						message.AvatarUrl = &avatarUrl
+					}
+					err = discordwebhook.SendMessage(TheConfig.DiscordWebhook, message)
 					if err != nil {
 						log.Errorf("error sending message to discord: %v", err)
 					}
