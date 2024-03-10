@@ -25,6 +25,9 @@ type Config struct {
 	SubtitleExt         string `env:"SUBTITLE_EXT" envDefault:".vtt"`
 	VideoExt            string `env:"VIDEO_EXT" envDefault:".mp4"`
 	SkipAudioExtraction bool   `env:"SKIP_AUDIO_EXTRACTION" envDefault:"true"`
+	DiscordUserName     string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
+	DiscordWebhook      string `env:"DISCORD_WEBHOOK" envDefault:""`
+	Host                string `env:"HOST" envDefault:"localhost"`
 }
 
 var TheConfig = &Config{}

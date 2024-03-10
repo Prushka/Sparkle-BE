@@ -4,10 +4,12 @@ import (
 	"Sparkle/cleanup"
 	"encoding/json"
 	"github.com/go-co-op/gocron"
+	"github.com/gtuk/discordwebhook"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -152,7 +154,6 @@ func routes() {
 				log.Errorf("error getting job: %v", err)
 				return c.String(http.StatusInternalServerError, err.Error())
 			}
-			log.Infof("job: %s", s)
 			err = json.Unmarshal([]byte(s), &job)
 			if err != nil {
 				log.Errorf("error getting job: %v", err)
@@ -177,10 +178,47 @@ func routes() {
 		}
 		return c.String(http.StatusOK, "Job: "+name)
 	})
+	e.POST("/pfp/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		file, err := c.FormFile("pfp")
+		if err != nil {
+			log.Errorf("error getting file: %v", err)
+			return err
+		}
+		src, err := file.Open()
+		if err != nil {
+			log.Errorf("error opening file: %v", err)
+			return err
+		}
+		defer func() {
+			err := src.Close()
+			if err != nil {
+				log.Error(err)
+			}
+		}()
+		err = os.MkdirAll(TheConfig.Output+"/pfp", 0755)
+		if err != nil {
+			return err
+		}
+		dst, err := os.Create(TheConfig.Output + "/pfp/" + id + ".png")
+		if err != nil {
+			return err
+		}
+		defer func(dst *os.File) {
+			err := dst.Close()
+			if err != nil {
+				log.Error(err)
+			}
+		}(dst)
+		if _, err = io.Copy(dst, src); err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, "File uploaded")
+	})
 
-	e.GET("/sync/:room", func(c echo.Context) error {
+	e.GET("/sync/:room/:id", func(c echo.Context) error {
 		room := c.Param("room")
-		id := RandomString(36)
+		id := c.Param("id")
 		websocket.Handler(func(ws *websocket.Conn) {
 			defer func(ws *websocket.Conn) {
 				err := ws.Close()
@@ -216,7 +254,7 @@ func routes() {
 				if state.Name != "" {
 					currentPlayer.state.Name = state.Name
 				}
-				PrintAsJson(currentPlayer.state)
+				//PrintAsJson(currentPlayer.state)
 				safeTime := 0.0
 				if currentPlayer.state.Time != nil {
 					safeTime = *currentPlayer.state.Time
@@ -229,6 +267,17 @@ func routes() {
 					chats[room] = append(chats[room], Chat{Username: currentPlayer.state.Name, Message: state.Chat,
 						Timestamp: time.Now().Unix(), MediaSec: safeTime})
 					SyncChats(room)
+					content := FormatSecondsToTime(*currentPlayer.state.Time) + ": " + state.Chat
+					avatarUrl := TheConfig.Host + "/static/pfp/" + id + ".png"
+					message := discordwebhook.Message{
+						Username:  &currentPlayer.state.Name,
+						Content:   &content,
+						AvatarUrl: &avatarUrl,
+					}
+					err := discordwebhook.SendMessage(TheConfig.DiscordWebhook, message)
+					if err != nil {
+						log.Fatal(err)
+					}
 					continue
 				}
 				if currentPlayer.state.Name == "" {
@@ -256,7 +305,7 @@ func routes() {
 				}
 				diff := maxTime - minTime
 				p := !existsPlaying
-				log.Infof("minTime: %f, maxTime: %f, diff: %f, existsPlaying: %t, existsPaused: %t", minTime, maxTime, diff, existsPlaying, existsPaused)
+				log.Debugf("minTime: %f, maxTime: %f, diff: %f, existsPlaying: %t, existsPaused: %t", minTime, maxTime, diff, existsPlaying, existsPaused)
 				if state.Reason == NewPlayer {
 					Sync(&maxTime, &p, currentPlayer, "player is new")
 					SyncChats(room)

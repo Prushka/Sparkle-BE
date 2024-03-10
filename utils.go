@@ -46,3 +46,10 @@ func calculateFileSHA256(filePath string) (string, error) {
 	checksum := hex.EncodeToString(hash.Sum(nil))
 	return checksum, nil
 }
+
+func FormatSecondsToTime(seconds float64) string {
+	// HH:MM
+	minutes := int(seconds / 60)
+	seconds = seconds - float64(minutes*60)
+	return fmt.Sprintf("%02d:%02d", minutes, int(seconds))
+}
