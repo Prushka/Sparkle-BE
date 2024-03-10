@@ -67,10 +67,7 @@ func extractStreams(job *Job) error {
 	log.Debugf("%+v", string(out))
 	for _, stream := range probeOutput.Streams {
 		log.Debugf("Stream: %+v", stream)
-		err = extractStream(job, stream)
-		if err != nil {
-			return err
-		}
+		extractStream(job, stream)
 	}
 	return nil
 }
