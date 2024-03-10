@@ -16,11 +16,19 @@ import (
 
 var scheduler = gocron.NewScheduler(time.Now().Location())
 var wss = make(map[string]map[string]*Player)
+var chats = make(map[string][]Chat)
 var e *echo.Echo
 
 const (
 	NewPlayer = "new player"
 )
+
+type Chat struct {
+	Username  string  `json:"username"`
+	Message   string  `json:"message"`
+	Timestamp int64   `json:"timestamp"`
+	MediaSec  float64 `json:"mediaSec"`
+}
 
 type Player struct {
 	ws    *websocket.Conn
@@ -33,6 +41,7 @@ type PlayerState struct {
 	Paused *bool    `json:"paused,omitempty"`
 	Name   string   `json:"name,omitempty"`
 	Reason string   `json:"reason,omitempty"`
+	Chat   string   `json:"chat,omitempty"`
 }
 
 func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
@@ -52,6 +61,30 @@ func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
 	if err != nil {
 		log.Error(err)
 		return
+	}
+}
+
+func SyncChats(room string) {
+	for _, player := range wss[room] {
+		if chats[room] == nil {
+			return
+		}
+		c := make([]Chat, 0)
+		for _, chat := range chats[room] {
+			//if chat.Timestamp > time.Now().Add(-3*time.Hour).Unix() {
+			c = append(c, chat)
+			//}
+		}
+		chatsStr, err := json.Marshal(c)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		err = websocket.Message.Send(player.ws, string(chatsStr))
+		if err != nil {
+			log.Error(err)
+			return
+		}
 	}
 }
 
@@ -168,7 +201,6 @@ func routes() {
 					log.Error(err)
 					return
 				}
-				rdb.Do(c.Request().Context(), rdb.B().Publish().Channel(room).Message(msg).Build())
 				state := &PlayerState{}
 				err = json.Unmarshal([]byte(msg), state)
 				if err != nil {
@@ -185,7 +217,23 @@ func routes() {
 					currentPlayer.state.Name = state.Name
 				}
 				PrintAsJson(currentPlayer.state)
+				safeTime := 0.0
+				if currentPlayer.state.Time != nil {
+					safeTime = *currentPlayer.state.Time
+				}
 
+				if state.Chat != "" {
+					if chats[room] == nil {
+						chats[room] = make([]Chat, 0)
+					}
+					chats[room] = append(chats[room], Chat{Username: currentPlayer.state.Name, Message: state.Chat,
+						Timestamp: time.Now().Unix(), MediaSec: safeTime})
+					SyncChats(room)
+					continue
+				}
+				if currentPlayer.state.Name == "" {
+					continue
+				}
 				minTime := 999999999999.0
 				maxTime := 0.0
 				existsPlaying := false
@@ -209,11 +257,9 @@ func routes() {
 				diff := maxTime - minTime
 				p := !existsPlaying
 				log.Infof("minTime: %f, maxTime: %f, diff: %f, existsPlaying: %t, existsPaused: %t", minTime, maxTime, diff, existsPlaying, existsPaused)
-				if currentPlayer.state.Name == "" {
-					continue
-				}
 				if state.Reason == NewPlayer {
 					Sync(&maxTime, &p, currentPlayer, "player is new")
+					SyncChats(room)
 				} else if diff > 5 {
 					for _, player := range wss[room] {
 						if player.id == id {
