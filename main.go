@@ -90,6 +90,7 @@ func convertVideoToSVTAV1(job Job) error {
 		"--aencoder", "opus",
 		"--audio-lang-list", "any",
 		"--all-audio",
+		"--mixdown", "stereo",
 	)
 	out, err := cmd.CombinedOutput()
 	log.Debugf("output: %s", out)
