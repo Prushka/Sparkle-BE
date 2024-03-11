@@ -30,6 +30,7 @@ type Chat struct {
 	Message   string  `json:"message"`
 	Timestamp int64   `json:"timestamp"`
 	MediaSec  float64 `json:"mediaSec"`
+	Uid       string  `json:"uid"`
 }
 
 type Player struct {
@@ -256,6 +257,7 @@ func routes() {
 						chats[room] = make([]Chat, 0)
 					}
 					chats[room] = append(chats[room], Chat{Username: currentPlayer.state.Name, Message: state.Chat,
+						Uid:       currentPlayer.id,
 						Timestamp: time.Now().Unix(), MediaSec: safeTime})
 					SyncChats(room)
 					content := FormatSecondsToTime(*currentPlayer.state.Time) + ": " + state.Chat
