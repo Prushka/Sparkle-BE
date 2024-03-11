@@ -21,25 +21,17 @@ var rdb rueidis.Client
 func extractStream(job *Job, stream StreamInfo) error {
 	id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
 	var cmd *exec.Cmd
+	var idd string
 	if stream.CodecType == "subtitle" {
-		idd := fmt.Sprintf("%s%s", id, TheConfig.SubtitleExt)
+		idd = fmt.Sprintf("%s%s", id, TheConfig.SubtitleExt)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
 		log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
-		job.Subtitles = append(job.Subtitles, idd)
 	} else if stream.CodecType == "audio" && !TheConfig.SkipAudioExtraction {
-		idd := fmt.Sprintf("%s.%s", id, stream.CodecName)
+		idd = fmt.Sprintf("%s.%s", id, stream.CodecName)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
 		log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
-		job.RawAudios = append(job.RawAudios, Audio{
-			Channels: stream.Channels,
-			Stream: Stream{
-				CodecType:     stream.CodecType,
-				CodecName:     stream.CodecName,
-				ExtractedFile: idd,
-			},
-		})
 	} else {
 		return nil
 	}
@@ -47,6 +39,18 @@ func extractStream(job *Job, stream StreamInfo) error {
 	if err != nil {
 		log.Errorf("output: %s", out)
 	} else {
+		if stream.CodecType == "subtitle" {
+			job.Subtitles = append(job.Subtitles, idd)
+		} else {
+			job.RawAudios = append(job.RawAudios, Audio{
+				Channels: stream.Channels,
+				Stream: Stream{
+					CodecType:     stream.CodecType,
+					CodecName:     stream.CodecName,
+					ExtractedFile: idd,
+				},
+			})
+		}
 		log.Debugf("output: %s", out)
 	}
 	return err
