@@ -152,8 +152,8 @@ func pipeline(inputFile string) (*Job, error) {
 	file := s[len(s)-1]
 	job.FileRawFolder = strings.Join(s[:len(s)-1], "/")
 	s = strings.Split(file, ".")
-	job.FileRawName = s[0]
-	job.FileRawExt = s[1]
+	job.FileRawExt = s[len(s)-1]
+	job.FileRawName = strings.Join(s[:len(s)-1], ".")
 	if !slices.Contains(ValidExtensions, job.FileRawExt) {
 		return &job, fmt.Errorf("unsupported file extension: %s", job.FileRawExt)
 	}
