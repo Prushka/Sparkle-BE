@@ -42,17 +42,17 @@ func extractStream(job *Job, stream StreamInfo) {
 	if stream.CodecType == "subtitle" {
 		idd = fmt.Sprintf("%s%s", id, TheConfig.SubtitleExt)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
-		log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
+		log.Infof("Handling subtitle stream #%d (%s)", stream.Index, stream.CodecName)
 		pair := &Pair[Subtitle]{}
 		job.Subtitles[stream.Index] = pair
-		pair.Raw = Subtitle{
+		pair.Raw = &Subtitle{
 			Language: stream.Tags.Language,
 			Stream:   s,
 		}
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
 		err = runCommand(cmd)
 		if err == nil {
-			pair.Enc = Subtitle{
+			pair.Enc = &Subtitle{
 				Language: stream.Tags.Language,
 				Stream: Stream{
 					CodecName: TheConfig.SubtitleExt,
@@ -66,10 +66,10 @@ func extractStream(job *Job, stream StreamInfo) {
 	} else if stream.CodecType == "audio" {
 		idd = fmt.Sprintf("%s.%s", id, stream.CodecName)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
-		log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
+		log.Infof("Handling audio stream #%d (%s)", stream.Index, stream.CodecName)
 		pair := &Pair[Audio]{}
 		job.Audios[stream.Index] = pair
-		pair.Raw = Audio{
+		pair.Raw = &Audio{
 			Channels: stream.Channels,
 			Stream:   s,
 		}
@@ -77,7 +77,7 @@ func extractStream(job *Job, stream StreamInfo) {
 			cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
 			err := runCommand(cmd)
 			if err == nil {
-				pair.Enc = Audio{
+				pair.Enc = &Audio{
 					Channels: stream.Channels,
 					Stream: Stream{
 						CodecName: stream.CodecName,
@@ -111,7 +111,7 @@ func extractStreams(job *Job) error {
 	return nil
 }
 
-func handbrakeTranscode(job Job) error {
+func handbrakeTranscode(job *Job) error {
 	encoders := strings.Split(TheConfig.Encoder, ",")
 	wg := sync.WaitGroup{}
 	for _, encoder := range encoders {
@@ -254,7 +254,7 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = handbrakeTranscode(job)
+	err = handbrakeTranscode(&job)
 	if err != nil {
 		return &job, err
 	}

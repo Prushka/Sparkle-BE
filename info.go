@@ -39,8 +39,8 @@ type Job struct {
 }
 
 type Pair[T any] struct {
-	Raw T `json:"raw"`
-	Enc T `json:"enc"`
+	Raw *T `json:"raw"`
+	Enc *T `json:"enc"`
 }
 
 type Stream struct {
