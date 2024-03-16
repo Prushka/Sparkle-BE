@@ -45,11 +45,11 @@ func (room *Room) addChat(chat string, state PlayerState) {
 	}
 	room.mutex.Lock()
 	room.Chats = append(room.Chats, Chat{Username: state.Name, Message: chat,
-		Uid:       state.Id,
+		Uid:       state.id,
 		Timestamp: time.Now().Unix(), MediaSec: safeTime})
 	room.mutex.Unlock()
 	room.syncChats()
-	go func() { DiscordWebhook(FormatSecondsToTime(*state.Time)+": "+chat, state.Name, state.Id) }()
+	go func() { DiscordWebhook(FormatSecondsToTime(*state.Time)+": "+chat, state.Name, state.id) }()
 }
 
 func (room *Room) syncChats() {
@@ -120,15 +120,15 @@ func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
 
 		if syncTime {
 			for _, p := range room.Players {
-				if state.Id == p.state.Id {
+				if state.id == p.state.id {
 					continue
 				}
-				log.Debugf("current id: %v, player id: %v", state.Id, p.state.Id)
+				log.Debugf("current id: %v, player id: %v", state.id, p.state.id)
 				p.Sync(&room.Time, &room.Paused, "latest player update has more than 5s difference")
 			}
 		} else if syncPaused {
 			for _, p := range room.Players {
-				if state.Id == p.state.Id {
+				if state.id == p.state.id {
 					continue
 				}
 				p.Sync(state.Time, &room.Paused, "player has different pause state")
@@ -156,7 +156,7 @@ type PlayerState struct {
 	Name   string   `json:"name,omitempty"`
 	Reason string   `json:"reason,omitempty"`
 	Chat   string   `json:"chat,omitempty"`
-	Id     string   `json:"id"`
+	id     string
 }
 
 func (player *Player) Sync(time *float64, paused *bool, reason string) {
@@ -314,7 +314,7 @@ func routes() {
 				wssMutex.Unlock()
 			}(ws)
 			currentPlayer := &Player{ws: ws, state: &PlayerState{
-				Id: id,
+				id: id,
 			}}
 			wssMutex.Lock()
 			if wss[room] == nil {
@@ -355,6 +355,7 @@ func routes() {
 				var playerState PlayerState
 				j, _ := json.Marshal(currentPlayer.state)
 				_ = json.Unmarshal(j, &playerState)
+				playerState.id = id
 				log.Debugf("player state: %+v", playerState)
 				currentPlayer.mutex.Unlock()
 
