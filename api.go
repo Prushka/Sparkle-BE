@@ -80,13 +80,17 @@ func (room *Room) syncChatsToPlayer(player *Player) {
 
 func newRoom(id string) *Room {
 	return &Room{Players: make(map[string]*Player), id: id,
-		RoomState: RoomState{MaxTime: 0, MinTime: 99999999999.0, Paused: false, Diff: 0}, Chats: make([]Chat, 0)}
+		RoomState: RoomState{MaxTime: 0, MinTime: 99999999999.0, Paused: true, Diff: 0}, Chats: make([]Chat, 0)}
 }
 
-func (room *Room) DeletePlayer(id string) {
+func (room *Room) DeletePlayer(id string) bool {
 	room.mutex.Lock()
 	defer room.mutex.Unlock()
 	delete(room.Players, id)
+	if len(room.Players) == 0 {
+		return true
+	}
+	return false
 }
 
 func (room *Room) getState() RoomState {
@@ -307,7 +311,13 @@ func routes() {
 					c.Logger().Error(err)
 				}
 				wssMutex.Lock()
-				wss[room].DeletePlayer(id)
+				room := wss[room]
+				if room != nil {
+					deleteRoom := room.DeletePlayer(id)
+					if deleteRoom {
+						delete(wss, room.id)
+					}
+				}
 				wssMutex.Unlock()
 			}(ws)
 			currentPlayer := &Player{ws: ws, state: &PlayerState{
