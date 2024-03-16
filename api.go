@@ -34,10 +34,8 @@ type Room struct {
 }
 
 type RoomState struct {
-	MaxTime float64
-	MinTime float64
-	Paused  bool
-	Diff    float64
+	Time   float64
+	Paused bool
 }
 
 func (room *Room) addChat(chat string, state PlayerState, id string) {
@@ -103,33 +101,27 @@ func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
 	room.mutex.Lock()
 	defer room.mutex.Unlock()
 	if sync {
+		syncTime := false
 		if state.Time != nil {
-			if *state.Time > room.MaxTime {
-				room.MaxTime = *state.Time
+			if *state.Time-room.Time > 5 || room.Time-*state.Time > 5 {
+				syncTime = true
 			}
-			if *state.Time < room.MinTime {
-				room.MinTime = *state.Time
-			}
-			room.Diff = room.MaxTime - room.MinTime
+			room.Time = *state.Time
 		}
 		syncPaused := false
 		if state.Paused != nil && *state.Paused != room.Paused {
-
-			log.Infof("[%v] player paused: %v, room paused: %v", state.Name, *state.Paused, room.Paused)
+			log.Debugf("[%v] player paused: %v, room paused: %v", state.Name, *state.Paused, room.Paused)
 			room.Paused = *state.Paused
 			syncPaused = true
 		}
-		log.Infof("minTime: %f, maxTime: %f, diff: %f", room.MinTime, room.MaxTime, room.Diff)
 
-		if room.Diff > 5 && state.Time != nil {
+		if syncTime && state.Time != nil {
 			for _, p := range room.Players {
 				if state.id == p.state.id {
 					continue
 				}
-				p.Sync(state.Time, &room.Paused, "latest player update has more than 5s difference")
+				p.Sync(&room.Time, &room.Paused, "latest player update has more than 5s difference")
 			}
-			room.MaxTime = *state.Time
-			room.MinTime = *state.Time
 		} else if syncPaused {
 			for _, p := range room.Players {
 				if state.id == p.state.id {
@@ -370,7 +362,7 @@ func routes() {
 				}
 				if state.Reason == NewPlayer {
 					roomState := room.getState()
-					currentPlayer.Sync(&roomState.MaxTime, &roomState.Paused, "player is new")
+					currentPlayer.Sync(&roomState.Time, &roomState.Paused, "player is new")
 					room.syncChatsToPlayer(currentPlayer)
 				} else {
 					room.UpdatePlayer(playerState, true)
