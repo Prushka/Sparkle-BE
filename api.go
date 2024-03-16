@@ -38,18 +38,18 @@ type RoomState struct {
 	Paused bool
 }
 
-func (room *Room) addChat(chat string, state PlayerState, id string) {
+func (room *Room) addChat(chat string, state PlayerState) {
 	safeTime := 0.0
 	if state.Time != nil {
 		safeTime = *state.Time
 	}
 	room.mutex.Lock()
 	room.Chats = append(room.Chats, Chat{Username: state.Name, Message: chat,
-		Uid:       id,
+		Uid:       state.Id,
 		Timestamp: time.Now().Unix(), MediaSec: safeTime})
 	room.mutex.Unlock()
 	room.syncChats()
-	go func() { DiscordWebhook(FormatSecondsToTime(*state.Time)+": "+chat, state.Name, id) }()
+	go func() { DiscordWebhook(FormatSecondsToTime(*state.Time)+": "+chat, state.Name, state.Id) }()
 }
 
 func (room *Room) syncChats() {
@@ -120,14 +120,15 @@ func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
 
 		if syncTime {
 			for _, p := range room.Players {
-				if state.id == p.state.id {
+				if state.Id == p.state.Id {
 					continue
 				}
+				log.Debugf("current id: %v, player id: %v", state.Id, p.state.Id)
 				p.Sync(&room.Time, &room.Paused, "latest player update has more than 5s difference")
 			}
 		} else if syncPaused {
 			for _, p := range room.Players {
-				if state.id == p.state.id {
+				if state.Id == p.state.Id {
 					continue
 				}
 				p.Sync(state.Time, &room.Paused, "player has different pause state")
@@ -155,7 +156,7 @@ type PlayerState struct {
 	Name   string   `json:"name,omitempty"`
 	Reason string   `json:"reason,omitempty"`
 	Chat   string   `json:"chat,omitempty"`
-	id     string
+	Id     string   `json:"id"`
 }
 
 func (player *Player) Sync(time *float64, paused *bool, reason string) {
@@ -313,7 +314,7 @@ func routes() {
 				wssMutex.Unlock()
 			}(ws)
 			currentPlayer := &Player{ws: ws, state: &PlayerState{
-				id: id,
+				Id: id,
 			}}
 			wssMutex.Lock()
 			if wss[room] == nil {
@@ -354,10 +355,11 @@ func routes() {
 				var playerState PlayerState
 				j, _ := json.Marshal(currentPlayer.state)
 				_ = json.Unmarshal(j, &playerState)
+				log.Debugf("player state: %+v", playerState)
 				currentPlayer.mutex.Unlock()
 
 				if state.Chat != "" {
-					room.addChat(state.Chat, playerState, id)
+					room.addChat(state.Chat, playerState)
 					continue
 				}
 				if state.Reason == NewPlayer {
