@@ -95,40 +95,43 @@ func (room *Room) getState() RoomState {
 	return room.RoomState
 }
 
-func (room *Room) UpdatePlayer(player *Player, sync bool) {
+func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
 	room.mutex.Lock()
 	defer room.mutex.Unlock()
-	room.Players[player.id] = player
 	if sync {
-		if player.state.Time != nil {
-			if *player.state.Time > room.MaxTime {
-				room.MaxTime = *player.state.Time
+		if state.Time != nil {
+			if *state.Time > room.MaxTime {
+				room.MaxTime = *state.Time
 			}
-			if *player.state.Time < room.MinTime {
-				room.MinTime = *player.state.Time
+			if *state.Time < room.MinTime {
+				room.MinTime = *state.Time
 			}
 			room.Diff = room.MaxTime - room.MinTime
 		}
-		if player.state.Paused != nil {
-			room.Paused = *player.state.Paused
-		}
-		log.Debugf("minTime: %f, maxTime: %f, diff: %f", room.MinTime, room.MaxTime, room.Diff)
+		syncPaused := false
+		if state.Paused != nil && *state.Paused != room.Paused {
 
-		if room.Diff > 5 {
+			log.Infof("[%v] player paused: %v, room paused: %v", state.Name, *state.Paused, room.Paused)
+			room.Paused = *state.Paused
+			syncPaused = true
+		}
+		log.Infof("minTime: %f, maxTime: %f, diff: %f", room.MinTime, room.MaxTime, room.Diff)
+
+		if room.Diff > 5 && state.Time != nil {
 			for _, p := range room.Players {
-				if p.id == player.id {
+				if state.id == p.state.id {
 					continue
 				}
-				player.Sync(player.state.Time, &room.Paused, "latest player update has >5s difference")
+				p.Sync(state.Time, &room.Paused, "latest player update has more than 5s difference")
 			}
-		} else {
-			for _, player := range room.Players {
-				if player.id == player.id {
+			room.MaxTime = *state.Time
+			room.MinTime = *state.Time
+		} else if syncPaused {
+			for _, p := range room.Players {
+				if state.id == p.state.id {
 					continue
 				}
-				if player.GetState().Paused != nil && *player.GetState().Paused != room.Paused {
-					player.Sync(player.state.Time, &room.Paused, "player has different pause state")
-				}
+				p.Sync(state.Time, &room.Paused, "player has different pause state")
 			}
 		}
 	}
@@ -137,7 +140,6 @@ func (room *Room) UpdatePlayer(player *Player, sync bool) {
 type Player struct {
 	ws    *websocket.Conn
 	state *PlayerState
-	id    string
 	mutex sync.RWMutex
 }
 
@@ -165,6 +167,7 @@ type PlayerState struct {
 	Name   string   `json:"name,omitempty"`
 	Reason string   `json:"reason,omitempty"`
 	Chat   string   `json:"chat,omitempty"`
+	id     string
 }
 
 func (player *Player) Sync(time *float64, paused *bool, reason string) {
@@ -318,14 +321,18 @@ func routes() {
 				wss[room].DeletePlayer(id)
 				wssMutex.Unlock()
 			}(ws)
-			currentPlayer := &Player{ws: ws, state: &PlayerState{}, id: id}
+			currentPlayer := &Player{ws: ws, state: &PlayerState{
+				id: id,
+			}}
 			wssMutex.Lock()
 			if wss[room] == nil {
 				wss[room] = newRoom(room)
 			}
 			room := wss[room]
 			wssMutex.Unlock()
-			room.UpdatePlayer(currentPlayer, false)
+			room.mutex.Lock()
+			room.Players[id] = currentPlayer
+			room.mutex.Unlock()
 			for {
 				msg := ""
 				err := websocket.Message.Receive(ws, &msg)
@@ -353,17 +360,20 @@ func routes() {
 					currentPlayer.mutex.Unlock()
 					continue
 				}
+				playerState := currentPlayer.GetState()
 				currentPlayer.mutex.Unlock()
 				if state.Chat != "" {
-					room.addChat(state.Chat, currentPlayer.GetState(), id)
+					room.addChat(state.Chat, playerState, id)
 					continue
 				}
-				roomState := room.getState()
 				if state.Reason == NewPlayer {
+					room.mutex.RLock()
+					roomState := room.getState()
+					room.mutex.RUnlock()
 					currentPlayer.Sync(&roomState.MaxTime, &roomState.Paused, "player is new")
 					room.syncChatsToPlayer(currentPlayer)
 				} else {
-					room.UpdatePlayer(currentPlayer, true)
+					room.UpdatePlayer(playerState, true)
 				}
 			}
 		}).ServeHTTP(c.Response(), c.Request())
