@@ -28,6 +28,7 @@ type Job struct {
 	FileRawFolder string
 	FileRawName   string
 	FileRawExt    string
+	EncodedExt    string
 	Input         string
 	OutputPath    string
 	State         string

@@ -141,6 +141,7 @@ func handbrakeTranscode(job *Job) error {
 				} else {
 					log.Debugf("output: %s", out)
 					job.EncodedCodecs = append(job.EncodedCodecs, "av1")
+					job.EncodedExt = TheConfig.VideoExt
 				}
 				wg.Done()
 			}()
@@ -169,6 +170,7 @@ func handbrakeTranscode(job *Job) error {
 				} else {
 					log.Debugf("output: %s", out)
 					job.EncodedCodecs = append(job.EncodedCodecs, "hevc")
+					job.EncodedExt = TheConfig.VideoExt
 				}
 				wg.Done()
 			}()
