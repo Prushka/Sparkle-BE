@@ -150,17 +150,6 @@ func (player *Player) Send(message string) {
 	}
 }
 
-func (player *Player) GetState() PlayerState {
-	player.mutex.RLock()
-	defer player.mutex.RUnlock()
-	var stateCopy PlayerState
-	if player.state != nil {
-		j, _ := json.Marshal(player.state)
-		_ = json.Unmarshal(j, &stateCopy)
-	}
-	return stateCopy
-}
-
 type PlayerState struct {
 	Time   *float64 `json:"time,omitempty"`
 	Paused *bool    `json:"paused,omitempty"`
@@ -360,16 +349,17 @@ func routes() {
 					currentPlayer.mutex.Unlock()
 					continue
 				}
-				playerState := currentPlayer.GetState()
+				var playerState PlayerState
+				j, _ := json.Marshal(currentPlayer.state)
+				_ = json.Unmarshal(j, &playerState)
 				currentPlayer.mutex.Unlock()
+
 				if state.Chat != "" {
 					room.addChat(state.Chat, playerState, id)
 					continue
 				}
 				if state.Reason == NewPlayer {
-					room.mutex.RLock()
 					roomState := room.getState()
-					room.mutex.RUnlock()
 					currentPlayer.Sync(&roomState.MaxTime, &roomState.Paused, "player is new")
 					room.syncChatsToPlayer(currentPlayer)
 				} else {
