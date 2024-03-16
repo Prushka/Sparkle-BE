@@ -32,6 +32,7 @@ type Job struct {
 	OutputPath      string
 	State           string
 	SHA256          string
+	EncodedCodecs   []string
 	Subtitles       []string
 	RawVideos       []Video
 	RawAudios       []Audio

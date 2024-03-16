@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/redis/rueidis"
@@ -77,43 +78,72 @@ func extractStreams(job *Job) error {
 }
 
 func handbrakeTranscode(job Job) error {
-	outputFile := fmt.Sprintf("%s/out%s", job.OutputPath, TheConfig.VideoExt)
-	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
-	var cmd *exec.Cmd
-	if TheConfig.Encoder == "svt_av1_10bit" {
-		cmd = exec.Command(
-			TheConfig.HandbrakeCli,
-			"-i", job.Input,
-			"-o", outputFile,
-			"--encoder", TheConfig.Encoder,
-			"--vfr",
-			"--quality", TheConfig.ConstantQuality,
-			"--encoder-preset", TheConfig.Av1Preset,
-			"--subtitle", "none",
-			"--aencoder", "opus",
-			"--audio-lang-list", "any",
-			"--all-audio",
-			"--mixdown", "stereo",
-		)
-	} else {
-		cmd = exec.Command(
-			TheConfig.HandbrakeCli,
-			"-i", job.Input,
-			"-o", outputFile,
-			"--encoder", TheConfig.Encoder,
-			"--vfr",
-			"--quality", TheConfig.ConstantQuality,
-			"--encoder-preset", TheConfig.NvencPreset,
-			"--subtitle", "none",
-			"--aencoder", "opus",
-			"--audio-lang-list", "any",
-			"--all-audio",
-			"--mixdown", "stereo",
-		)
+	encoders := strings.Split(TheConfig.Encoder, ",")
+	wg := sync.WaitGroup{}
+	for _, encoder := range encoders {
+		switch encoder {
+		case "av1":
+			outputFile := fmt.Sprintf("%s/av1%s", job.OutputPath, TheConfig.VideoExt)
+			log.Infof("Converting video: %s -> %s", job.Input, outputFile)
+			cmd := exec.Command(
+				TheConfig.HandbrakeCli,
+				"-i", job.Input,
+				"-o", outputFile,
+				"--encoder", TheConfig.Av1Encoder,
+				"--vfr",
+				"--quality", TheConfig.ConstantQuality,
+				"--encoder-preset", TheConfig.Av1Preset,
+				"--subtitle", "none",
+				"--aencoder", "opus",
+				"--audio-lang-list", "any",
+				"--all-audio",
+				"--mixdown", "stereo",
+			)
+			wg.Add(1)
+			go func() {
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					log.Errorf("output: %s", out)
+				} else {
+					log.Debugf("output: %s", out)
+					job.EncodedCodecs = append(job.EncodedCodecs, "av1")
+				}
+				wg.Done()
+			}()
+		case "hevc":
+			outputFile := fmt.Sprintf("%s/hevc%s", job.OutputPath, TheConfig.VideoExt)
+			log.Infof("Converting video: %s -> %s", job.Input, outputFile)
+			cmd := exec.Command(
+				TheConfig.HandbrakeCli,
+				"-i", job.Input,
+				"-o", outputFile,
+				"--encoder", TheConfig.HevcEncoder,
+				"--vfr",
+				"--quality", TheConfig.ConstantQuality,
+				"--encoder-preset", TheConfig.NvencPreset,
+				"--subtitle", "none",
+				"--aencoder", "opus",
+				"--audio-lang-list", "any",
+				"--all-audio",
+				"--mixdown", "stereo",
+			)
+			wg.Add(1)
+			go func() {
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					log.Errorf("output: %s", out)
+				} else {
+					log.Debugf("output: %s", out)
+					job.EncodedCodecs = append(job.EncodedCodecs, "hevc")
+				}
+				wg.Done()
+			}()
+		default:
+			return fmt.Errorf("unsupported encoder: %s", encoder)
+		}
 	}
-	out, err := cmd.CombinedOutput()
-	log.Debugf("output: %s", out)
-	return err
+	wg.Wait()
+	return nil
 }
 
 func convertVideoToSVTAV1FFMPEG(job Job) error {
