@@ -23,28 +23,37 @@ type FFProbeOutput struct {
 }
 
 type Job struct {
-	Id              string
-	FileRawPath     string
-	FileRawFolder   string
-	FileRawName     string
-	FileRawExt      string
-	Input           string
-	OutputPath      string
-	State           string
-	SHA256          string
-	EncodedCodecs   []string
-	Subtitles       []string
-	RawVideos       []Video
-	RawAudios       []Audio
-	ConvertedVideos []Video
-	ConvertedAudios []Audio
+	Id            string
+	FileRawPath   string
+	FileRawFolder string
+	FileRawName   string
+	FileRawExt    string
+	Input         string
+	OutputPath    string
+	State         string
+	SHA256        string
+	EncodedCodecs []string
+	Subtitles     map[int]*Pair[Subtitle]
+	Videos        map[int]*Pair[Video]
+	Audios        map[int]*Pair[Audio]
+}
+
+type Pair[T any] struct {
+	Raw T `json:"raw"`
+	Enc T `json:"enc"`
 }
 
 type Stream struct {
-	Bitrate       int    `json:"bitrate"`
-	CodecName     string `json:"codec_name"`
-	CodecType     string `json:"codec_type"`
-	ExtractedFile string `json:"extracted_file"`
+	Bitrate   int    `json:"bitrate"`
+	CodecName string `json:"codec_name"`
+	CodecType string `json:"codec_type"`
+	Index     int    `json:"index"`
+	Location  string `json:"location"`
+}
+
+type Subtitle struct {
+	Language string `json:"language"`
+	Stream
 }
 
 type Video struct {

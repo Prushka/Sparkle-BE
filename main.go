@@ -19,42 +19,77 @@ import (
 
 var rdb rueidis.Client
 
-func extractStream(job *Job, stream StreamInfo) error {
+func runCommand(cmd *exec.Cmd) error {
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Errorf("output: %s", out)
+		return err
+	} else {
+		log.Debugf("output: %s", out)
+	}
+	return nil
+}
+
+func extractStream(job *Job, stream StreamInfo) {
 	id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
 	var cmd *exec.Cmd
 	var idd string
+	var err error
+	s := Stream{
+		CodecType: stream.CodecType,
+		CodecName: stream.CodecName,
+		Index:     stream.Index,
+	}
 	if stream.CodecType == "subtitle" {
 		idd = fmt.Sprintf("%s%s", id, TheConfig.SubtitleExt)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
 		log.Infof("Extracting subtitle stream #%d (%s)", stream.Index, stream.CodecName)
+		pair := &Pair[Subtitle]{}
+		job.Subtitles[stream.Index] = pair
+		pair.Raw = Subtitle{
+			Language: stream.Tags.Language,
+			Stream:   s,
+		}
 		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
-	} else if stream.CodecType == "audio" && !TheConfig.SkipAudioExtraction {
+		err = runCommand(cmd)
+		if err == nil {
+			pair.Enc = Subtitle{
+				Language: stream.Tags.Language,
+				Stream: Stream{
+					CodecName: TheConfig.SubtitleExt,
+					Index:     stream.Index,
+					Location:  idd,
+				},
+			}
+		} else {
+			log.Errorf("error extracting subtitle: %v", err)
+		}
+	} else if stream.CodecType == "audio" {
 		idd = fmt.Sprintf("%s.%s", id, stream.CodecName)
 		outputFile := fmt.Sprintf("%s/%s", job.OutputPath, idd)
 		log.Infof("Extracting audio stream #%d (%s)", stream.Index, stream.CodecName)
-		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
-	} else {
-		return nil
-	}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Errorf("output: %s", out)
-	} else {
-		if stream.CodecType == "subtitle" {
-			job.Subtitles = append(job.Subtitles, idd)
-		} else {
-			job.RawAudios = append(job.RawAudios, Audio{
-				Channels: stream.Channels,
-				Stream: Stream{
-					CodecType:     stream.CodecType,
-					CodecName:     stream.CodecName,
-					ExtractedFile: idd,
-				},
-			})
+		pair := &Pair[Audio]{}
+		job.Audios[stream.Index] = pair
+		pair.Raw = Audio{
+			Channels: stream.Channels,
+			Stream:   s,
 		}
-		log.Debugf("output: %s", out)
+		if !TheConfig.SkipAudioExtraction {
+			cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
+			err := runCommand(cmd)
+			if err == nil {
+				pair.Enc = Audio{
+					Channels: stream.Channels,
+					Stream: Stream{
+						CodecName: stream.CodecName,
+						Index:     stream.Index,
+					},
+				}
+			} else {
+				log.Errorf("error extracting audio: %v", err)
+			}
+		}
 	}
-	return err
 }
 
 func extractStreams(job *Job) error {
@@ -177,6 +212,9 @@ func pipeline(inputFile string) (*Job, error) {
 	job := Job{
 		Id:          RandomString(32),
 		FileRawPath: inputFile,
+		Subtitles:   make(map[int]*Pair[Subtitle]),
+		Videos:      make(map[int]*Pair[Video]),
+		Audios:      make(map[int]*Pair[Audio]),
 	}
 	s := strings.Split(job.FileRawPath, "/")
 	file := s[len(s)-1]
