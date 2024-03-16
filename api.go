@@ -4,7 +4,6 @@ import (
 	"Sparkle/cleanup"
 	"encoding/json"
 	"github.com/go-co-op/gocron"
-	"github.com/gtuk/discordwebhook"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "github.com/sirupsen/logrus"
@@ -18,20 +17,11 @@ import (
 
 var scheduler = gocron.NewScheduler(time.Now().Location())
 var wss = make(map[string]map[string]*Player)
-var chats = make(map[string][]Chat)
 var e *echo.Echo
 
 const (
 	NewPlayer = "new player"
 )
-
-type Chat struct {
-	Username  string  `json:"username"`
-	Message   string  `json:"message"`
-	Timestamp int64   `json:"timestamp"`
-	MediaSec  float64 `json:"mediaSec"`
-	Uid       string  `json:"uid"`
-}
 
 type Player struct {
 	ws    *websocket.Conn
@@ -64,24 +54,6 @@ func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
 	if err != nil {
 		log.Error(err)
 		return
-	}
-}
-
-func SyncChats(room string) {
-	for _, player := range wss[room] {
-		if chats[room] == nil {
-			chats[room] = make([]Chat, 0)
-		}
-		chatsStr, err := json.Marshal(chats[room])
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		err = websocket.Message.Send(player.ws, string(chatsStr))
-		if err != nil {
-			log.Error(err)
-			return
-		}
 	}
 }
 
@@ -247,33 +219,8 @@ func routes() {
 					currentPlayer.state.Name = state.Name
 				}
 				//PrintAsJson(currentPlayer.state)
-				safeTime := 0.0
-				if currentPlayer.state.Time != nil {
-					safeTime = *currentPlayer.state.Time
-				}
-
 				if state.Chat != "" {
-					if chats[room] == nil {
-						chats[room] = make([]Chat, 0)
-					}
-					chats[room] = append(chats[room], Chat{Username: currentPlayer.state.Name, Message: state.Chat,
-						Uid:       currentPlayer.id,
-						Timestamp: time.Now().Unix(), MediaSec: safeTime})
-					SyncChats(room)
-					content := FormatSecondsToTime(*currentPlayer.state.Time) + ": " + state.Chat
-					avatarUrl := TheConfig.Host + "/static/pfp/" + id + ".png"
-					_, err := os.Stat(TheConfig.Output + "/pfp/" + id + ".png")
-					message := discordwebhook.Message{
-						Username: &currentPlayer.state.Name,
-						Content:  &content,
-					}
-					if err == nil {
-						message.AvatarUrl = &avatarUrl
-					}
-					err = discordwebhook.SendMessage(TheConfig.DiscordWebhook, message)
-					if err != nil {
-						log.Errorf("error sending message to discord: %v", err)
-					}
+					AddChat(room, state.Chat, currentPlayer)
 					continue
 				}
 				if currentPlayer.state.Name == "" {
