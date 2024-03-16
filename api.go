@@ -118,7 +118,7 @@ func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
 			syncPaused = true
 		}
 
-		if syncTime && state.Time != nil {
+		if syncTime {
 			for _, p := range room.Players {
 				if state.id == p.state.id {
 					continue
