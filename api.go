@@ -379,6 +379,7 @@ func routes() {
 					if roomState.Time == 0 {
 						room.mutex.Lock()
 						room.RoomState.Paused = false
+						roomState.Paused = false
 						room.mutex.Unlock()
 					}
 					currentPlayer.Sync(&roomState.Time, &roomState.Paused, "player is new")
