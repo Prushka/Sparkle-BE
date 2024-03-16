@@ -36,7 +36,6 @@ func extractStream(job *Job, stream StreamInfo) {
 	var idd string
 	var err error
 	s := Stream{
-		CodecType: stream.CodecType,
 		CodecName: stream.CodecName,
 		Index:     stream.Index,
 	}

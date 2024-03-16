@@ -46,7 +46,6 @@ type Pair[T any] struct {
 type Stream struct {
 	Bitrate   int    `json:"bitrate"`
 	CodecName string `json:"codec_name"`
-	CodecType string `json:"codec_type"`
 	Index     int    `json:"index"`
 	Location  string `json:"location"`
 }
