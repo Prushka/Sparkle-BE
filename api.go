@@ -376,6 +376,9 @@ func routes() {
 				}
 				if state.Reason == NewPlayer {
 					roomState := room.getState()
+					if roomState.Time == 0 {
+						roomState.Paused = false
+					}
 					currentPlayer.Sync(&roomState.Time, &roomState.Paused, "player is new")
 					room.syncChatsToPlayer(currentPlayer)
 				} else {
