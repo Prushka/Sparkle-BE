@@ -143,6 +143,16 @@ type Player struct {
 	mutex sync.RWMutex
 }
 
+func (player *Player) getState() PlayerState {
+	player.mutex.RLock()
+	defer player.mutex.RUnlock()
+	var stateCopy PlayerState
+	j, _ := json.Marshal(player.state)
+	_ = json.Unmarshal(j, &stateCopy)
+	stateCopy.id = player.state.id
+	return stateCopy
+}
+
 func (player *Player) Send(message string) {
 	err := websocket.Message.Send(player.ws, message)
 	if err != nil {
@@ -184,7 +194,11 @@ func REST() {
 				playersStatusListSorted := make([]PlayerState, 0)
 				room.mutex.RLock()
 				for _, player := range room.Players {
-					playersStatusListSorted = append(playersStatusListSorted, *player.state)
+					state := player.getState()
+					if state.Name == "" {
+						continue
+					}
+					playersStatusListSorted = append(playersStatusListSorted, state)
 				}
 				room.mutex.RUnlock()
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
@@ -352,12 +366,9 @@ func routes() {
 					currentPlayer.mutex.Unlock()
 					continue
 				}
-				var playerState PlayerState
-				j, _ := json.Marshal(currentPlayer.state)
-				_ = json.Unmarshal(j, &playerState)
-				playerState.id = id
-				log.Debugf("player state: %+v", playerState)
 				currentPlayer.mutex.Unlock()
+				playerState := currentPlayer.getState()
+				log.Debugf("player state: %+v", playerState)
 
 				if state.Chat != "" {
 					room.addChat(state.Chat, playerState)
