@@ -218,12 +218,11 @@ func routes() {
 				if state.Name != "" {
 					currentPlayer.state.Name = state.Name
 				}
-				//PrintAsJson(currentPlayer.state)
-				if state.Chat != "" {
-					AddChat(room, state.Chat, currentPlayer)
+				if currentPlayer.state.Name == "" {
 					continue
 				}
-				if currentPlayer.state.Name == "" {
+				if state.Chat != "" {
+					AddChat(room, state.Chat, currentPlayer)
 					continue
 				}
 				minTime := 999999999999.0
