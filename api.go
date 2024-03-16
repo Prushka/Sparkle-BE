@@ -12,21 +12,151 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 )
 
 var scheduler = gocron.NewScheduler(time.Now().Location())
-var wss = make(map[string]map[string]*Player)
+var wss = make(map[string]*Room)
 var e *echo.Echo
+var wssMutex sync.RWMutex
 
 const (
 	NewPlayer = "new player"
 )
 
+type Room struct {
+	Players map[string]*Player
+	mutex   sync.RWMutex
+	id      string
+	Chats   []Chat `json:"chats"`
+	RoomState
+}
+
+type RoomState struct {
+	MaxTime float64
+	MinTime float64
+	Paused  bool
+	Diff    float64
+}
+
+func (room *Room) addChat(chat string, state PlayerState, id string) {
+	safeTime := 0.0
+	if state.Time != nil {
+		safeTime = *state.Time
+	}
+	room.mutex.Lock()
+	room.Chats = append(room.Chats, Chat{Username: state.Name, Message: chat,
+		Uid:       id,
+		Timestamp: time.Now().Unix(), MediaSec: safeTime})
+	room.mutex.Unlock()
+	room.syncChats()
+	go func() { DiscordWebhook(FormatSecondsToTime(*state.Time)+": "+chat, state.Name, id) }()
+}
+
+func (room *Room) syncChats() {
+	room.mutex.RLock()
+	defer room.mutex.RUnlock()
+	for _, player := range room.Players {
+		chatsStr, err := json.Marshal(room.Chats)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		player.Send(string(chatsStr))
+	}
+}
+
+func (room *Room) syncChatsToPlayer(player *Player) {
+	room.mutex.RLock()
+	defer room.mutex.RUnlock()
+	chatsStr, err := json.Marshal(room.Chats)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	player.Send(string(chatsStr))
+}
+
+func newRoom(id string) *Room {
+	return &Room{Players: make(map[string]*Player), id: id,
+		RoomState: RoomState{MaxTime: 0, MinTime: 99999999999.0, Paused: false, Diff: 0}, Chats: make([]Chat, 0)}
+}
+
+func (room *Room) DeletePlayer(id string) {
+	room.mutex.Lock()
+	defer room.mutex.Unlock()
+	delete(room.Players, id)
+}
+
+func (room *Room) getState() RoomState {
+	room.mutex.RLock()
+	defer room.mutex.RUnlock()
+	return room.RoomState
+}
+
+func (room *Room) UpdatePlayer(player *Player, sync bool) {
+	room.mutex.Lock()
+	defer room.mutex.Unlock()
+	room.Players[player.id] = player
+	if sync {
+		if player.state.Time != nil {
+			if *player.state.Time > room.MaxTime {
+				room.MaxTime = *player.state.Time
+			}
+			if *player.state.Time < room.MinTime {
+				room.MinTime = *player.state.Time
+			}
+			room.Diff = room.MaxTime - room.MinTime
+		}
+		if player.state.Paused != nil {
+			room.Paused = *player.state.Paused
+		}
+		log.Debugf("minTime: %f, maxTime: %f, diff: %f", room.MinTime, room.MaxTime, room.Diff)
+
+		if room.Diff > 5 {
+			for _, p := range room.Players {
+				if p.id == player.id {
+					continue
+				}
+				player.Sync(player.state.Time, &room.Paused, "latest player update has >5s difference")
+			}
+		} else {
+			for _, player := range room.Players {
+				if player.id == player.id {
+					continue
+				}
+				if player.GetState().Paused != nil && *player.GetState().Paused != room.Paused {
+					player.Sync(player.state.Time, &room.Paused, "player has different pause state")
+				}
+			}
+		}
+	}
+}
+
 type Player struct {
 	ws    *websocket.Conn
 	state *PlayerState
 	id    string
+	mutex sync.RWMutex
+}
+
+func (player *Player) Send(message string) {
+	err := websocket.Message.Send(player.ws, message)
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func (player *Player) GetState() PlayerState {
+	player.mutex.RLock()
+	defer player.mutex.RUnlock()
+	var stateCopy PlayerState
+	if player.state != nil {
+		j, _ := json.Marshal(player.state)
+		_ = json.Unmarshal(j, &stateCopy)
+	}
+	return stateCopy
 }
 
 type PlayerState struct {
@@ -37,37 +167,34 @@ type PlayerState struct {
 	Chat   string   `json:"chat,omitempty"`
 }
 
-func Sync(maxTime *float64, paused *bool, player *Player, reason string) {
-	if maxTime == player.state.Time && paused == player.state.Paused {
+func (player *Player) Sync(time *float64, paused *bool, reason string) {
+	if time == player.state.Time && paused == player.state.Paused {
 		return
 	}
 	if player.state.Name == "" {
 		return
 	}
-	syncTo := &PlayerState{Time: maxTime, Paused: paused, Reason: reason}
+	syncTo := &PlayerState{Time: time, Paused: paused, Reason: reason}
 	syncToStr, err := json.Marshal(syncTo)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	err = websocket.Message.Send(player.ws, string(syncToStr))
-	if err != nil {
-		log.Error(err)
-		return
-	}
+	player.Send(string(syncToStr))
 }
 
 func REST() {
 	scheduler.Every(1).Second().Do(
 		func() {
-			for _, players := range wss {
+			wssMutex.RLock()
+			defer wssMutex.RUnlock()
+			for _, room := range wss {
 				playersStatusListSorted := make([]PlayerState, 0)
-				for _, player := range players {
-					if player.state.Name == "" {
-						continue
-					}
+				room.mutex.RLock()
+				for _, player := range room.Players {
 					playersStatusListSorted = append(playersStatusListSorted, *player.state)
 				}
+				room.mutex.RUnlock()
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
 					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
 				})
@@ -76,13 +203,11 @@ func REST() {
 					log.Error(err)
 					return
 				}
-				for _, player := range players {
-					err = websocket.Message.Send(player.ws, string(playersStatusListSortedStr))
-					if err != nil {
-						log.Error(err)
-						return
-					}
+				room.mutex.RLock()
+				for _, player := range room.Players {
+					player.Send(string(playersStatusListSortedStr))
 				}
+				room.mutex.RUnlock()
 			}
 		})
 	scheduler.StartAsync()
@@ -189,13 +314,17 @@ func routes() {
 				if err != nil {
 					c.Logger().Error(err)
 				}
-				delete(wss[room], id)
+				wssMutex.Lock()
+				wss[room].DeletePlayer(id)
+				wssMutex.Unlock()
 			}(ws)
-			if wss[room] == nil {
-				wss[room] = make(map[string]*Player)
-			}
 			currentPlayer := &Player{ws: ws, state: &PlayerState{}, id: id}
-			wss[room][id] = currentPlayer
+			wssMutex.Lock()
+			if wss[room] == nil {
+				wss[room] = newRoom(room)
+			}
+			wss[room].UpdatePlayer(currentPlayer, false)
+			wssMutex.Unlock()
 			for {
 				msg := ""
 				err := websocket.Message.Receive(ws, &msg)
@@ -209,6 +338,7 @@ func routes() {
 					log.Error(err)
 					return
 				}
+				currentPlayer.mutex.Lock()
 				if state.Time != nil {
 					currentPlayer.state.Time = state.Time
 				}
@@ -219,54 +349,24 @@ func routes() {
 					currentPlayer.state.Name = state.Name
 				}
 				if currentPlayer.state.Name == "" {
+					currentPlayer.mutex.Unlock()
 					continue
 				}
-				if state.Chat != "" {
-					AddChat(room, state.Chat, currentPlayer)
-					continue
-				}
-				minTime := 999999999999.0
-				maxTime := 0.0
-				existsPlaying := false
-				existsPaused := false
-				for _, player := range wss[room] {
-					if player.state.Time != nil {
-						if *player.state.Time < minTime {
-							minTime = *player.state.Time
-						}
-						if *player.state.Time > maxTime {
-							maxTime = *player.state.Time
-						}
-					}
-					if player.state.Paused != nil && !*player.state.Paused {
-						existsPlaying = true
-					}
-					if player.state.Paused != nil && *player.state.Paused {
-						existsPaused = true
-					}
-				}
-				diff := maxTime - minTime
-				p := !existsPlaying
-				log.Debugf("minTime: %f, maxTime: %f, diff: %f, existsPlaying: %t, existsPaused: %t", minTime, maxTime, diff, existsPlaying, existsPaused)
-				if state.Reason == NewPlayer {
-					Sync(&maxTime, &p, currentPlayer, "player is new")
-					SyncChats(room)
-				} else if diff > 5 {
-					for _, player := range wss[room] {
-						if player.id == id {
-							continue
-						}
-						Sync(currentPlayer.state.Time, &p, player, "latest player update has >5s difference")
-					}
-				} else if diff < 5 && !(existsPaused && existsPlaying) {
+				currentPlayer.mutex.Unlock()
 
+				wssMutex.RLock()
+				room := wss[room]
+				wssMutex.RUnlock()
+				if state.Chat != "" {
+					room.addChat(state.Chat, currentPlayer.GetState(), id)
+					continue
+				}
+				roomState := room.getState()
+				if state.Reason == NewPlayer {
+					currentPlayer.Sync(&roomState.MaxTime, &roomState.Paused, "player is new")
+					room.syncChatsToPlayer(currentPlayer)
 				} else {
-					for _, player := range wss[room] {
-						if player.id == id {
-							continue
-						}
-						Sync(state.Time, state.Paused, player, "regular sync")
-					}
+					room.UpdatePlayer(currentPlayer, true)
 				}
 			}
 		}).ServeHTTP(c.Response(), c.Request())
