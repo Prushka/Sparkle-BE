@@ -323,8 +323,9 @@ func routes() {
 			if wss[room] == nil {
 				wss[room] = newRoom(room)
 			}
-			wss[room].UpdatePlayer(currentPlayer, false)
+			room := wss[room]
 			wssMutex.Unlock()
+			room.UpdatePlayer(currentPlayer, false)
 			for {
 				msg := ""
 				err := websocket.Message.Receive(ws, &msg)
@@ -353,10 +354,6 @@ func routes() {
 					continue
 				}
 				currentPlayer.mutex.Unlock()
-
-				wssMutex.RLock()
-				room := wss[room]
-				wssMutex.RUnlock()
 				if state.Chat != "" {
 					room.addChat(state.Chat, currentPlayer.GetState(), id)
 					continue
