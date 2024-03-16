@@ -24,7 +24,7 @@ type Config struct {
 	NvencPreset         string `env:"NVENC_PRESET" envDefault:"slower"`
 	ConstantQuality     string `env:"CONSTANT_QUALITY" envDefault:"21"`
 	SubtitleExt         string `env:"SUBTITLE_EXT" envDefault:".vtt"`
-	VideoExt            string `env:"VIDEO_EXT" envDefault:".mp4"`
+	VideoExt            string `env:"VIDEO_EXT" envDefault:"mp4"`
 	SkipAudioExtraction bool   `env:"SKIP_AUDIO_EXTRACTION" envDefault:"true"`
 	DiscordUserName     string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook      string `env:"DISCORD_WEBHOOK" envDefault:""`

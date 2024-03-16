@@ -117,7 +117,7 @@ func handbrakeTranscode(job *Job) error {
 	for _, encoder := range encoders {
 		switch encoder {
 		case "av1":
-			outputFile := fmt.Sprintf("%s/av1%s", job.OutputPath, TheConfig.VideoExt)
+			outputFile := fmt.Sprintf("%s/av1.%s", job.OutputPath, TheConfig.VideoExt)
 			log.Infof("Converting video: %s -> %s", job.Input, outputFile)
 			cmd := exec.Command(
 				TheConfig.HandbrakeCli,
@@ -146,7 +146,7 @@ func handbrakeTranscode(job *Job) error {
 				wg.Done()
 			}()
 		case "hevc":
-			outputFile := fmt.Sprintf("%s/hevc%s", job.OutputPath, TheConfig.VideoExt)
+			outputFile := fmt.Sprintf("%s/hevc.%s", job.OutputPath, TheConfig.VideoExt)
 			log.Infof("Converting video: %s -> %s", job.Input, outputFile)
 			cmd := exec.Command(
 				TheConfig.HandbrakeCli,
