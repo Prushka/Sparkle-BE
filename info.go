@@ -39,32 +39,32 @@ type Job struct {
 }
 
 type Pair[T any] struct {
-	Raw *T `json:"raw"`
-	Enc *T `json:"enc"`
+	Raw *T
+	Enc *T
 }
 
 type Stream struct {
-	Bitrate   int    `json:"bitrate"`
-	CodecName string `json:"codec_name"`
-	Index     int    `json:"index"`
-	Location  string `json:"location"`
+	Bitrate   int
+	CodecName string
+	Index     int
+	Location  string
 }
 
 type Subtitle struct {
-	Language string `json:"language"`
+	Language string
 	Stream
 }
 
 type Video struct {
-	Width     int    `json:"width"`
-	Height    int    `json:"height"`
-	Framerate string `json:"framerate"`
+	Width     int
+	Height    int
+	Framerate string
 	Stream
 }
 
 type Audio struct {
-	Channels   int `json:"channels"`
-	SampleRate int `json:"sample_rate"`
+	Channels   int
+	SampleRate int
 	Stream
 }
 
