@@ -377,7 +377,9 @@ func routes() {
 				if state.Reason == NewPlayer {
 					roomState := room.getState()
 					if roomState.Time == 0 {
-						roomState.Paused = false
+						room.mutex.Lock()
+						room.RoomState.Paused = false
+						room.mutex.Unlock()
 					}
 					currentPlayer.Sync(&roomState.Time, &roomState.Paused, "player is new")
 					room.syncChatsToPlayer(currentPlayer)
