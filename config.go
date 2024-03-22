@@ -20,8 +20,8 @@ type Config struct {
 	Ffprobe             string `env:"FFPROBE" envDefault:"ffprobe"`
 	Opusenc             string `env:"OPUSENC" envDefault:"opusenc"`
 	HandbrakeCli        string `env:"HANDBRAKE_CLI" envDefault:"./HandBrakeCLI"`
-	Av1Preset           string `env:"AV1_PRESET" envDefault:"6"`
-	NvencPreset         string `env:"NVENC_PRESET" envDefault:"slower"`
+	Av1Preset           string `env:"AV1_PRESET" envDefault:"8"`
+	NvencPreset         string `env:"NVENC_PRESET" envDefault:"medium"`
 	ConstantQuality     string `env:"CONSTANT_QUALITY" envDefault:"21"`
 	SubtitleExt         string `env:"SUBTITLE_EXT" envDefault:".vtt"`
 	VideoExt            string `env:"VIDEO_EXT" envDefault:"mp4"`
