@@ -223,7 +223,7 @@ func REST() {
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
 	}), middleware.GzipWithConfig(middleware.DefaultGzipConfig), middleware.Logger(), middleware.Recover())
-	e.Static("/static", TheConfig.Output)
+	//e.Static("/static", TheConfig.Output)
 	routes()
 	cleanup.AddOnStopFunc(cleanup.Echo, func(_ os.Signal) {
 		err := e.Close()
