@@ -239,6 +239,7 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
+	err = os.WriteFile(filepath.Join(job.OutputPath, job.FileRawName), []byte{}, 0644)
 	job.State = Incomplete
 	err = persistJob(job)
 	if err != nil {
