@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -245,6 +247,10 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
+	err = spriteVtt(&job)
+	if err != nil {
+		return &job, err
+	}
 	err = extractStreams(&job)
 	if err != nil {
 		return &job, err
@@ -264,6 +270,71 @@ func pipeline(inputFile string) (*Job, error) {
 		return &job, err
 	}
 	return &job, nil
+}
+
+func spriteVtt(job *Job) (err error) {
+	spriteFile := filepath.Join(job.OutputPath, ThumbnailPicture)
+	vttFile := filepath.Join(job.OutputPath, ThumbnailVtt)
+	videoFile := job.Input
+	thumbnailHeight := TheConfig.ThumbnailHeight
+	thumbnailInterval := TheConfig.ThumbnailInterval
+
+	// Get video duration and aspect ratio using FFprobe
+	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile).Output()
+	if err != nil {
+		log.Errorf("Error getting video duration: %v\n", err)
+		return
+	}
+	duration, _ := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+
+	out, err = exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", videoFile).Output()
+	if err != nil {
+		log.Errorf("Error getting video aspect ratio: %v\n", err)
+		return
+	}
+	aspectRatioStr := strings.TrimSpace(string(out))
+	aspectRatioParts := strings.Split(aspectRatioStr, "x")
+	width, _ := strconv.Atoi(aspectRatioParts[0])
+	height, _ := strconv.Atoi(aspectRatioParts[1])
+	aspectRatio := float64(width) / float64(height)
+	log.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", width, height, duration, aspectRatio)
+
+	// Calculate the number of thumbnails based on video duration and interval
+	numThumbnails := int(math.Ceil(duration / float64(thumbnailInterval)))
+
+	// Calculate thumbnail dimensions based on aspect ratio
+	thumbnailWidth := int(math.Round(float64(thumbnailHeight) * aspectRatio))
+
+	// Calculate the number of columns and rows for the sprite sheet
+	numCols := int(math.Ceil(math.Sqrt(float64(numThumbnails))))
+	numRows := int(math.Ceil(float64(numThumbnails) / float64(numCols)))
+
+	// Generate sprite sheet using FFmpeg
+	cmd := exec.Command("ffmpeg", "-i", videoFile, "-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, numCols, numRows), spriteFile)
+	err = runCommand(cmd)
+	if err != nil {
+		log.Errorf("Error generating sprite sheet: %v\n", err)
+		return
+	}
+
+	vttContent := "WEBVTT\n\n"
+	for i := 0; i < numThumbnails; i++ {
+		startTime := fmt.Sprintf("00:%02d:%02d.000", i*thumbnailInterval/60, i*thumbnailInterval%60)
+		endTime := fmt.Sprintf("00:%02d:%02d.000", (i+1)*thumbnailInterval/60, (i+1)*thumbnailInterval%60)
+		thumbnailCol := i % numCols
+		thumbnailRow := i / numCols
+		thumbnailCoords := fmt.Sprintf("%d,%d,%d,%d", thumbnailCol*thumbnailWidth, thumbnailRow*thumbnailHeight, thumbnailWidth, thumbnailHeight)
+		vttContent += fmt.Sprintf("%s --> %s\n%s#xywh=%s\n\n", startTime, endTime, ThumbnailPicture, thumbnailCoords)
+	}
+
+	err = os.WriteFile(vttFile, []byte(vttContent), 0644)
+	if err != nil {
+		log.Errorf("Error writing WebVTT file: %v\n", err)
+		return
+	}
+
+	log.Infof("Sprite sheet and WebVTT file generated successfully!")
+	return
 }
 
 func persistJob(job Job) error {
