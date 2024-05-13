@@ -34,7 +34,7 @@ type Config struct {
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
 	ThumbnailHeight        int    `env:"THUMBNAIL_HEIGHT" envDefault:"360"`
 	ThumbnailInterval      int    `env:"THUMBNAIL_INTERVAL" envDefault:"2"`
-	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"648"`
+	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"1152"`
 }
 
 var TheConfig = &Config{}
