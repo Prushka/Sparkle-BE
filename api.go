@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -235,43 +236,26 @@ func REST() {
 
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
-		ctx := c.Request().Context()
-		keys, err := rdb.Do(ctx, rdb.B().Keys().Pattern("job:*").Build()).ToAny()
+		files, err := os.ReadDir(TheConfig.Output)
 		if err != nil {
-			log.Errorf("error getting keys: %v", err)
-			return c.String(http.StatusInternalServerError, err.Error())
+			return err
 		}
-		existingJobs := make([]Job, 0)
-		for _, key := range keys.([]interface{}) {
-			job := Job{}
-			s, err := rdb.Do(ctx, rdb.B().JsonGet().Key(key.(string)).Build()).ToString()
+		var jobs []*Job
+		for _, file := range files {
+			content, err := os.ReadFile(filepath.Join(TheConfig.Output, file.Name(), JobFile))
 			if err != nil {
-				log.Errorf("error getting job: %v", err)
-				return c.String(http.StatusInternalServerError, err.Error())
+				return err
 			}
-			err = json.Unmarshal([]byte(s), &job)
+			job := &Job{}
+			err = json.Unmarshal(content, job)
 			if err != nil {
-				log.Errorf("error getting job: %v", err)
-				return c.String(http.StatusInternalServerError, err.Error())
+				return err
 			}
 			if job.State == Complete {
-				existingJobs = append(existingJobs, job)
+				jobs = append(jobs, job)
 			}
 		}
-		return c.JSON(http.StatusOK, existingJobs)
-	})
-	e.GET("/job", func(c echo.Context) error {
-		name := c.QueryParam("name")
-		ctx := c.Request().Context()
-		err := rdb.Do(ctx, rdb.B().JsonGet().Key(name).Build()).Error()
-		if err != nil {
-			log.Errorf("error getting job: %v", err)
-			if err.Error() == "redis nil message" {
-				return c.String(http.StatusNotFound, "Job not found")
-			}
-			return c.String(http.StatusInternalServerError, err.Error())
-		}
-		return c.String(http.StatusOK, "Job: "+name)
+		return c.JSON(http.StatusOK, jobs)
 	})
 	e.POST("/pfp/:id", func(c echo.Context) error {
 		id := c.Param("id")

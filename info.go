@@ -4,6 +4,7 @@ const (
 	Complete         = "complete"
 	Incomplete       = "incomplete"
 	StreamsExtracted = "streams_extracted"
+	JobFile          = "job.json"
 )
 
 // StreamInfo holds information about a stream in a media file
