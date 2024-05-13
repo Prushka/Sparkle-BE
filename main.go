@@ -314,12 +314,12 @@ func spriteVtt(job *Job) (err error) {
 	vttContent := "WEBVTT\n\n"
 	for i := 0; i < numChunks; i++ {
 		chunkStartTime := i * chunkInterval
-		chunkEndTime := int(math.Min(float64((i+1)*chunkInterval), duration))
 
 		// Generate sprite sheet for the current chunk using FFmpeg
 		spriteFile := filepath.Join(job.OutputPath, fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
-		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkEndTime-chunkStartTime),
+		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
 			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
+		log.Infof("Command: %s", cmd.String())
 		err = runCommand(cmd)
 		if err != nil {
 			log.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
@@ -367,6 +367,9 @@ func encode() error {
 		return err
 	}
 	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())
 		job, err := pipeline(filepath.Join(TheConfig.Input, file.Name()))
