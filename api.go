@@ -240,11 +240,11 @@ func routes() {
 		if err != nil {
 			return err
 		}
-		var jobs []*Job
+		jobs := make([]*Job, 0)
 		for _, file := range files {
 			content, err := os.ReadFile(filepath.Join(TheConfig.Output, file.Name(), JobFile))
 			if err != nil {
-				return err
+				continue
 			}
 			job := &Job{}
 			err = json.Unmarshal(content, job)
