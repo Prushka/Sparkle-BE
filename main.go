@@ -48,7 +48,7 @@ func extractStream(job *Job, stream StreamInfo) {
 			Language: stream.Tags.Language,
 			Stream:   s,
 		}
-		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
+		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-c:s", "webvtt", "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
 		err = runCommand(cmd)
 		if err == nil {
 			pair.Enc = &Subtitle{
