@@ -273,11 +273,11 @@ func pipeline(inputFile string) (*Job, error) {
 }
 
 func spriteVtt(job *Job) (err error) {
-	spriteFile := filepath.Join(job.OutputPath, ThumbnailPicture)
 	vttFile := filepath.Join(job.OutputPath, ThumbnailVtt)
 	videoFile := job.Input
 	thumbnailHeight := TheConfig.ThumbnailHeight
 	thumbnailInterval := TheConfig.ThumbnailInterval
+	chunkInterval := TheConfig.ThumbnailChunkInterval
 
 	// Get video duration and aspect ratio using FFprobe
 	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile).Output()
@@ -299,32 +299,41 @@ func spriteVtt(job *Job) (err error) {
 	aspectRatio := float64(width) / float64(height)
 	log.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", width, height, duration, aspectRatio)
 
-	// Calculate the number of thumbnails based on video duration and interval
-	numThumbnails := int(math.Ceil(duration / float64(thumbnailInterval)))
+	// Calculate the number of thumbnails per chunk based on chunk interval and thumbnail interval
+	numThumbnailsPerChunk := chunkInterval / thumbnailInterval
+
+	// Calculate the number of chunks based on video duration and chunk interval
+	numChunks := int(math.Ceil(duration / float64(chunkInterval)))
 
 	// Calculate thumbnail dimensions based on aspect ratio
 	thumbnailWidth := int(math.Round(float64(thumbnailHeight) * aspectRatio))
 
-	// Calculate the number of columns and rows for the sprite sheet
-	numCols := int(math.Ceil(math.Sqrt(float64(numThumbnails))))
-	numRows := int(math.Ceil(float64(numThumbnails) / float64(numCols)))
-
-	// Generate sprite sheet using FFmpeg
-	cmd := exec.Command("ffmpeg", "-i", videoFile, "-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, numCols, numRows), spriteFile)
-	err = runCommand(cmd)
-	if err != nil {
-		log.Errorf("Error generating sprite sheet: %v\n", err)
-		return
-	}
+	// Calculate the number of columns and rows for the sprite sheet grid
+	gridSize := int(math.Ceil(math.Sqrt(float64(numThumbnailsPerChunk))))
 
 	vttContent := "WEBVTT\n\n"
-	for i := 0; i < numThumbnails; i++ {
-		startTime := fmt.Sprintf("00:%02d:%02d.000", i*thumbnailInterval/60, i*thumbnailInterval%60)
-		endTime := fmt.Sprintf("00:%02d:%02d.000", (i+1)*thumbnailInterval/60, (i+1)*thumbnailInterval%60)
-		thumbnailCol := i % numCols
-		thumbnailRow := i / numCols
-		thumbnailCoords := fmt.Sprintf("%d,%d,%d,%d", thumbnailCol*thumbnailWidth, thumbnailRow*thumbnailHeight, thumbnailWidth, thumbnailHeight)
-		vttContent += fmt.Sprintf("%s --> %s\n%s#xywh=%s\n\n", startTime, endTime, ThumbnailPicture, thumbnailCoords)
+	for i := 0; i < numChunks; i++ {
+		chunkStartTime := i * chunkInterval
+		chunkEndTime := int(math.Min(float64((i+1)*chunkInterval), duration))
+
+		// Generate sprite sheet for the current chunk using FFmpeg
+		spriteFile := filepath.Join(job.OutputPath, fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
+		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkEndTime-chunkStartTime),
+			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
+		err = runCommand(cmd)
+		if err != nil {
+			log.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
+			return
+		}
+
+		for j := 0; j < numThumbnailsPerChunk; j++ {
+			startTime := fmt.Sprintf("00:%02d:%02d.000", (i*chunkInterval+j*thumbnailInterval)/60, (i*chunkInterval+j*thumbnailInterval)%60)
+			endTime := fmt.Sprintf("00:%02d:%02d.000", (i*chunkInterval+(j+1)*thumbnailInterval)/60, (i*chunkInterval+(j+1)*thumbnailInterval)%60)
+			row := j / gridSize
+			col := j % gridSize
+			thumbnailCoords := fmt.Sprintf("%d,%d,%d,%d", col*thumbnailWidth, row*thumbnailHeight, thumbnailWidth, thumbnailHeight)
+			vttContent += fmt.Sprintf("%s --> %s\n%s#xywh=%s\n\n", startTime, endTime, fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension), thumbnailCoords)
+		}
 	}
 
 	err = os.WriteFile(vttFile, []byte(vttContent), 0644)
@@ -333,7 +342,7 @@ func spriteVtt(job *Job) (err error) {
 		return
 	}
 
-	log.Infof("Sprite sheet and WebVTT file generated successfully!")
+	log.Infof("Sprite sheets and WebVTT file generated successfully!")
 	return
 }
 

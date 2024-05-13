@@ -5,8 +5,9 @@ const (
 	Incomplete       = "incomplete"
 	StreamsExtracted = "streams_extracted"
 	JobFile          = "job.json"
-	ThumbnailPicture = "storyboard.jpg"
 	ThumbnailVtt     = "storyboard.vtt"
+	SpritePrefix     = "sp"
+	SpriteExtension  = ".jpg"
 )
 
 // StreamInfo holds information about a stream in a media file
