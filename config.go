@@ -29,7 +29,7 @@ type Config struct {
 	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
-	Encoder                string `env:"ENCODER" envDefault:"hevc"`
+	Encoder                string `env:"ENCODER" envDefault:"av1,hevc"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
 	ThumbnailHeight        int    `env:"THUMBNAIL_HEIGHT" envDefault:"360"`

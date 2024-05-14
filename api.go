@@ -3,6 +3,7 @@ package main
 import (
 	"Sparkle/cleanup"
 	"encoding/json"
+	"fmt"
 	"github.com/go-co-op/gocron"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -125,14 +126,18 @@ func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
 					continue
 				}
 				log.Debugf("current id: %v, player id: %v", state.id, p.state.id)
-				p.Sync(&room.Time, &room.Paused, "latest player update has more than 5s difference")
+				p.Sync(&room.Time, &room.Paused, fmt.Sprintf("%s seeked to %s", state.Name, FormatSecondsToTime(*state.Time)))
 			}
 		} else if syncPaused {
 			for _, p := range room.Players {
 				if state.id == p.state.id {
 					continue
 				}
-				p.Sync(state.Time, &room.Paused, "player has different pause state")
+				pausedStr := "paused"
+				if !room.Paused {
+					pausedStr = "resumed"
+				}
+				p.Sync(state.Time, &room.Paused, fmt.Sprintf("%s %s", state.Name, pausedStr))
 			}
 		}
 	}
