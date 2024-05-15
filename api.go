@@ -355,18 +355,8 @@ func routes() {
 					room.mutex.Unlock()
 				case NewPlayer:
 					room.mutex.Lock()
-					realPlayers := 0
-					for _, player := range room.Players {
-						if player.Name != "" {
-							realPlayers++
-						}
-					}
-					if realPlayers > 1 {
-						currentPlayer.Sync(&room.VideoState.Time, &room.VideoState.Paused, nil)
-					} else {
-						paused := false
-						currentPlayer.Sync(&room.VideoState.Time, &paused, nil)
-					}
+					paused := false
+					currentPlayer.Sync(&room.VideoState.Time, &paused, nil)
 					room.syncChatsToPlayerUnsafe(currentPlayer)
 					room.mutex.Unlock()
 				}
