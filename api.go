@@ -342,15 +342,13 @@ func routes() {
 				case PauseSync:
 					currentPlayer.Paused = *payload.Paused
 					room.mutex.Lock()
-					if currentPlayer.Paused != room.Paused {
-						log.Debugf("[%v] player paused: %v, room paused: %v", currentPlayer.Name, currentPlayer.Paused, room.Paused)
-						room.Paused = currentPlayer.Paused
-						for _, p := range room.Players {
-							if currentPlayer.Id == p.Id {
-								continue
-							}
-							p.Sync(nil, &room.Paused, currentPlayer)
+					log.Debugf("[%v] player paused: %v, room paused: %v", currentPlayer.Name, currentPlayer.Paused, room.Paused)
+					room.Paused = currentPlayer.Paused
+					for _, p := range room.Players {
+						if currentPlayer.Id == p.Id {
+							continue
 						}
+						p.Sync(nil, &room.Paused, currentPlayer)
 					}
 					room.mutex.Unlock()
 				case NewPlayer:
