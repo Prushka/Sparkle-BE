@@ -106,13 +106,13 @@ func (player *Player) Send(message interface{}) {
 }
 
 func (player *Player) Sync(time *float64, paused *bool, firedBy *Player) {
-	if time != nil && *time != player.Time {
+	if time != nil {
 		//if player.Name == "" {
 		//	return
 		//}
 		player.Send(SendPayload{Type: TimeSync, Time: time, FiredBy: firedBy})
 	}
-	if paused != nil && *paused != player.Paused {
+	if paused != nil {
 		player.Send(SendPayload{Type: PauseSync, Paused: paused, FiredBy: firedBy})
 	}
 }
