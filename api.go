@@ -44,23 +44,32 @@ type Room struct {
 
 type Player struct {
 	ws    *websocket.Conn
-	Name  string
-	Id    string
+	Name  string `json:"name"`
+	Id    string `json:"id"`
 	mutex sync.RWMutex
 	VideoState
 }
 
 type VideoState struct {
-	Time   float64
-	Paused bool
+	Time   float64 `json:"time"`
+	Paused bool    `json:"paused"`
 }
 
-func (room *Room) syncChats() {
-	room.mutex.RLock()
-	defer room.mutex.RUnlock()
-	for _, player := range room.Players {
-		room.syncChatsToPlayerUnsafe(player)
-	}
+type PlayerPayload struct {
+	Type   string   `json:"type"`
+	Time   *float64 `json:"time"`
+	Name   string   `json:"name"`
+	Paused *bool    `json:"paused"`
+	Chat   string   `json:"chat"`
+}
+
+type SendPayload struct {
+	Type    string   `json:"type"`
+	Time    *float64 `json:"time"`
+	Paused  *bool    `json:"paused"`
+	FiredBy *Player  `json:"firedBy"`
+	Chats   []Chat   `json:"chats"`
+	Players []Player `json:"players"`
 }
 
 func (room *Room) syncChatsToPlayerUnsafe(player *Player) {
@@ -83,30 +92,20 @@ func (player *Player) Send(message string) {
 	}
 }
 
-type PlayerPayload struct {
-	Type   string   `json:"type"`
-	Time   *float64 `json:"time"`
-	Name   string   `json:"name"`
-	Paused *bool    `json:"paused"`
-	Chat   string   `json:"chat"`
-}
-
-type SendPayload struct {
-	Type    string   `json:"type"`
-	Time    *float64 `json:"time"`
-	Paused  *bool    `json:"paused"`
-	FiredBy *Player  `json:"firedBy"`
-	Chats   []Chat   `json:"chats"`
-	Players []Player `json:"players"`
-}
-
 func (player *Player) Sync(time *float64, paused *bool, firedBy *Player) {
-	if (time != nil && *time != player.Time) || (paused != nil && *paused != player.Paused) {
+	if time != nil && *time != player.Time {
 		//if player.Name == "" {
 		//	return
 		//}
-		syncTo := &SendPayload{Type: FullSync, Time: time, Paused: paused, FiredBy: firedBy}
-		syncToStr, err := json.Marshal(syncTo)
+		syncToStr, err := json.Marshal(&SendPayload{Type: TimeSync, Time: time, FiredBy: firedBy})
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		player.Send(string(syncToStr))
+	}
+	if paused != nil && *paused != player.Paused {
+		syncToStr, err := json.Marshal(&SendPayload{Type: PauseSync, Paused: paused, FiredBy: firedBy})
 		if err != nil {
 			log.Error(err)
 			return
@@ -281,8 +280,10 @@ func routes() {
 					room.Chats = append(room.Chats, Chat{Username: currentPlayer.Name, Message: payload.Chat,
 						Uid:       currentPlayer.Id,
 						Timestamp: time.Now().Unix(), MediaSec: currentPlayer.Time})
+					for _, player := range room.Players {
+						room.syncChatsToPlayerUnsafe(player)
+					}
 					room.mutex.Unlock()
-					room.syncChats()
 					go func() {
 						DiscordWebhook(FormatSecondsToTime(currentPlayer.Time)+": "+payload.Chat, currentPlayer.Name, currentPlayer.Id)
 					}()
