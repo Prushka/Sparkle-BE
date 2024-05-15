@@ -328,9 +328,9 @@ func routes() {
 				case TimeSync:
 					currentPlayer.Time = *payload.Time
 					room.mutex.Lock()
+					room.Time = currentPlayer.Time
 					if math.Abs(room.Time-currentPlayer.Time) > 5 {
 						log.Debugf("[%v] player time: %v, room time: %v", currentPlayer.Name, currentPlayer.Time, room.Time)
-						room.Time = currentPlayer.Time
 						for _, p := range room.Players {
 							if currentPlayer.Id == p.Id {
 								continue
