@@ -74,7 +74,9 @@ type SendPayload struct {
 }
 
 func (room *Room) syncChatsToPlayerUnsafe(player *Player) {
-	player.Send(SendPayload{Type: ChatSync, Chats: room.Chats})
+	if len(room.Chats) > 0 {
+		player.Send(SendPayload{Type: ChatSync, Chats: room.Chats})
+	}
 }
 
 func defaultVideoState() VideoState {
