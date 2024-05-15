@@ -39,7 +39,7 @@ type Room struct {
 	Players map[string]*Player
 	mutex   sync.RWMutex
 	id      string
-	Chats   []Chat `json:"chats"`
+	Chats   []*Chat `json:"chats"`
 	VideoState
 }
 
@@ -69,7 +69,7 @@ type SendPayload struct {
 	Time    *float64 `json:"time"`
 	Paused  *bool    `json:"paused"`
 	FiredBy *Player  `json:"firedBy"`
-	Chats   []Chat   `json:"chats"`
+	Chats   []*Chat  `json:"chats"`
 	Players []Player `json:"players"`
 }
 
@@ -269,7 +269,7 @@ func routes() {
 			wssMutex.Lock()
 			if wss[room] == nil {
 				wss[room] = &Room{Players: make(map[string]*Player), id: id,
-					VideoState: defaultVideoState(), Chats: make([]Chat, 0)}
+					VideoState: defaultVideoState(), Chats: make([]*Chat, 0)}
 			}
 			room := wss[room]
 			wssMutex.Unlock()
@@ -308,7 +308,7 @@ func routes() {
 						continue
 					}
 					room.mutex.Lock()
-					room.Chats = append(room.Chats, Chat{Username: currentPlayer.Name, Message: payload.Chat,
+					room.Chats = append(room.Chats, &Chat{Username: currentPlayer.Name, Message: payload.Chat,
 						Uid:       currentPlayer.Id,
 						Timestamp: time.Now().Unix(), MediaSec: currentPlayer.Time})
 					for _, player := range room.Players {
