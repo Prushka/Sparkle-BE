@@ -293,11 +293,16 @@ func routes() {
 				switch payload.Type {
 				case NameSync:
 					currentPlayer.Name = payload.Name
+					room.mutex.Lock()
 					for _, chat := range room.Chats {
 						if chat.Uid == currentPlayer.Id {
 							chat.Username = currentPlayer.Name
 						}
 					}
+					for _, player := range room.Players {
+						room.syncChatsToPlayerUnsafe(player)
+					}
+					room.mutex.Unlock()
 				case ChatSync:
 					if strings.TrimSpace(payload.Chat) == "" {
 						continue
