@@ -32,6 +32,7 @@ const (
 	ChatSync          = "chat"
 	FullSync          = "full"
 	PlayersStatusSync = "players"
+	PfpSync           = "pfp"
 )
 
 type Room struct {
@@ -73,22 +74,30 @@ type SendPayload struct {
 }
 
 func (room *Room) syncChatsToPlayerUnsafe(player *Player) {
-	chatsStr, err := json.Marshal(SendPayload{Type: ChatSync, Chats: room.Chats})
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	player.Send(string(chatsStr))
+	player.Send(SendPayload{Type: ChatSync, Chats: room.Chats})
 }
 
 func defaultVideoState() VideoState {
 	return VideoState{Time: 0, Paused: true}
 }
 
-func (player *Player) Send(message string) {
-	err := websocket.Message.Send(player.ws, message)
+func (player *Player) Send(message interface{}) {
+	messageStr := ""
+	switch message.(type) {
+	case string:
+		messageStr = message.(string)
+	default:
+		messageBytes, err := json.Marshal(message)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		messageStr = string(messageBytes)
+	}
+	err := websocket.Message.Send(player.ws, messageStr)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 }
 
@@ -97,20 +106,10 @@ func (player *Player) Sync(time *float64, paused *bool, firedBy *Player) {
 		//if player.Name == "" {
 		//	return
 		//}
-		syncToStr, err := json.Marshal(&SendPayload{Type: TimeSync, Time: time, FiredBy: firedBy})
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		player.Send(string(syncToStr))
+		player.Send(SendPayload{Type: TimeSync, Time: time, FiredBy: firedBy})
 	}
 	if paused != nil && *paused != player.Paused {
-		syncToStr, err := json.Marshal(&SendPayload{Type: PauseSync, Paused: paused, FiredBy: firedBy})
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		player.Send(string(syncToStr))
+		player.Send(SendPayload{Type: PauseSync, Paused: paused, FiredBy: firedBy})
 	}
 }
 
@@ -220,6 +219,17 @@ func routes() {
 		if _, err = io.Copy(dst, src); err != nil {
 			return err
 		}
+		wssMutex.RLock()
+		for _, room := range wss {
+			room.mutex.RLock()
+			if firedBy, ok := room.Players[id]; ok {
+				for _, player := range room.Players {
+					player.Send(SendPayload{Type: PfpSync, FiredBy: firedBy})
+				}
+			}
+			room.mutex.RUnlock()
+		}
+		wssMutex.RUnlock()
 		return c.String(http.StatusOK, "File uploaded")
 	})
 
@@ -317,7 +327,18 @@ func routes() {
 					room.mutex.Unlock()
 				case NewPlayer:
 					room.mutex.Lock()
-					currentPlayer.Sync(&room.VideoState.Time, &room.VideoState.Paused, nil)
+					realPlayers := 0
+					for _, player := range room.Players {
+						if player.Name != "" {
+							realPlayers++
+						}
+					}
+					if realPlayers > 1 {
+						currentPlayer.Sync(&room.VideoState.Time, &room.VideoState.Paused, nil)
+					} else {
+						paused := false
+						currentPlayer.Sync(&room.VideoState.Time, &paused, nil)
+					}
 					room.syncChatsToPlayerUnsafe(currentPlayer)
 					room.mutex.Unlock()
 				}
