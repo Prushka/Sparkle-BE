@@ -131,6 +131,9 @@ func REST() {
 				}
 				room.mutex.RUnlock()
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
+					if playersStatusListSorted[i].Name == playersStatusListSorted[j].Name {
+						return playersStatusListSorted[i].Id < playersStatusListSorted[j].Id
+					}
 					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
 				})
 				playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted})
