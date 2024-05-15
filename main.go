@@ -327,8 +327,18 @@ func spriteVtt(job *Job) (err error) {
 		}
 
 		for j := 0; j < numThumbnailsPerChunk; j++ {
-			startTime := fmt.Sprintf("00:%02d:%02d.000", (i*chunkInterval+j*thumbnailInterval)/60, (i*chunkInterval+j*thumbnailInterval)%60)
-			endTime := fmt.Sprintf("00:%02d:%02d.000", (i*chunkInterval+(j+1)*thumbnailInterval)/60, (i*chunkInterval+(j+1)*thumbnailInterval)%60)
+			thumbnailTime := i*chunkInterval + j*thumbnailInterval
+			startHour := thumbnailTime / 3600
+			startMinute := (thumbnailTime % 3600) / 60
+			startSecond := thumbnailTime % 60
+			startTime := fmt.Sprintf("%02d:%02d:%02d.000", startHour, startMinute, startSecond)
+
+			endThumbnailTime := thumbnailTime + thumbnailInterval
+			endHour := endThumbnailTime / 3600
+			endMinute := (endThumbnailTime % 3600) / 60
+			endSecond := endThumbnailTime % 60
+			endTime := fmt.Sprintf("%02d:%02d:%02d.000", endHour, endMinute, endSecond)
+
 			row := j / gridSize
 			col := j % gridSize
 			thumbnailCoords := fmt.Sprintf("%d,%d,%d,%d", col*thumbnailWidth, row*thumbnailHeight, thumbnailWidth, thumbnailHeight)
