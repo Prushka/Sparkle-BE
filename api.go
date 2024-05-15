@@ -3,17 +3,18 @@ package main
 import (
 	"Sparkle/cleanup"
 	"encoding/json"
-	"fmt"
 	"github.com/go-co-op/gocron"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -24,7 +25,13 @@ var e *echo.Echo
 var wssMutex sync.RWMutex
 
 const (
-	NewPlayer = "new player"
+	NewPlayer         = "new player"
+	NameSync          = "name"
+	TimeSync          = "time"
+	PauseSync         = "pause"
+	ChatSync          = "chat"
+	FullSync          = "full"
+	PlayersStatusSync = "players"
 )
 
 type Room struct {
@@ -32,45 +39,32 @@ type Room struct {
 	mutex   sync.RWMutex
 	id      string
 	Chats   []Chat `json:"chats"`
-	RoomState
+	VideoState
 }
 
-type RoomState struct {
+type Player struct {
+	ws    *websocket.Conn
+	Name  string
+	Id    string
+	mutex sync.RWMutex
+	VideoState
+}
+
+type VideoState struct {
 	Time   float64
 	Paused bool
-}
-
-func (room *Room) addChat(chat string, state PlayerState) {
-	safeTime := 0.0
-	if state.Time != nil {
-		safeTime = *state.Time
-	}
-	room.mutex.Lock()
-	room.Chats = append(room.Chats, Chat{Username: state.Name, Message: chat,
-		Uid:       state.id,
-		Timestamp: time.Now().Unix(), MediaSec: safeTime})
-	room.mutex.Unlock()
-	room.syncChats()
-	go func() { DiscordWebhook(FormatSecondsToTime(*state.Time)+": "+chat, state.Name, state.id) }()
 }
 
 func (room *Room) syncChats() {
 	room.mutex.RLock()
 	defer room.mutex.RUnlock()
 	for _, player := range room.Players {
-		chatsStr, err := json.Marshal(room.Chats)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		player.Send(string(chatsStr))
+		room.syncChatsToPlayerUnsafe(player)
 	}
 }
 
-func (room *Room) syncChatsToPlayer(player *Player) {
-	room.mutex.RLock()
-	defer room.mutex.RUnlock()
-	chatsStr, err := json.Marshal(room.Chats)
+func (room *Room) syncChatsToPlayerUnsafe(player *Player) {
+	chatsStr, err := json.Marshal(SendPayload{Type: ChatSync, Chats: room.Chats})
 	if err != nil {
 		log.Error(err)
 		return
@@ -78,85 +72,8 @@ func (room *Room) syncChatsToPlayer(player *Player) {
 	player.Send(string(chatsStr))
 }
 
-func defaultRoomState() RoomState {
-	return RoomState{Time: 0, Paused: true}
-}
-
-func newRoom(id string) *Room {
-	return &Room{Players: make(map[string]*Player), id: id,
-		RoomState: defaultRoomState(), Chats: make([]Chat, 0)}
-}
-
-func (room *Room) DeletePlayer(id string) {
-	room.mutex.Lock()
-	defer room.mutex.Unlock()
-	delete(room.Players, id)
-	if len(room.Players) == 0 {
-		room.RoomState = defaultRoomState()
-	}
-}
-
-func (room *Room) getState() RoomState {
-	room.mutex.RLock()
-	defer room.mutex.RUnlock()
-	return room.RoomState
-}
-
-func (room *Room) UpdatePlayer(state PlayerState, sync bool) {
-	room.mutex.Lock()
-	defer room.mutex.Unlock()
-	if sync {
-		syncTime := false
-		if state.Time != nil {
-			if *state.Time-room.Time > 5 || room.Time-*state.Time > 5 {
-				syncTime = true
-			}
-			room.Time = *state.Time
-		}
-		syncPaused := false
-		if state.Paused != nil && *state.Paused != room.Paused {
-			log.Debugf("[%v] player paused: %v, room paused: %v", state.Name, *state.Paused, room.Paused)
-			room.Paused = *state.Paused
-			syncPaused = true
-		}
-
-		if syncTime {
-			for _, p := range room.Players {
-				if state.id == p.state.id {
-					continue
-				}
-				log.Debugf("current id: %v, player id: %v", state.id, p.state.id)
-				p.Sync(&room.Time, &room.Paused, fmt.Sprintf("%s seeked to %s", state.Name, FormatSecondsToTime(*state.Time)))
-			}
-		} else if syncPaused {
-			for _, p := range room.Players {
-				if state.id == p.state.id {
-					continue
-				}
-				pausedStr := "paused"
-				if !room.Paused {
-					pausedStr = "resumed"
-				}
-				p.Sync(state.Time, &room.Paused, fmt.Sprintf("%s %s", state.Name, pausedStr))
-			}
-		}
-	}
-}
-
-type Player struct {
-	ws    *websocket.Conn
-	state *PlayerState
-	mutex sync.RWMutex
-}
-
-func (player *Player) getState() PlayerState {
-	player.mutex.RLock()
-	defer player.mutex.RUnlock()
-	var stateCopy PlayerState
-	j, _ := json.Marshal(player.state)
-	_ = json.Unmarshal(j, &stateCopy)
-	stateCopy.id = player.state.id
-	return stateCopy
+func defaultVideoState() VideoState {
+	return VideoState{Time: 0, Paused: true}
 }
 
 func (player *Player) Send(message string) {
@@ -166,29 +83,36 @@ func (player *Player) Send(message string) {
 	}
 }
 
-type PlayerState struct {
-	Time   *float64 `json:"time,omitempty"`
-	Paused *bool    `json:"paused,omitempty"`
-	Name   string   `json:"name,omitempty"`
-	Reason string   `json:"reason,omitempty"`
-	Chat   string   `json:"chat,omitempty"`
-	id     string
+type PlayerPayload struct {
+	Type   string   `json:"type"`
+	Time   *float64 `json:"time"`
+	Name   string   `json:"name"`
+	Paused *bool    `json:"paused"`
+	Chat   string   `json:"chat"`
 }
 
-func (player *Player) Sync(time *float64, paused *bool, reason string) {
-	if time == player.state.Time && paused == player.state.Paused {
-		return
+type SendPayload struct {
+	Type    string   `json:"type"`
+	Time    *float64 `json:"time"`
+	Paused  *bool    `json:"paused"`
+	FiredBy *Player  `json:"firedBy"`
+	Chats   []Chat   `json:"chats"`
+	Players []Player `json:"players"`
+}
+
+func (player *Player) Sync(time *float64, paused *bool, firedBy *Player) {
+	if (time != nil && *time != player.Time) || (paused != nil && *paused != player.Paused) {
+		//if player.Name == "" {
+		//	return
+		//}
+		syncTo := &SendPayload{Type: FullSync, Time: time, Paused: paused, FiredBy: firedBy}
+		syncToStr, err := json.Marshal(syncTo)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		player.Send(string(syncToStr))
 	}
-	if player.state.Name == "" {
-		return
-	}
-	syncTo := &PlayerState{Time: time, Paused: paused, Reason: reason}
-	syncToStr, err := json.Marshal(syncTo)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	player.Send(string(syncToStr))
 }
 
 func REST() {
@@ -197,20 +121,21 @@ func REST() {
 			wssMutex.RLock()
 			defer wssMutex.RUnlock()
 			for _, room := range wss {
-				playersStatusListSorted := make([]PlayerState, 0)
+				playersStatusListSorted := make([]Player, 0)
 				room.mutex.RLock()
 				for _, player := range room.Players {
-					state := player.getState()
-					if state.Name == "" {
+					if player.Name == "" {
 						continue
 					}
-					playersStatusListSorted = append(playersStatusListSorted, state)
+					player.mutex.RLock()
+					playersStatusListSorted = append(playersStatusListSorted, Player{Name: player.Name, Id: player.Id, VideoState: player.VideoState})
+					player.mutex.RUnlock()
 				}
 				room.mutex.RUnlock()
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
 					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
 				})
-				playersStatusListSortedStr, err := json.Marshal(playersStatusListSorted)
+				playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted})
 				if err != nil {
 					log.Error(err)
 					return
@@ -228,7 +153,6 @@ func REST() {
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
 	}), middleware.GzipWithConfig(middleware.DefaultGzipConfig), middleware.Logger(), middleware.Recover())
-	//e.Static("/static", TheConfig.Output)
 	routes()
 	cleanup.AddOnStopFunc(cleanup.Echo, func(_ os.Signal) {
 		err := e.Close()
@@ -312,16 +236,20 @@ func routes() {
 				wssMutex.Lock()
 				room := wss[room]
 				if room != nil {
-					room.DeletePlayer(id)
+					room.mutex.Lock()
+					delete(room.Players, id)
+					if len(room.Players) == 0 {
+						room.VideoState = defaultVideoState()
+					}
+					room.mutex.Unlock()
 				}
 				wssMutex.Unlock()
 			}(ws)
-			currentPlayer := &Player{ws: ws, state: &PlayerState{
-				id: id,
-			}}
+			currentPlayer := &Player{ws: ws, Id: id}
 			wssMutex.Lock()
 			if wss[room] == nil {
-				wss[room] = newRoom(room)
+				wss[room] = &Room{Players: make(map[string]*Player), id: id,
+					VideoState: defaultVideoState(), Chats: make([]Chat, 0)}
 			}
 			room := wss[room]
 			wssMutex.Unlock()
@@ -335,47 +263,64 @@ func routes() {
 					log.Error(err)
 					return
 				}
-				state := &PlayerState{}
-				err = json.Unmarshal([]byte(msg), state)
+				payload := &PlayerPayload{}
+				err = json.Unmarshal([]byte(msg), payload)
 				if err != nil {
 					log.Error(err)
 					return
 				}
 				currentPlayer.mutex.Lock()
-				if state.Time != nil {
-					currentPlayer.state.Time = state.Time
-				}
-				if state.Paused != nil {
-					currentPlayer.state.Paused = state.Paused
-				}
-				if state.Name != "" {
-					currentPlayer.state.Name = state.Name
-				}
-				if currentPlayer.state.Name == "" {
-					currentPlayer.mutex.Unlock()
-					continue
+				switch payload.Type {
+				case NameSync:
+					currentPlayer.Name = payload.Name
+				case ChatSync:
+					if strings.TrimSpace(payload.Chat) == "" {
+						continue
+					}
+					room.mutex.Lock()
+					room.Chats = append(room.Chats, Chat{Username: currentPlayer.Name, Message: payload.Chat,
+						Uid:       currentPlayer.Id,
+						Timestamp: time.Now().Unix(), MediaSec: currentPlayer.Time})
+					room.mutex.Unlock()
+					room.syncChats()
+					go func() {
+						DiscordWebhook(FormatSecondsToTime(currentPlayer.Time)+": "+payload.Chat, currentPlayer.Name, currentPlayer.Id)
+					}()
+				case TimeSync:
+					currentPlayer.Time = *payload.Time
+					room.mutex.Lock()
+					if math.Abs(room.Time-currentPlayer.Time) > 5 {
+						log.Debugf("[%v] player time: %v, room time: %v", currentPlayer.Name, currentPlayer.Time, room.Time)
+						room.Time = currentPlayer.Time
+						for _, p := range room.Players {
+							if currentPlayer.Id == p.Id {
+								continue
+							}
+							p.Sync(&room.Time, nil, currentPlayer)
+						}
+					}
+					room.mutex.Unlock()
+				case PauseSync:
+					currentPlayer.Paused = *payload.Paused
+					room.mutex.Lock()
+					if currentPlayer.Paused != room.Paused {
+						log.Debugf("[%v] player paused: %v, room paused: %v", currentPlayer.Name, currentPlayer.Paused, room.Paused)
+						room.Paused = currentPlayer.Paused
+						for _, p := range room.Players {
+							if currentPlayer.Id == p.Id {
+								continue
+							}
+							p.Sync(nil, &room.Paused, currentPlayer)
+						}
+					}
+					room.mutex.Unlock()
+				case NewPlayer:
+					room.mutex.Lock()
+					currentPlayer.Sync(&room.VideoState.Time, &room.VideoState.Paused, nil)
+					room.syncChatsToPlayerUnsafe(currentPlayer)
+					room.mutex.Unlock()
 				}
 				currentPlayer.mutex.Unlock()
-				playerState := currentPlayer.getState()
-				log.Debugf("player state: %+v", playerState)
-
-				if state.Chat != "" {
-					room.addChat(state.Chat, playerState)
-					continue
-				}
-				if state.Reason == NewPlayer {
-					roomState := room.getState()
-					if roomState.Time == 0 {
-						room.mutex.Lock()
-						room.RoomState.Paused = false
-						roomState.Paused = false
-						room.mutex.Unlock()
-					}
-					currentPlayer.Sync(&roomState.Time, &roomState.Paused, "player is new")
-					room.syncChatsToPlayer(currentPlayer)
-				} else {
-					room.UpdatePlayer(playerState, true)
-				}
 			}
 		}).ServeHTTP(c.Response(), c.Request())
 		return nil
