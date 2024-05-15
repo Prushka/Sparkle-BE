@@ -223,8 +223,16 @@ func routes() {
 		for _, room := range wss {
 			room.mutex.RLock()
 			if firedBy, ok := room.Players[id]; ok {
+				firedBy.mutex.RLock()
+				payload := SendPayload{Type: PfpSync, FiredBy: firedBy}
+				payloadStr, err := json.Marshal(payload)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+				firedBy.mutex.RUnlock()
 				for _, player := range room.Players {
-					player.Send(SendPayload{Type: PfpSync, FiredBy: firedBy})
+					player.Send(payloadStr)
 				}
 			}
 			room.mutex.RUnlock()
