@@ -293,6 +293,11 @@ func routes() {
 				switch payload.Type {
 				case NameSync:
 					currentPlayer.Name = payload.Name
+					for _, chat := range room.Chats {
+						if chat.Uid == currentPlayer.Id {
+							chat.Username = currentPlayer.Name
+						}
+					}
 				case ChatSync:
 					if strings.TrimSpace(payload.Chat) == "" {
 						continue
