@@ -356,6 +356,12 @@ func routes() {
 					room.mutex.Lock()
 					paused := false
 					currentPlayer.Sync(&room.VideoState.Time, &paused, nil)
+					for _, p := range room.Players {
+						if currentPlayer.Id == p.Id {
+							continue
+						}
+						p.Sync(nil, &paused, currentPlayer)
+					}
 					room.syncChatsToPlayerUnsafe(currentPlayer)
 					room.mutex.Unlock()
 				}
