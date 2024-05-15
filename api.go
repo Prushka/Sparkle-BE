@@ -317,7 +317,7 @@ func routes() {
 					room.mutex.Lock()
 					room.Chats = append(room.Chats, &Chat{Username: currentPlayer.Name, Message: payload.Chat,
 						Uid:       currentPlayer.Id,
-						Timestamp: time.Now().Unix(), MediaSec: currentPlayer.Time})
+						Timestamp: time.Now().UnixMilli(), MediaSec: currentPlayer.Time})
 					for _, player := range room.Players {
 						room.syncChatsToPlayerUnsafe(player)
 					}
