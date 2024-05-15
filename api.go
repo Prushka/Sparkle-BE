@@ -86,6 +86,8 @@ func (player *Player) Send(message interface{}) {
 	switch message.(type) {
 	case string:
 		messageStr = message.(string)
+	case []byte:
+		messageStr = string(message.([]byte))
 	default:
 		messageBytes, err := json.Marshal(message)
 		if err != nil {
@@ -130,6 +132,9 @@ func REST() {
 					player.mutex.RUnlock()
 				}
 				room.mutex.RUnlock()
+				if len(playersStatusListSorted) == 0 {
+					continue
+				}
 				sort.Slice(playersStatusListSorted, func(i, j int) bool {
 					if playersStatusListSorted[i].Name == playersStatusListSorted[j].Name {
 						return playersStatusListSorted[i].Id < playersStatusListSorted[j].Id
