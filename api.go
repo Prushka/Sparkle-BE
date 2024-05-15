@@ -65,17 +65,18 @@ type PlayerPayload struct {
 }
 
 type SendPayload struct {
-	Type    string   `json:"type"`
-	Time    *float64 `json:"time"`
-	Paused  *bool    `json:"paused"`
-	FiredBy *Player  `json:"firedBy"`
-	Chats   []*Chat  `json:"chats"`
-	Players []Player `json:"players"`
+	Type      string   `json:"type"`
+	Time      *float64 `json:"time"`
+	Paused    *bool    `json:"paused"`
+	FiredBy   *Player  `json:"firedBy"`
+	Chats     []*Chat  `json:"chats"`
+	Players   []Player `json:"players"`
+	Timestamp int64    `json:"timestamp"`
 }
 
 func (room *Room) syncChatsToPlayerUnsafe(player *Player) {
 	if len(room.Chats) > 0 {
-		player.Send(SendPayload{Type: ChatSync, Chats: room.Chats})
+		player.Send(SendPayload{Type: ChatSync, Chats: room.Chats, Timestamp: time.Now().UnixMilli()})
 	}
 }
 
@@ -105,15 +106,15 @@ func (player *Player) Send(message interface{}) {
 	}
 }
 
-func (player *Player) Sync(time *float64, paused *bool, firedBy *Player) {
-	if time != nil {
+func (player *Player) Sync(t *float64, paused *bool, firedBy *Player) {
+	if t != nil {
 		//if player.Name == "" {
 		//	return
 		//}
-		player.Send(SendPayload{Type: TimeSync, Time: time, FiredBy: firedBy})
+		player.Send(SendPayload{Type: TimeSync, Time: t, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()})
 	}
 	if paused != nil {
-		player.Send(SendPayload{Type: PauseSync, Paused: paused, FiredBy: firedBy})
+		player.Send(SendPayload{Type: PauseSync, Paused: paused, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()})
 	}
 }
 
@@ -143,7 +144,7 @@ func REST() {
 					}
 					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
 				})
-				playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted})
+				playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted, Timestamp: time.Now().UnixMilli()})
 				if err != nil {
 					log.Error(err)
 					return
@@ -234,7 +235,7 @@ func routes() {
 			room.mutex.RLock()
 			if firedBy, ok := room.Players[id]; ok {
 				firedBy.mutex.RLock()
-				payload := SendPayload{Type: PfpSync, FiredBy: firedBy}
+				payload := SendPayload{Type: PfpSync, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()}
 				payloadStr, err := json.Marshal(payload)
 				if err != nil {
 					log.Error(err)
