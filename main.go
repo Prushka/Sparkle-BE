@@ -247,6 +247,10 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
+	err = thumbnailsNfo(&job)
+	if err != nil {
+		return &job, err
+	}
 	err = spriteVtt(&job)
 	if err != nil {
 		return &job, err
@@ -270,6 +274,26 @@ func pipeline(inputFile string) (*Job, error) {
 		return &job, err
 	}
 	return &job, nil
+}
+
+func thumbnailsNfo(job *Job) (err error) {
+	nfoFile := filepath.Join(job.FileRawFolder, job.FileRawName+".nfo")
+	_, err = os.Stat(nfoFile)
+	if err == nil {
+		err = os.Rename(nfoFile, filepath.Join(job.OutputPath, "info.nfo"))
+		if err != nil {
+			log.Errorf("error moving nfo file: %v", err)
+		}
+	}
+	thumbFile := filepath.Join(job.FileRawFolder, job.FileRawName+"-thumb.jpg")
+	_, err = os.Stat(thumbFile)
+	if err == nil {
+		err = os.Rename(thumbFile, filepath.Join(job.OutputPath, "poster.jpg"))
+		if err != nil {
+			log.Errorf("error moving poster file: %v", err)
+		}
+	}
+	return
 }
 
 func spriteVtt(job *Job) (err error) {
@@ -378,26 +402,28 @@ func encode() error {
 	}
 	for _, file := range files {
 		if file.IsDir() {
+			// movie
 			continue
 		}
-		startTime := time.Now()
-		log.Infof("Processing file: %s", file.Name())
-		job, err := pipeline(filepath.Join(TheConfig.Input, file.Name()))
-		if err != nil {
-			log.Errorf("error processing file: %v", err)
-		}
-		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
-		// remove file
-		if job.State == Complete {
-			err = os.Remove(job.Input)
+		ext := filepath.Ext(file.Name())
+		if ext == ".mkv" {
+			startTime := time.Now()
+			log.Infof("Processing file: %s", file.Name())
+			job, err := pipeline(filepath.Join(TheConfig.Input, file.Name()))
 			if err != nil {
-				log.Errorf("error removing file: %v", err)
+				log.Errorf("error processing file: %v", err)
 			}
-		} else {
-			// rename back
-			err = os.Rename(job.Input, filepath.Join(TheConfig.Input, file.Name()))
-			if err != nil {
-				log.Errorf("error renaming file: %v", err)
+			log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
+			if job.State == Complete {
+				err = os.Remove(job.Input)
+				if err != nil {
+					log.Errorf("error removing file: %v", err)
+				}
+			} else {
+				err = os.Rename(job.Input, filepath.Join(TheConfig.Input, file.Name()))
+				if err != nil {
+					log.Errorf("error renaming file: %v", err)
+				}
 			}
 		}
 	}
