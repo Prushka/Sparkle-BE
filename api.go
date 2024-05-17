@@ -188,6 +188,15 @@ func routes() {
 				return err
 			}
 			if job.State == Complete {
+				job.EncodedCodecsSize = make(map[string]int64)
+				for _, codec := range job.EncodedCodecs {
+					codecFile := filepath.Join(TheConfig.Output, file.Name(), codec+"."+TheConfig.VideoExt)
+					stat, err := os.Stat(codecFile)
+					if err != nil {
+						continue
+					}
+					job.EncodedCodecsSize[codec] = stat.Size()
+				}
 				jobs = append(jobs, job)
 			}
 		}

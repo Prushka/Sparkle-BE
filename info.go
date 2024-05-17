@@ -27,23 +27,24 @@ type FFProbeOutput struct {
 }
 
 type Job struct {
-	Id            string
-	FileRawPath   string
-	FileRawFolder string
-	FileRawName   string
-	FileRawExt    string
-	EncodedExt    string
-	Input         string
-	OutputPath    string
-	State         string
-	SHA256        string
-	EncodedCodecs []string
-	Subtitles     map[int]*Pair[Subtitle]
-	Videos        map[int]*Pair[Video]
-	Audios        map[int]*Pair[Audio]
-	Duration      float64
-	Width         int
-	Height        int
+	Id                string
+	FileRawPath       string
+	FileRawFolder     string
+	FileRawName       string
+	FileRawExt        string
+	EncodedExt        string
+	Input             string
+	OutputPath        string
+	State             string
+	SHA256            string
+	EncodedCodecs     []string
+	EncodedCodecsSize map[string]int64
+	Subtitles         map[int]*Pair[Subtitle]
+	Videos            map[int]*Pair[Video]
+	Audios            map[int]*Pair[Audio]
+	Duration          float64
+	Width             int
+	Height            int
 }
 
 type Pair[T any] struct {
