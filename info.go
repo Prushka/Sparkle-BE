@@ -41,6 +41,9 @@ type Job struct {
 	Subtitles     map[int]*Pair[Subtitle]
 	Videos        map[int]*Pair[Video]
 	Audios        map[int]*Pair[Audio]
+	Duration      float64
+	Width         int
+	Height        int
 }
 
 type Pair[T any] struct {

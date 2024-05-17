@@ -285,7 +285,7 @@ func spriteVtt(job *Job) (err error) {
 		log.Errorf("Error getting video duration: %v\n", err)
 		return
 	}
-	duration, _ := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+	job.Duration, _ = strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
 
 	out, err = exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", videoFile).Output()
 	if err != nil {
@@ -294,16 +294,16 @@ func spriteVtt(job *Job) (err error) {
 	}
 	aspectRatioStr := strings.TrimSpace(string(out))
 	aspectRatioParts := strings.Split(aspectRatioStr, "x")
-	width, _ := strconv.Atoi(aspectRatioParts[0])
-	height, _ := strconv.Atoi(aspectRatioParts[1])
-	aspectRatio := float64(width) / float64(height)
-	log.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", width, height, duration, aspectRatio)
+	job.Width, _ = strconv.Atoi(aspectRatioParts[0])
+	job.Height, _ = strconv.Atoi(aspectRatioParts[1])
+	aspectRatio := float64(job.Width) / float64(job.Height)
+	log.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
 
 	// Calculate the number of thumbnails per chunk based on chunk interval and thumbnail interval
 	numThumbnailsPerChunk := chunkInterval / thumbnailInterval
 
 	// Calculate the number of chunks based on video duration and chunk interval
-	numChunks := int(math.Ceil(duration / float64(chunkInterval)))
+	numChunks := int(math.Ceil(job.Duration / float64(chunkInterval)))
 
 	// Calculate thumbnail dimensions based on aspect ratio
 	thumbnailWidth := int(math.Round(float64(thumbnailHeight) * aspectRatio))
