@@ -115,6 +115,9 @@ func (player *Player) Send(message interface{}) {
 }
 
 func (player *Player) Sync(t *float64, paused *bool, firedBy *Player) {
+	if firedBy != nil && firedBy.InBg {
+		return
+	}
 	if t != nil {
 		player.Send(SendPayload{Type: TimeSync, Time: t, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()})
 	}
@@ -331,6 +334,7 @@ func routes() {
 							currentPlayer.InBg = true
 						case "fg":
 							currentPlayer.InBg = false
+							room.syncChatsToPlayerUnsafe(currentPlayer)
 						}
 					case NameSync:
 						currentPlayer.Name = payload.Name
