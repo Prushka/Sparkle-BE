@@ -33,6 +33,7 @@ const (
 	FullSync          = "full"
 	PlayersStatusSync = "players"
 	PfpSync           = "pfp"
+	StateSync         = "state"
 )
 
 type Room struct {
@@ -45,10 +46,16 @@ type Room struct {
 
 type Player struct {
 	ws    *websocket.Conn
-	Name  string `json:"name"`
-	Id    string `json:"id"`
 	mutex sync.RWMutex
 	VideoState
+	PlayerState
+}
+
+type PlayerState struct {
+	Name     string `json:"name"`
+	Id       string `json:"id"`
+	InBg     bool   `json:"inBg,omitempty"`
+	LastSeen int64  `json:"lastSeen"`
 }
 
 type VideoState struct {
@@ -62,13 +69,14 @@ type PlayerPayload struct {
 	Name   string   `json:"name"`
 	Paused *bool    `json:"paused"`
 	Chat   string   `json:"chat"`
+	State  string   `json:"state"`
 }
 
 type SendPayload struct {
 	Type      string   `json:"type"`
-	Time      *float64 `json:"time"`
-	Paused    *bool    `json:"paused"`
-	FiredBy   *Player  `json:"firedBy"`
+	Time      *float64 `json:"time,omitempty"`
+	Paused    *bool    `json:"paused,omitempty"`
+	FiredBy   *Player  `json:"firedBy,omitempty"`
 	Chats     []*Chat  `json:"chats"`
 	Players   []Player `json:"players"`
 	Timestamp int64    `json:"timestamp"`
@@ -129,7 +137,7 @@ func REST() {
 						player.mutex.RUnlock()
 						continue
 					}
-					playersStatusListSorted = append(playersStatusListSorted, Player{Name: player.Name, Id: player.Id, VideoState: player.VideoState})
+					playersStatusListSorted = append(playersStatusListSorted, Player{PlayerState: player.PlayerState, VideoState: player.VideoState})
 					player.mutex.RUnlock()
 				}
 				room.mutex.RUnlock()
@@ -283,7 +291,9 @@ func routes() {
 				wssMutex.Unlock()
 				log.Infof("[%v] disconnected", id)
 			}(ws)
-			currentPlayer := &Player{ws: ws, Id: id}
+			currentPlayer := &Player{ws: ws,
+				PlayerState: PlayerState{Id: id, LastSeen: time.Now().UnixMilli()},
+			}
 			wssMutex.Lock()
 			if wss[room] == nil {
 				wss[room] = &Room{Players: make(map[string]*Player), id: id,
@@ -313,7 +323,15 @@ func routes() {
 					room.mutex.Lock()
 					defer currentPlayer.mutex.Unlock()
 					defer room.mutex.Unlock()
+					currentPlayer.LastSeen = time.Now().UnixMilli()
 					switch payload.Type {
+					case StateSync:
+						switch payload.State {
+						case "bg":
+							currentPlayer.InBg = true
+						case "fg":
+							currentPlayer.InBg = false
+						}
 					case NameSync:
 						currentPlayer.Name = payload.Name
 						for _, chat := range room.Chats {
