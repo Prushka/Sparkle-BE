@@ -295,7 +295,7 @@ func thumbnailsNfo(job *Job) (err error) {
 	renameAndMove(filepath.Join(job.FileRawFolder, job.FileRawName+".nfo"), filepath.Join(job.OutputPath, "info.nfo"))
 	renameAndMove(filepath.Join(job.FileRawFolder, job.FileRawName+"-thumb.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
 	renameAndMove(filepath.Join(job.FileRawFolder, "poster.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
-	renameAndMove(filepath.Join(job.FileRawFolder, "fanart.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
+	renameAndMove(filepath.Join(job.FileRawFolder, "fanart.jpg"), filepath.Join(job.OutputPath, "fanart.jpg"))
 	return
 }
 
