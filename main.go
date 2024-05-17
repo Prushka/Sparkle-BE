@@ -159,33 +159,6 @@ func handbrakeTranscode(job *Job) error {
 	return nil
 }
 
-func convertVideoToSVTAV1FFMPEG(job Job) error {
-	outputFile := filepath.Join(job.OutputPath, fmt.Sprintf("out%s", TheConfig.VideoExt))
-	log.Infof("Converting video to SVT-AV1-10Bit: %s -> %s", job.Input, outputFile)
-	// ffmpeg -i input_video.mp4 -map 0:v -map 0:a -c:v libsvtav1 -preset 6 -crf 22 -c:a libopus -vbr on -sn -vf "format=yuv420p10le" output_video.mkv
-	cmd := exec.Command(
-		TheConfig.Ffmpeg,
-		"-i", job.Input,
-		"-c:v", "libsvtav1",
-		"-preset", TheConfig.Av1Preset,
-		"-crf", TheConfig.ConstantQuality,
-		"-c:a", "libopus",
-		"-vbr", "on",
-		"-sn",
-		"-vf", "format=yuv420p10le",
-		"-filter:a", "channelmap=FL-FL|FR-FR|FC-FC|LFE-LFE|SL-BL|SR-BR:5.1",
-		outputFile,
-	)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Errorf("output: %s", out)
-		log.Errorf("command: %s", cmd.String())
-	} else {
-		log.Debugf("output: %s", out)
-	}
-	return err
-}
-
 func pipeline(inputFile string) (*Job, error) {
 	job := Job{
 		Id:          RandomString(32),
