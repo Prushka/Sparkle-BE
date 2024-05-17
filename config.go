@@ -35,6 +35,10 @@ type Config struct {
 	ThumbnailHeight        int    `env:"THUMBNAIL_HEIGHT" envDefault:"360"`
 	ThumbnailInterval      int    `env:"THUMBNAIL_INTERVAL" envDefault:"2"`
 	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"1152"`
+
+	EnableEncode    bool `env:"ENABLE_ENCODE" envDefault:"false"`
+	EnableSprite    bool `env:"ENABLE_SPRITE" envDefault:"false"`
+	RemoveOnSuccess bool `env:"REMOVE_ON_SUCCESS" envDefault:"true"`
 }
 
 var TheConfig = &Config{}

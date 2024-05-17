@@ -251,9 +251,11 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = spriteVtt(&job)
-	if err != nil {
-		return &job, err
+	if TheConfig.EnableSprite {
+		err = spriteVtt(&job)
+		if err != nil {
+			return &job, err
+		}
 	}
 	err = extractStreams(&job)
 	if err != nil {
@@ -264,9 +266,11 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = handbrakeTranscode(&job)
-	if err != nil {
-		return &job, err
+	if TheConfig.EnableEncode {
+		err = handbrakeTranscode(&job)
+		if err != nil {
+			return &job, err
+		}
 	}
 	job.State = Complete
 	err = persistJob(job)
@@ -276,23 +280,22 @@ func pipeline(inputFile string) (*Job, error) {
 	return &job, nil
 }
 
+func renameAndMove(source string, dest string) {
+	_, err := os.Stat(source)
+	if err == nil {
+		err = os.Rename(source, dest)
+		if err != nil {
+			log.Errorf("error moving file: %s->%s %v", source, dest, err)
+		}
+	}
+}
+
 func thumbnailsNfo(job *Job) (err error) {
-	nfoFile := filepath.Join(job.FileRawFolder, job.FileRawName+".nfo")
-	_, err = os.Stat(nfoFile)
-	if err == nil {
-		err = os.Rename(nfoFile, filepath.Join(job.OutputPath, "info.nfo"))
-		if err != nil {
-			log.Errorf("error moving nfo file: %v", err)
-		}
-	}
-	thumbFile := filepath.Join(job.FileRawFolder, job.FileRawName+"-thumb.jpg")
-	_, err = os.Stat(thumbFile)
-	if err == nil {
-		err = os.Rename(thumbFile, filepath.Join(job.OutputPath, "poster.jpg"))
-		if err != nil {
-			log.Errorf("error moving poster file: %v", err)
-		}
-	}
+	renameAndMove(filepath.Join(job.FileRawFolder, "movie.nfo"), filepath.Join(job.OutputPath, "info.nfo"))
+	renameAndMove(filepath.Join(job.FileRawFolder, job.FileRawName+".nfo"), filepath.Join(job.OutputPath, "info.nfo"))
+	renameAndMove(filepath.Join(job.FileRawFolder, job.FileRawName+"-thumb.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
+	renameAndMove(filepath.Join(job.FileRawFolder, "poster.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
+	renameAndMove(filepath.Join(job.FileRawFolder, "fanart.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
 	return
 }
 
@@ -394,37 +397,51 @@ func persistJob(job Job) error {
 	return nil
 }
 
+func processFile(file os.DirEntry, path string) bool {
+	ext := filepath.Ext(file.Name())
+	if ext == ".mkv" {
+		startTime := time.Now()
+		log.Infof("Processing file: %s", file.Name())
+		job, err := pipeline(path)
+		if err != nil {
+			log.Errorf("error processing file: %v", err)
+		}
+		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
+		if job.State == Complete && TheConfig.RemoveOnSuccess {
+			err = os.Remove(job.Input)
+			if err != nil {
+				log.Errorf("error removing file: %v", err)
+			}
+			return true
+		} else {
+			err = os.Rename(job.Input, path)
+			if err != nil {
+				log.Errorf("error renaming file: %v", err)
+			}
+			return false
+		}
+	}
+	return false
+}
+
 func encode() error {
-	// get all files under INPUT
 	files, err := os.ReadDir(TheConfig.Input)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			// movie
-			continue
-		}
-		ext := filepath.Ext(file.Name())
-		if ext == ".mkv" {
-			startTime := time.Now()
-			log.Infof("Processing file: %s", file.Name())
-			job, err := pipeline(filepath.Join(TheConfig.Input, file.Name()))
+			fs, err := os.ReadDir(filepath.Join(TheConfig.Input, file.Name()))
 			if err != nil {
-				log.Errorf("error processing file: %v", err)
+				return err
 			}
-			log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
-			if job.State == Complete {
-				err = os.Remove(job.Input)
-				if err != nil {
-					log.Errorf("error removing file: %v", err)
-				}
-			} else {
-				err = os.Rename(job.Input, filepath.Join(TheConfig.Input, file.Name()))
-				if err != nil {
-					log.Errorf("error renaming file: %v", err)
+			for _, f := range fs {
+				if processFile(f, filepath.Join(TheConfig.Input, file.Name(), f.Name())) {
+					err = os.RemoveAll(filepath.Join(TheConfig.Input, file.Name()))
 				}
 			}
+		} else {
+			processFile(file, filepath.Join(TheConfig.Input, file.Name()))
 		}
 	}
 	return nil
