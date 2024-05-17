@@ -181,6 +181,31 @@ func REST() {
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
+func populate(path string) *Job {
+	content, err := os.ReadFile(filepath.Join(TheConfig.Output, path, JobFile))
+	if err != nil {
+		return nil
+	}
+	job := &Job{}
+	err = json.Unmarshal(content, job)
+	if err != nil {
+		return nil
+	}
+	if job.State == Complete && len(job.EncodedCodecs) > 0 {
+		job.EncodedCodecsSize = make(map[string]int64)
+		for _, codec := range job.EncodedCodecs {
+			codecFile := filepath.Join(TheConfig.Output, path, codec+"."+TheConfig.VideoExt)
+			stat, err := os.Stat(codecFile)
+			if err != nil {
+				continue
+			}
+			job.EncodedCodecsSize[codec] = stat.Size()
+		}
+		return job
+	}
+	return nil
+}
+
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
 		files, err := os.ReadDir(TheConfig.Output)
@@ -189,29 +214,17 @@ func routes() {
 		}
 		jobs := make([]*Job, 0)
 		for _, file := range files {
-			content, err := os.ReadFile(filepath.Join(TheConfig.Output, file.Name(), JobFile))
-			if err != nil {
-				continue
-			}
-			job := &Job{}
-			err = json.Unmarshal(content, job)
-			if err != nil {
-				return err
-			}
-			if job.State == Complete {
-				job.EncodedCodecsSize = make(map[string]int64)
-				for _, codec := range job.EncodedCodecs {
-					codecFile := filepath.Join(TheConfig.Output, file.Name(), codec+"."+TheConfig.VideoExt)
-					stat, err := os.Stat(codecFile)
-					if err != nil {
-						continue
-					}
-					job.EncodedCodecsSize[codec] = stat.Size()
-				}
+			job := populate(file.Name())
+			if job != nil {
 				jobs = append(jobs, job)
 			}
 		}
 		return c.JSON(http.StatusOK, jobs)
+	})
+	e.GET("/job/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		job := populate(id)
+		return c.JSON(http.StatusOK, job)
 	})
 	e.POST("/pfp/:id", func(c echo.Context) error {
 		id := c.Param("id")
