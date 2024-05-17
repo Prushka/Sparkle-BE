@@ -77,7 +77,7 @@ type SendPayload struct {
 	Time      *float64 `json:"time,omitempty"`
 	Paused    *bool    `json:"paused,omitempty"`
 	FiredBy   *Player  `json:"firedBy,omitempty"`
-	Chats     []*Chat  `json:"chats"`
+	Chats     []*Chat  `json:"chats,omitempty"`
 	Players   []Player `json:"players"`
 	Timestamp int64    `json:"timestamp"`
 }
@@ -292,7 +292,7 @@ func routes() {
 				log.Infof("[%v] disconnected", id)
 			}(ws)
 			currentPlayer := &Player{ws: ws,
-				PlayerState: PlayerState{Id: id, LastSeen: time.Now().UnixMilli()},
+				PlayerState: PlayerState{Id: id, LastSeen: time.Now().Unix()},
 			}
 			wssMutex.Lock()
 			if wss[room] == nil {
@@ -323,7 +323,7 @@ func routes() {
 					room.mutex.Lock()
 					defer currentPlayer.mutex.Unlock()
 					defer room.mutex.Unlock()
-					currentPlayer.LastSeen = time.Now().UnixMilli()
+					currentPlayer.LastSeen = time.Now().Unix()
 					switch payload.Type {
 					case StateSync:
 						switch payload.State {
