@@ -113,6 +113,7 @@ func extractStreams(job *Job, path, t string) error {
 							Stream: Stream{
 								CodecName: stream.CodecName,
 								Index:     stream.Index,
+								Location:  idd,
 							},
 						}
 					} else {
