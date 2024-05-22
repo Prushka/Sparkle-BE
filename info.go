@@ -80,6 +80,7 @@ type Video struct {
 type Audio struct {
 	Channels   int
 	SampleRate int
+	Language   string
 	Stream
 }
 

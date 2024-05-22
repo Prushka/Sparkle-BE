@@ -104,11 +104,12 @@ func extractStreams(job *Job, path, t string) error {
 					Stream:   s,
 				}
 				if TheConfig.EnableAudioExtraction {
-					cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
+					cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
 					err := runCommand(cmd)
 					if err == nil {
 						pair.Enc = &Audio{
 							Channels: stream.Channels,
+							Language: stream.Tags.Language,
 							Stream: Stream{
 								CodecName: stream.CodecName,
 								Index:     stream.Index,
