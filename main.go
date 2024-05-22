@@ -277,9 +277,16 @@ func mapAudioTracks(job *Job) {
 func renameAndMove(source string, dest string) {
 	_, err := os.Stat(source)
 	if err == nil {
-		err = os.Rename(source, dest)
-		if err != nil {
-			log.Errorf("error moving file: %s->%s %v", source, dest, err)
+		if TheConfig.RemoveOnSuccess {
+			err = os.Rename(source, dest)
+			if err != nil {
+				log.Errorf("error moving file: %s->%s %v", source, dest, err)
+			}
+		} else {
+			_, err = copyFile(source, dest)
+			if err != nil {
+				log.Errorf("error copying file: %s->%s %v", source, dest, err)
+			}
 		}
 	}
 }

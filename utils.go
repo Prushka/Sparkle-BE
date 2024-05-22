@@ -20,6 +20,41 @@ func RandomString(length int) string {
 	return string(b)
 }
 
+func copyFile(src, dst string) (int64, error) {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+
+	if !sourceFileStat.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer func(source *os.File) {
+		err := source.Close()
+		if err != nil {
+			log.Errorf("error closing file: %v", err)
+		}
+	}(source)
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer func(destination *os.File) {
+		err := destination.Close()
+		if err != nil {
+			log.Errorf("error closing file: %v", err)
+		}
+	}(destination)
+	nBytes, err := io.Copy(destination, source)
+	return nBytes, err
+}
+
 func PrintAsJson(v interface{}) {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
