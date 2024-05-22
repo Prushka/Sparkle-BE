@@ -26,6 +26,12 @@ type FFProbeOutput struct {
 	Streams []StreamInfo `json:"streams"`
 }
 
+var codecMap = map[string]string{
+	"hdmv_pgs_subtitle": "sup",
+	"subrip":            "srt",
+	"webvtt":            "vtt",
+}
+
 type Job struct {
 	Id                string
 	FileRawPath       string

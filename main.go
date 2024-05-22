@@ -21,7 +21,7 @@ var splitter = string(os.PathSeparator)
 func runCommand(cmd *exec.Cmd) error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Errorf("output: %s", out)
+		fmt.Println(string(out))
 		return err
 	} else {
 		log.Debugf("output: %s", out)
@@ -29,69 +29,8 @@ func runCommand(cmd *exec.Cmd) error {
 	return nil
 }
 
-func extractStream(job *Job, stream StreamInfo) {
-	id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
-	var cmd *exec.Cmd
-	var idd string
-	var err error
-	s := Stream{
-		CodecName: stream.CodecName,
-		Index:     stream.Index,
-	}
-	if stream.CodecType == "subtitle" {
-		idd = fmt.Sprintf("%s%s", id, TheConfig.SubtitleExt)
-		outputFile := filepath.Join(job.OutputPath, idd)
-		log.Infof("Handling subtitle stream #%d (%s)", stream.Index, stream.CodecName)
-		pair := &Pair[Subtitle]{}
-		job.Subtitles[stream.Index] = pair
-		pair.Raw = &Subtitle{
-			Language: stream.Tags.Language,
-			Stream:   s,
-		}
-		cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-c:s", "webvtt", "-map", fmt.Sprintf("0:%d", stream.Index), outputFile)
-		err = runCommand(cmd)
-		if err == nil {
-			pair.Enc = &Subtitle{
-				Language: stream.Tags.Language,
-				Stream: Stream{
-					CodecName: TheConfig.SubtitleExt,
-					Index:     stream.Index,
-					Location:  idd,
-				},
-			}
-		} else {
-			log.Errorf("error extracting subtitle: %v", err)
-		}
-	} else if stream.CodecType == "audio" {
-		idd = fmt.Sprintf("%s.%s", id, stream.CodecName)
-		outputFile := filepath.Join(job.OutputPath, idd)
-		log.Infof("Handling audio stream #%d (%s)", stream.Index, stream.CodecName)
-		pair := &Pair[Audio]{}
-		job.Audios[stream.Index] = pair
-		pair.Raw = &Audio{
-			Channels: stream.Channels,
-			Stream:   s,
-		}
-		if !TheConfig.SkipAudioExtraction {
-			cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
-			err := runCommand(cmd)
-			if err == nil {
-				pair.Enc = &Audio{
-					Channels: stream.Channels,
-					Stream: Stream{
-						CodecName: stream.CodecName,
-						Index:     stream.Index,
-					},
-				}
-			} else {
-				log.Errorf("error extracting audio: %v", err)
-			}
-		}
-	}
-}
-
-func extractStreams(job *Job) error {
-	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", job.Input)
+func extractStreams(job *Job, path, t string) error {
+	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
@@ -99,13 +38,91 @@ func extractStreams(job *Job) error {
 
 	var probeOutput FFProbeOutput
 	err = json.Unmarshal(out, &probeOutput)
+	fmt.Println(string(out))
 	if err != nil {
 		return err
 	}
 	log.Debugf("%+v", string(out))
 	for _, stream := range probeOutput.Streams {
-		log.Debugf("Stream: %+v", stream)
-		extractStream(job, stream)
+		if stream.CodecType == t {
+			log.Debugf("Stream: %+v", stream)
+			id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
+			var cmd *exec.Cmd
+			var idd string
+			var err error
+			s := Stream{
+				CodecName: stream.CodecName,
+				Index:     stream.Index,
+			}
+			if stream.CodecType == "subtitle" {
+				idd = fmt.Sprintf("%s.%s", id, TheConfig.SubtitleExt)
+				log.Infof("Handling subtitle stream #%d (%s)", stream.Index, stream.CodecName)
+				pair := &Pair[Subtitle]{}
+				job.Subtitles[stream.Index] = pair
+				pair.Raw = &Subtitle{
+					Language: stream.Tags.Language,
+					Stream:   s,
+				}
+				cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-c:s", TheConfig.SubtitleCodec, "-map", fmt.Sprintf("0:%d", stream.Index), filepath.Join(job.OutputPath, idd))
+				err = runCommand(cmd)
+				if err == nil {
+					pair.Enc = &Subtitle{
+						Language: stream.Tags.Language,
+						Stream: Stream{
+							CodecName: TheConfig.SubtitleCodec,
+							Index:     stream.Index,
+							Location:  idd,
+						},
+					}
+				} else {
+					toCodec, ok := codecMap[stream.CodecName]
+					if !ok {
+						toCodec = stream.CodecName
+					}
+					log.Errorf("error converting subtitle: %v, extract: %s", err, toCodec)
+					idd = fmt.Sprintf("%s.%s", id, toCodec)
+					cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-c:s", "copy", "-map", fmt.Sprintf("0:%d", stream.Index), filepath.Join(job.OutputPath, idd))
+					err = runCommand(cmd)
+					if err == nil {
+						pair.Enc = &Subtitle{
+							Language: stream.Tags.Language,
+							Stream: Stream{
+								CodecName: toCodec,
+								Index:     stream.Index,
+								Location:  idd,
+							},
+						}
+					} else {
+						log.Errorf("error extracting raw subtitle: %v", err)
+					}
+				}
+			} else if stream.CodecType == "audio" {
+				idd = fmt.Sprintf("%s.%s", id, stream.CodecName)
+				outputFile := filepath.Join(job.OutputPath, idd)
+				log.Infof("Handling audio stream #%d (%s)", stream.Index, stream.CodecName)
+				pair := &Pair[Audio]{}
+				job.Audios[stream.Index] = pair
+				pair.Raw = &Audio{
+					Channels: stream.Channels,
+					Stream:   s,
+				}
+				if !TheConfig.SkipAudioExtraction {
+					cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
+					err := runCommand(cmd)
+					if err == nil {
+						pair.Enc = &Audio{
+							Channels: stream.Channels,
+							Stream: Stream{
+								CodecName: stream.CodecName,
+								Index:     stream.Index,
+							},
+						}
+					} else {
+						log.Errorf("error extracting audio: %v", err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -161,7 +178,7 @@ func handbrakeTranscode(job *Job) error {
 
 func pipeline(inputFile string) (*Job, error) {
 	job := Job{
-		Id:          RandomString(32),
+		Id:          RandomString(8),
 		FileRawPath: inputFile,
 		Subtitles:   make(map[int]*Pair[Subtitle]),
 		Videos:      make(map[int]*Pair[Video]),
@@ -202,15 +219,15 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
+	err = extractStreams(&job, job.Input, "subtitles")
+	if err != nil {
+		return &job, err
+	}
 	if TheConfig.EnableSprite {
 		err = spriteVtt(&job)
 		if err != nil {
 			return &job, err
 		}
-	}
-	err = extractStreams(&job)
-	if err != nil {
-		return &job, err
 	}
 	job.State = StreamsExtracted
 	err = persistJob(job)
@@ -221,6 +238,12 @@ func pipeline(inputFile string) (*Job, error) {
 		err = handbrakeTranscode(&job)
 		if err != nil {
 			return &job, err
+		}
+		if len(job.EncodedCodecs) > 0 {
+			err = extractStreams(&job, filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", job.EncodedCodecs, TheConfig.VideoExt)), "subtitles")
+			if err != nil {
+				return &job, err
+			}
 		}
 	}
 	job.State = Complete
@@ -276,24 +299,14 @@ func spriteVtt(job *Job) (err error) {
 	job.Height, _ = strconv.Atoi(aspectRatioParts[1])
 	aspectRatio := float64(job.Width) / float64(job.Height)
 	log.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
-
-	// Calculate the number of thumbnails per chunk based on chunk interval and thumbnail interval
 	numThumbnailsPerChunk := chunkInterval / thumbnailInterval
-
-	// Calculate the number of chunks based on video duration and chunk interval
 	numChunks := int(math.Ceil(job.Duration / float64(chunkInterval)))
-
-	// Calculate thumbnail dimensions based on aspect ratio
 	thumbnailWidth := int(math.Round(float64(thumbnailHeight) * aspectRatio))
-
-	// Calculate the number of columns and rows for the sprite sheet grid
 	gridSize := int(math.Ceil(math.Sqrt(float64(numThumbnailsPerChunk))))
 
 	vttContent := "WEBVTT\n\n"
 	for i := 0; i < numChunks; i++ {
 		chunkStartTime := i * chunkInterval
-
-		// Generate sprite sheet for the current chunk using FFmpeg
 		spriteFile := filepath.Join(job.OutputPath, fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
 		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
 			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)

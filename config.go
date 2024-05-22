@@ -21,9 +21,10 @@ type Config struct {
 	Opusenc                string `env:"OPUSENC" envDefault:"opusenc"`
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"22"`
-	SubtitleExt            string `env:"SUBTITLE_EXT" envDefault:".vtt"`
+	SubtitleExt            string `env:"SUBTITLE_EXT" envDefault:"ass"`
+	SubtitleCodec          string `env:"SUBTITLE_CODEC" envDefault:"ass"` // webvtt
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
-	SkipAudioExtraction    bool   `env:"SKIP_AUDIO_EXTRACTION" envDefault:"true"`
+	SkipAudioExtraction    bool   `env:"SKIP_AUDIO_EXTRACTION" envDefault:"false"`
 	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
@@ -34,7 +35,7 @@ type Config struct {
 	HevcPreset             string `env:"HEVC_PRESET" envDefault:"slower"`
 	H264Encoder            string `env:"H264_ENCODER" envDefault:"x264_10bit"`
 	H264Preset             string `env:"H264_PRESET" envDefault:"slow"`
-	ThumbnailHeight        int    `env:"THUMBNAIL_HEIGHT" envDefault:"360"`
+	ThumbnailHeight        int    `env:"THUMBNAIL_HEIGHT" envDefault:"320"`
 	ThumbnailInterval      int    `env:"THUMBNAIL_INTERVAL" envDefault:"2"`
 	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"1152"`
 
