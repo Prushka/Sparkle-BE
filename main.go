@@ -264,9 +264,9 @@ func mapAudioTracks(job *Job) {
 					log.Errorf("error mapping audio tracks: %v", err)
 				} else {
 					if _, ok := job.MappedAudio[codec]; !ok {
-						job.MappedAudio[codec] = make([]*Pair[Audio], 0)
+						job.MappedAudio[codec] = make(map[int]*Pair[Audio])
 					}
-					job.MappedAudio[codec] = append(job.MappedAudio[codec], pair)
+					job.MappedAudio[codec][pair.Enc.Index] = pair
 				}
 			}
 		}
