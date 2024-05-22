@@ -33,6 +33,7 @@ func extractStreams(job *Job, path, t string) error {
 	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(string(out))
 		return err
 	}
 
@@ -186,9 +187,6 @@ func pipeline(inputFile string) (*Job, error) {
 	s = strings.Split(file, ".")
 	job.FileRawExt = s[len(s)-1]
 	job.FileRawName = strings.Join(s[:len(s)-1], ".")
-	if !slices.Contains(ValidExtensions, job.FileRawExt) {
-		return &job, fmt.Errorf("unsupported file extension: %s", job.FileRawExt)
-	}
 	job.Input = filepath.Join(job.FileRawFolder, fmt.Sprintf("%s.%s", job.Id, job.FileRawExt))
 	err := os.Rename(job.FileRawPath, job.Input)
 	if err != nil {
@@ -236,7 +234,7 @@ func pipeline(inputFile string) (*Job, error) {
 			return &job, err
 		}
 		if len(job.EncodedCodecs) > 0 {
-			err = extractStreams(&job, filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", job.EncodedCodecs, TheConfig.VideoExt)), "audio")
+			err = extractStreams(&job, filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", job.EncodedCodecs[0], TheConfig.VideoExt)), "audio")
 			if err != nil {
 				return &job, err
 			}
@@ -359,7 +357,7 @@ func persistJob(job Job) error {
 
 func processFile(file os.DirEntry, path string) bool {
 	ext := filepath.Ext(file.Name())
-	if ext == ".mkv" {
+	if slices.Contains(ValidExtensions, ext[1:]) {
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())
 		job, err := pipeline(path)
