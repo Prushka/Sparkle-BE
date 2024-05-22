@@ -236,10 +236,11 @@ func pipeline(inputFile string) (*Job, error) {
 			return &job, err
 		}
 		if len(job.EncodedCodecs) > 0 {
-			err = extractStreams(&job, filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", job.EncodedCodecs[0], TheConfig.VideoExt)), "audio")
+			err = extractStreams(&job, job.GetCodecVideo(job.EncodedCodecs[0]), "audio")
 			if err != nil {
 				return &job, err
 			}
+			mapAudioTracks(&job)
 		}
 	}
 	job.State = Complete
@@ -248,6 +249,23 @@ func pipeline(inputFile string) (*Job, error) {
 		return &job, err
 	}
 	return &job, nil
+}
+
+func mapAudioTracks(job *Job) {
+	for _, pair := range job.Audios {
+		if pair.Enc != nil {
+			for _, codec := range job.EncodedCodecs {
+				cmd := exec.Command(TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", filepath.Join(job.OutputPath, pair.Enc.Location),
+					"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", filepath.Join(job.OutputPath, fmt.Sprintf("%s-%s.%s", codec, pair.Enc.Language, TheConfig.VideoExt)))
+				log.Infof("Command: %s", cmd.String())
+				err := runCommand(cmd)
+				if err != nil {
+					log.Errorf("error mapping audio tracks: %v", err)
+				}
+			}
+		}
+	}
+	return
 }
 
 func renameAndMove(source string, dest string) {

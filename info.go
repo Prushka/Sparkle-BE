@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"path/filepath"
+)
+
 const (
 	Complete         = "complete"
 	Incomplete       = "incomplete"
@@ -51,6 +56,10 @@ type Job struct {
 	Duration          float64
 	Width             int
 	Height            int
+}
+
+func (j *Job) GetCodecVideo(codec string) string {
+	return filepath.Join(j.OutputPath, fmt.Sprintf("%s.%s", codec, TheConfig.VideoExt))
 }
 
 type Pair[T any] struct {
