@@ -252,6 +252,7 @@ func pipeline(inputFile string) (*Job, error) {
 }
 
 func mapAudioTracks(job *Job) {
+	job.MappedAudio = make(map[string]map[int]*Pair[Audio])
 	for _, pair := range job.Audios {
 		if pair.Enc != nil {
 			for _, codec := range job.EncodedCodecs {
