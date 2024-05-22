@@ -49,6 +49,7 @@ type Job struct {
 	State             string
 	SHA256            string
 	EncodedCodecs     []string
+	MappedAudio       map[string][]*Pair[Audio]
 	EncodedCodecsSize map[string]int64
 	Subtitles         map[int]*Pair[Subtitle]
 	Videos            map[int]*Pair[Video]

@@ -252,7 +252,6 @@ func pipeline(inputFile string) (*Job, error) {
 }
 
 func mapAudioTracks(job *Job) {
-	mapped := make(map[string]bool)
 	for _, pair := range job.Audios {
 		if pair.Enc != nil {
 			for _, codec := range job.EncodedCodecs {
@@ -264,13 +263,13 @@ func mapAudioTracks(job *Job) {
 				if err != nil {
 					log.Errorf("error mapping audio tracks: %v", err)
 				} else {
-					mapped[id] = true
+					if _, ok := job.MappedAudio[codec]; !ok {
+						job.MappedAudio[codec] = make([]*Pair[Audio], 0)
+					}
+					job.MappedAudio[codec] = append(job.MappedAudio[codec], pair)
 				}
 			}
 		}
-	}
-	for id := range mapped {
-		job.EncodedCodecs = append(job.EncodedCodecs, id)
 	}
 	return
 }
