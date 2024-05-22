@@ -65,15 +65,16 @@ func extractStreams(job *Job, path, t string) error {
 				}
 				cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-c:s", TheConfig.SubtitleCodec, "-map", fmt.Sprintf("0:%d", stream.Index), filepath.Join(job.OutputPath, idd))
 				err = runCommand(cmd)
+				subtitle := &Subtitle{
+					Language: stream.Tags.Language,
+					Stream: Stream{
+						CodecName: TheConfig.SubtitleCodec,
+						Index:     stream.Index,
+						Location:  idd,
+					},
+				}
 				if err == nil {
-					pair.Enc = &Subtitle{
-						Language: stream.Tags.Language,
-						Stream: Stream{
-							CodecName: TheConfig.SubtitleCodec,
-							Index:     stream.Index,
-							Location:  idd,
-						},
-					}
+					pair.Enc = subtitle
 				} else {
 					toCodec, ok := codecMap[stream.CodecName]
 					if !ok {
@@ -84,14 +85,9 @@ func extractStreams(job *Job, path, t string) error {
 					cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-c:s", "copy", "-map", fmt.Sprintf("0:%d", stream.Index), filepath.Join(job.OutputPath, idd))
 					err = runCommand(cmd)
 					if err == nil {
-						pair.Enc = &Subtitle{
-							Language: stream.Tags.Language,
-							Stream: Stream{
-								CodecName: toCodec,
-								Index:     stream.Index,
-								Location:  idd,
-							},
-						}
+						subtitle.Stream.Location = idd
+						subtitle.Stream.CodecName = toCodec
+						pair.Enc = subtitle
 					} else {
 						log.Errorf("error extracting raw subtitle: %v", err)
 					}
@@ -106,7 +102,7 @@ func extractStreams(job *Job, path, t string) error {
 					Channels: stream.Channels,
 					Stream:   s,
 				}
-				if !TheConfig.SkipAudioExtraction {
+				if TheConfig.EnableAudioExtraction {
 					cmd = exec.Command(TheConfig.Ffmpeg, "-i", job.Input, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
 					err := runCommand(cmd)
 					if err == nil {
@@ -219,7 +215,7 @@ func pipeline(inputFile string) (*Job, error) {
 	if err != nil {
 		return &job, err
 	}
-	err = extractStreams(&job, job.Input, "subtitles")
+	err = extractStreams(&job, job.Input, "subtitle")
 	if err != nil {
 		return &job, err
 	}
@@ -240,7 +236,7 @@ func pipeline(inputFile string) (*Job, error) {
 			return &job, err
 		}
 		if len(job.EncodedCodecs) > 0 {
-			err = extractStreams(&job, filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", job.EncodedCodecs, TheConfig.VideoExt)), "subtitles")
+			err = extractStreams(&job, filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", job.EncodedCodecs, TheConfig.VideoExt)), "audio")
 			if err != nil {
 				return &job, err
 			}
