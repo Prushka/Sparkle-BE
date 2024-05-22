@@ -252,18 +252,25 @@ func pipeline(inputFile string) (*Job, error) {
 }
 
 func mapAudioTracks(job *Job) {
+	mapped := make(map[string]bool)
 	for _, pair := range job.Audios {
 		if pair.Enc != nil {
 			for _, codec := range job.EncodedCodecs {
+				id := fmt.Sprintf("%s-%d-%s", codec, pair.Enc.Index, pair.Enc.Language)
 				cmd := exec.Command(TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", filepath.Join(job.OutputPath, pair.Enc.Location),
-					"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", filepath.Join(job.OutputPath, fmt.Sprintf("%s-%s.%s", codec, pair.Enc.Language, TheConfig.VideoExt)))
+					"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", id, TheConfig.VideoExt)))
 				log.Infof("Command: %s", cmd.String())
 				err := runCommand(cmd)
 				if err != nil {
 					log.Errorf("error mapping audio tracks: %v", err)
+				} else {
+					mapped[id] = true
 				}
 			}
 		}
+	}
+	for id := range mapped {
+		job.EncodedCodecs = append(job.EncodedCodecs, id)
 	}
 	return
 }

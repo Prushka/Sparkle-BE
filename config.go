@@ -41,7 +41,7 @@ type Config struct {
 	EnableEncode          bool `env:"ENABLE_ENCODE" envDefault:"true"`
 	EnableSprite          bool `env:"ENABLE_SPRITE" envDefault:"true"`
 	EnableAudioExtraction bool `env:"SKIP_AUDIO_EXTRACTION" envDefault:"true"`
-	RemoveOnSuccess       bool `env:"REMOVE_ON_SUCCESS" envDefault:"true"`
+	RemoveOnSuccess       bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
 }
 
 var TheConfig = &Config{}
