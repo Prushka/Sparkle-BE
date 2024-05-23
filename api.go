@@ -12,7 +12,6 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -181,25 +180,27 @@ func REST() {
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
-func populate(path string) *Job {
-	content, err := os.ReadFile(filepath.Join(TheConfig.Output, path, JobFile))
+func populate(path string) interface{} {
+	content, err := os.ReadFile(OutputJoin(path, JobFile))
 	if err != nil {
 		return nil
 	}
-	job := &Job{}
-	err = json.Unmarshal(content, job)
+	job := make(map[string]interface{})
+	err = json.Unmarshal(content, &job)
 	if err != nil {
 		return nil
 	}
-	if job.State == Complete && len(job.EncodedCodecs) > 0 {
-		job.EncodedCodecsSize = make(map[string]int64)
-		for _, codec := range job.EncodedCodecs {
-			codecFile := filepath.Join(TheConfig.Output, path, codec+"."+TheConfig.VideoExt)
-			stat, err := os.Stat(codecFile)
-			if err != nil {
-				continue
+	fileSizes := make(map[string]int64)
+	if job["State"] == Complete {
+		files, err := os.ReadDir(OutputJoin(path))
+		if err != nil {
+			return nil
+		}
+		for _, file := range files {
+			stat, err := os.Stat(file.Name())
+			if err == nil {
+				fileSizes[file.Name()] = stat.Size()
 			}
-			job.EncodedCodecsSize[codec] = stat.Size()
 		}
 		return job
 	}
@@ -212,7 +213,7 @@ func routes() {
 		if err != nil {
 			return err
 		}
-		jobs := make([]*Job, 0)
+		jobs := make([]interface{}, 0)
 		for _, file := range files {
 			job := populate(file.Name())
 			if job != nil {

@@ -21,8 +21,6 @@ type Config struct {
 	Opusenc                string `env:"OPUSENC" envDefault:"opusenc"`
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"22"`
-	SubtitleExt            string `env:"SUBTITLE_EXT" envDefault:"ass"`
-	SubtitleCodec          string `env:"SUBTITLE_CODEC" envDefault:"ass"` // webvtt
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
@@ -38,10 +36,11 @@ type Config struct {
 	ThumbnailInterval      int    `env:"THUMBNAIL_INTERVAL" envDefault:"2"`
 	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"1152"`
 
-	EnableEncode          bool `env:"ENABLE_ENCODE" envDefault:"true"`
-	EnableSprite          bool `env:"ENABLE_SPRITE" envDefault:"true"`
-	EnableAudioExtraction bool `env:"SKIP_AUDIO_EXTRACTION" envDefault:"true"`
-	RemoveOnSuccess       bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
+	EnableEncode               bool `env:"ENABLE_ENCODE" envDefault:"true"`
+	EnableSprite               bool `env:"ENABLE_SPRITE" envDefault:"true"`
+	EnableAudioExtraction      bool `env:"ENABLE_AUDIO_EXTRACTION" envDefault:"true"`
+	EnableAttachmentExtraction bool `env:"ENABLE_ATTACHMENT_EXTRACTION" envDefault:"true"`
+	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
 }
 
 var TheConfig = &Config{}

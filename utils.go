@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"path/filepath"
 )
 
 func RandomString(length int) string {
@@ -87,4 +88,12 @@ func FormatSecondsToTime(seconds float64) string {
 	minutes := int(seconds / 60)
 	seconds = seconds - float64(minutes*60)
 	return fmt.Sprintf("%02d:%02d", minutes, int(seconds))
+}
+
+func InputJoin(args ...string) string {
+	return filepath.Join(TheConfig.Input, filepath.Join(args...))
+}
+
+func OutputJoin(args ...string) string {
+	return filepath.Join(TheConfig.Output, filepath.Join(args...))
 }

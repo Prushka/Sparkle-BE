@@ -16,22 +16,21 @@ import (
 	"time"
 )
 
-var splitter = string(os.PathSeparator)
-
-func runCommand(cmd *exec.Cmd) error {
+func runCommand(cmd *exec.Cmd) ([]byte, error) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Info(cmd.String())
 		fmt.Println(string(out))
-		return err
+		return out, err
 	} else {
 		log.Debugf("output: %s", out)
 	}
-	return nil
+	return out, err
 }
 
-func extractStreams(job *Job, path, t string) error {
+func (job *Job) extractStreams(path, t string) error {
 	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
-	out, err := cmd.CombinedOutput()
+	out, err := runCommand(cmd)
 	if err != nil {
 		fmt.Println(string(out))
 		return err
@@ -49,76 +48,51 @@ func extractStreams(job *Job, path, t string) error {
 			log.Debugf("Stream: %+v", stream)
 			id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
 			var cmd *exec.Cmd
-			var idd string
 			var err error
-			s := Stream{
-				CodecName: stream.CodecName,
-				Index:     stream.Index,
-			}
-			if stream.CodecType == "subtitle" {
-				idd = fmt.Sprintf("%s.%s", id, TheConfig.SubtitleExt)
-				log.Infof("Handling subtitle stream #%d (%s)", stream.Index, stream.CodecName)
-				pair := &Pair[Subtitle]{}
-				job.Subtitles[stream.Index] = pair
-				pair.Raw = &Subtitle{
-					Language: stream.Tags.Language,
-					Stream:   s,
+			convert := func(codec, cs, filename string) error {
+				log.Infof("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
+				s := Stream{
+					CodecName: codec,
+					CodecType: stream.CodecType,
+					Index:     stream.Index,
+					Language:  stream.Tags.Language,
+					Title:     stream.Tags.Title,
+					Filename:  stream.Tags.Filename,
+					MimeType:  stream.Tags.MimeType,
+					Location:  filename,
+					Channels:  stream.Channels,
 				}
-				cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-c:s", TheConfig.SubtitleCodec, "-map", fmt.Sprintf("0:%d", stream.Index), filepath.Join(job.OutputPath, idd))
-				err = runCommand(cmd)
-				subtitle := &Subtitle{
-					Language: stream.Tags.Language,
-					Stream: Stream{
-						CodecName: TheConfig.SubtitleCodec,
-						Index:     stream.Index,
-						Location:  idd,
-					},
-				}
-				if err == nil {
-					pair.Enc = subtitle
+				if stream.CodecType == AttachmentType {
+					cmd = exec.Command(TheConfig.Ffmpeg, "-y", fmt.Sprintf("-dump_attachment:%d", stream.Index), job.OutputJoin(filename), "-i", path, "-t", "0", "-f", "null", "null")
 				} else {
+					cmd = exec.Command(TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
+				}
+				_, err = runCommand(cmd)
+				if err == nil {
+					job.Streams = append(job.Streams, s)
+				} else {
+					log.Errorf("error converting %s: %v", t, err)
+				}
+				return err
+			}
+			switch stream.CodecType {
+			case SubtitlesType:
+				errAss := convert("ass", "ass", fmt.Sprintf("%s.ass", id))
+				errVtt := convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
+				if errAss != nil && errVtt != nil {
 					toCodec, ok := codecMap[stream.CodecName]
 					if !ok {
 						toCodec = stream.CodecName
 					}
-					log.Errorf("error converting subtitle: %v, extract: %s", err, toCodec)
-					idd = fmt.Sprintf("%s.%s", id, toCodec)
-					cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-c:s", "copy", "-map", fmt.Sprintf("0:%d", stream.Index), filepath.Join(job.OutputPath, idd))
-					err = runCommand(cmd)
-					if err == nil {
-						subtitle.Stream.Location = idd
-						subtitle.Stream.CodecName = toCodec
-						pair.Enc = subtitle
-					} else {
-						log.Errorf("error extracting raw subtitle: %v", err)
-					}
+					err = convert(toCodec, "copy", fmt.Sprintf("%s.%s", id, toCodec))
 				}
-			} else if stream.CodecType == "audio" {
-				idd = fmt.Sprintf("%s.%s", id, stream.CodecName)
-				outputFile := filepath.Join(job.OutputPath, idd)
-				log.Infof("Handling audio stream #%d (%s)", stream.Index, stream.CodecName)
-				pair := &Pair[Audio]{}
-				job.Audios[stream.Index] = pair
-				pair.Raw = &Audio{
-					Channels: stream.Channels,
-					Stream:   s,
-				}
+			case AudioType:
 				if TheConfig.EnableAudioExtraction {
-					cmd = exec.Command(TheConfig.Ffmpeg, "-i", path, "-map", fmt.Sprintf("0:%d", stream.Index), "-c:a", "copy", outputFile)
-					err := runCommand(cmd)
-					if err == nil {
-						pair.Enc = &Audio{
-							Channels: stream.Channels,
-							Language: stream.Tags.Language,
-							Stream: Stream{
-								CodecName: stream.CodecName,
-								Index:     stream.Index,
-								Location:  idd,
-							},
-						}
-					} else {
-						log.Errorf("error extracting audio: %v", err)
-					}
+					err = convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName))
+				}
+			case AttachmentType:
+				if TheConfig.EnableAttachmentExtraction {
+					err = convert(stream.Tags.MimeType, "copy", stream.Tags.Filename)
 				}
 			}
 		}
@@ -126,16 +100,16 @@ func extractStreams(job *Job, path, t string) error {
 	return nil
 }
 
-func handbrakeTranscode(job *Job) error {
+func (job *Job) handbrakeTranscode() error {
 	encoders := strings.Split(TheConfig.Encoder, ",")
 	wg := sync.WaitGroup{}
 	job.EncodedExt = TheConfig.VideoExt
 	runEncoder := func(encoder string, encoderCmd string, encoderPreset string) {
-		outputFile := filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", encoder, TheConfig.VideoExt))
+		outputFile := job.OutputJoin(fmt.Sprintf("%s.%s", encoder, TheConfig.VideoExt))
 		log.Infof("Converting video: %s -> %s", job.Input, outputFile)
 		cmd := exec.Command(
 			TheConfig.HandbrakeCli,
-			"-i", job.Input,
+			"-i", job.InputJoin(job.InputAfterRename()),
 			"-o", outputFile,
 			"--encoder", encoderCmd,
 			"--vfr",
@@ -149,7 +123,7 @@ func handbrakeTranscode(job *Job) error {
 		)
 		wg.Add(1)
 		go func() {
-			out, err := cmd.CombinedOutput()
+			out, err := runCommand(cmd)
 			if err != nil {
 				log.Errorf("output: %s", out)
 			} else {
@@ -175,107 +149,95 @@ func handbrakeTranscode(job *Job) error {
 	return nil
 }
 
-func pipeline(inputFile string) (*Job, error) {
-	job := Job{
-		Id:          RandomString(8),
-		FileRawPath: inputFile,
-		Subtitles:   make(map[int]*Pair[Subtitle]),
-		Videos:      make(map[int]*Pair[Video]),
-		Audios:      make(map[int]*Pair[Audio]),
-	}
-	s := strings.Split(job.FileRawPath, splitter)
-	file := s[len(s)-1]
-	job.FileRawFolder = strings.Join(s[:len(s)-1], splitter)
-	s = strings.Split(file, ".")
-	job.FileRawExt = s[len(s)-1]
-	job.FileRawName = strings.Join(s[:len(s)-1], ".")
-	job.Input = filepath.Join(job.FileRawFolder, fmt.Sprintf("%s.%s", job.Id, job.FileRawExt))
-	err := os.Rename(job.FileRawPath, job.Input)
+func (job *Job) pipeline() error {
+	err := os.Rename(job.InputJoin(job.Input), job.InputJoin(job.InputAfterRename()))
 	if err != nil {
-		return &job, err
+		return err
 	}
-	job.SHA256, err = calculateFileSHA256(job.Input)
+	job.SHA256, err = calculateFileSHA256(job.InputJoin(job.InputAfterRename()))
 	if err != nil {
-		return &job, err
+		return err
 	}
-
-	job.OutputPath = filepath.Join(TheConfig.Output, job.Id)
 	log.Infof("Processing Job: %+v", job)
-	err = os.MkdirAll(job.OutputPath, 0755)
+	err = os.MkdirAll(job.OutputJoin(), 0755)
 	if err != nil {
-		return &job, err
+		return err
 	}
-	err = os.WriteFile(filepath.Join(job.OutputPath, job.FileRawName), []byte{}, 0644)
-	job.State = Incomplete
-	err = persistJob(job)
+	err = os.WriteFile(job.OutputJoin(job.InputName()), []byte{}, 0644)
+	err = job.updateState(Incomplete)
 	if err != nil {
-		return &job, err
+		return err
 	}
-	err = thumbnailsNfo(&job)
+	err = job.thumbnailsNfo()
 	if err != nil {
-		return &job, err
+		return err
 	}
-	err = extractStreams(&job, job.Input, "subtitle")
+	err = job.extractStreams(job.InputJoin(job.InputAfterRename()), SubtitlesType)
 	if err != nil {
-		return &job, err
+		return err
+	}
+	err = job.extractStreams(job.InputJoin(job.InputAfterRename()), AttachmentType)
+	if err != nil {
+		return err
+	}
+	err = job.updateState(StreamsExtracted)
+	if err != nil {
+		return err
 	}
 	if TheConfig.EnableSprite {
-		err = spriteVtt(&job)
+		err = job.spriteVtt()
 		if err != nil {
-			return &job, err
+			return err
 		}
-	}
-	job.State = StreamsExtracted
-	err = persistJob(job)
-	if err != nil {
-		return &job, err
 	}
 	if TheConfig.EnableEncode {
-		err = handbrakeTranscode(&job)
+		err = job.handbrakeTranscode()
 		if err != nil {
-			return &job, err
+			return err
 		}
 		if len(job.EncodedCodecs) > 0 {
-			err = extractStreams(&job, job.GetCodecVideo(job.EncodedCodecs[0]), "audio")
+			err = job.extractStreams(job.GetCodecVideo(job.EncodedCodecs[0]), AudioType)
 			if err != nil {
-				return &job, err
+				return err
 			}
-			mapAudioTracks(&job)
+			job.mapAudioTracks()
 		}
 	}
-	job.State = Complete
-	err = persistJob(job)
+	err = job.updateState(Complete)
 	if err != nil {
-		return &job, err
+		return err
 	}
-	return &job, nil
+	return nil
 }
 
-func mapAudioTracks(job *Job) {
-	job.MappedAudio = make(map[string]map[int]*Pair[Audio])
-	for _, pair := range job.Audios {
-		if pair.Enc != nil {
-			for _, codec := range job.EncodedCodecs {
-				id := fmt.Sprintf("%s-%d-%s", codec, pair.Enc.Index, pair.Enc.Language)
-				cmd := exec.Command(TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", filepath.Join(job.OutputPath, pair.Enc.Location),
-					"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", filepath.Join(job.OutputPath, fmt.Sprintf("%s.%s", id, TheConfig.VideoExt)))
-				log.Infof("Command: %s", cmd.String())
-				err := runCommand(cmd)
-				if err != nil {
-					log.Errorf("error mapping audio tracks: %v", err)
-				} else {
-					if _, ok := job.MappedAudio[codec]; !ok {
-						job.MappedAudio[codec] = make(map[int]*Pair[Audio])
-					}
-					job.MappedAudio[codec][pair.Enc.Index] = pair
+func (job *Job) mapAudioTracks() {
+	job.MappedAudio = make(map[string][]Stream)
+	for _, audio := range job.Streams {
+		if audio.CodecType != AudioType {
+			continue
+		}
+		for _, codec := range job.EncodedCodecs {
+			id := fmt.Sprintf("%s-%d-%s", codec, audio.Index, audio.Language)
+			cmd := exec.Command(TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", job.OutputJoin(audio.Location),
+				"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", job.OutputJoin(fmt.Sprintf("%s.%s", id, TheConfig.VideoExt)))
+			log.Infof("Command: %s", cmd.String())
+			_, err := runCommand(cmd)
+			if err != nil {
+				log.Errorf("error mapping audio tracks: %v", err)
+			} else {
+				if _, ok := job.MappedAudio[codec]; !ok {
+					job.MappedAudio[codec] = make([]Stream, 0)
 				}
+				job.MappedAudio[codec] = append(job.MappedAudio[codec], audio)
 			}
 		}
 	}
 	return
 }
 
-func renameAndMove(source string, dest string) {
+func (job *Job) renameAndMove(source string, dest string) {
+	source = job.InputJoin(source)
+	dest = job.OutputJoin(dest)
 	_, err := os.Stat(source)
 	if err == nil {
 		if TheConfig.RemoveOnSuccess {
@@ -292,23 +254,22 @@ func renameAndMove(source string, dest string) {
 	}
 }
 
-func thumbnailsNfo(job *Job) (err error) {
-	renameAndMove(filepath.Join(job.FileRawFolder, "movie.nfo"), filepath.Join(job.OutputPath, "info.nfo"))
-	renameAndMove(filepath.Join(job.FileRawFolder, job.FileRawName+".nfo"), filepath.Join(job.OutputPath, "info.nfo"))
-	renameAndMove(filepath.Join(job.FileRawFolder, job.FileRawName+"-thumb.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
-	renameAndMove(filepath.Join(job.FileRawFolder, "poster.jpg"), filepath.Join(job.OutputPath, "poster.jpg"))
-	renameAndMove(filepath.Join(job.FileRawFolder, "fanart.jpg"), filepath.Join(job.OutputPath, "fanart.jpg"))
+func (job *Job) thumbnailsNfo() (err error) {
+	job.renameAndMove("movie.nfo", "info.nfo")
+	job.renameAndMove(job.InputName()+".nfo", "info.nfo")
+	job.renameAndMove(job.InputName()+"-thumb.jpg", "poster.jpg")
+	job.renameAndMove("poster.jpg", "poster.jpg")
+	job.renameAndMove("fanart.jpg", "fanart.jpg")
 	return
 }
 
-func spriteVtt(job *Job) (err error) {
-	vttFile := filepath.Join(job.OutputPath, ThumbnailVtt)
-	videoFile := job.Input
+func (job *Job) spriteVtt() (err error) {
+	vttFile := job.OutputJoin(ThumbnailVtt)
+	videoFile := job.InputJoin(job.InputAfterRename())
 	thumbnailHeight := TheConfig.ThumbnailHeight
 	thumbnailInterval := TheConfig.ThumbnailInterval
 	chunkInterval := TheConfig.ThumbnailChunkInterval
 
-	// Get video duration and aspect ratio using FFprobe
 	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile).Output()
 	if err != nil {
 		log.Errorf("Error getting video duration: %v\n", err)
@@ -335,11 +296,11 @@ func spriteVtt(job *Job) (err error) {
 	vttContent := "WEBVTT\n\n"
 	for i := 0; i < numChunks; i++ {
 		chunkStartTime := i * chunkInterval
-		spriteFile := filepath.Join(job.OutputPath, fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
+		spriteFile := job.OutputJoin(fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
 		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
 			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
 		log.Infof("Command: %s", cmd.String())
-		err = runCommand(cmd)
+		_, err = runCommand(cmd)
 		if err != nil {
 			log.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
 			return
@@ -375,13 +336,14 @@ func spriteVtt(job *Job) (err error) {
 	return
 }
 
-func persistJob(job Job) error {
+func (job *Job) updateState(newState string) error {
+	job.State = newState
 	jobStr, err := json.Marshal(job)
 	if err != nil {
 		log.Errorf("error persisting job: %v", err)
 		return err
 	}
-	err = os.WriteFile(filepath.Join(job.OutputPath, JobFile), jobStr, 0644)
+	err = os.WriteFile(job.OutputJoin(JobFile), jobStr, 0644)
 	if err != nil {
 		log.Errorf("error persisting job: %v", err)
 		return err
@@ -389,12 +351,17 @@ func persistJob(job Job) error {
 	return nil
 }
 
-func processFile(file os.DirEntry, path string) bool {
+func processFile(file os.DirEntry, parent string) bool {
 	ext := filepath.Ext(file.Name())
 	if slices.Contains(ValidExtensions, ext[1:]) {
+		job := Job{
+			Id:          RandomString(8),
+			InputParent: parent,
+			Input:       file.Name(),
+		}
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())
-		job, err := pipeline(path)
+		err := job.pipeline()
 		if err != nil {
 			log.Errorf("error processing file: %v", err)
 		}
@@ -406,7 +373,7 @@ func processFile(file os.DirEntry, path string) bool {
 			}
 			return true
 		} else {
-			err = os.Rename(job.Input, path)
+			err = os.Rename(job.InputJoin(job.InputAfterRename()), job.InputJoin(job.Input))
 			if err != nil {
 				log.Errorf("error renaming file: %v", err)
 			}
@@ -428,12 +395,12 @@ func encode() error {
 				return err
 			}
 			for _, f := range fs {
-				if processFile(f, filepath.Join(TheConfig.Input, file.Name(), f.Name())) {
+				if processFile(f, file.Name()) && TheConfig.RemoveOnSuccess {
 					err = os.RemoveAll(filepath.Join(TheConfig.Input, file.Name()))
 				}
 			}
 		} else {
-			processFile(file, filepath.Join(TheConfig.Input, file.Name()))
+			processFile(file, "")
 		}
 	}
 	return nil
