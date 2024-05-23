@@ -139,8 +139,10 @@ func (job *Job) handbrakeTranscode() error {
 			runEncoder(encoder, TheConfig.Av1Encoder, TheConfig.Av1Preset)
 		case "hevc":
 			runEncoder(encoder, TheConfig.HevcEncoder, TheConfig.HevcPreset)
-		case "h264":
-			runEncoder(encoder, TheConfig.H264Encoder, TheConfig.H264Preset)
+		case "h264-10bit":
+			runEncoder(encoder, TheConfig.H26410BitEncoder, TheConfig.H26410BitPreset)
+		case "h264-8bit":
+			runEncoder(encoder, TheConfig.H2648BitEncoder, TheConfig.H2648BitPreset)
 		default:
 			return fmt.Errorf("unsupported encoder: %s", encoder)
 		}

@@ -25,13 +25,15 @@ type Config struct {
 	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
-	Encoder                string `env:"ENCODER" envDefault:"hevc"`
+	Encoder                string `env:"ENCODER" envDefault:"h264-8bit"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
 	Av1Preset              string `env:"AV1_PRESET" envDefault:"6"`
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
 	HevcPreset             string `env:"HEVC_PRESET" envDefault:"slower"`
-	H264Encoder            string `env:"H264_ENCODER" envDefault:"x264_10bit"`
-	H264Preset             string `env:"H264_PRESET" envDefault:"slow"`
+	H26410BitEncoder       string `env:"H264_ENCODER" envDefault:"x264_10bit"`
+	H26410BitPreset        string `env:"H264_PRESET" envDefault:"slow"`
+	H2648BitEncoder        string `env:"H264_ENCODER" envDefault:"x264"`
+	H2648BitPreset         string `env:"H264_PRESET" envDefault:"slow"`
 	ThumbnailHeight        int    `env:"THUMBNAIL_HEIGHT" envDefault:"320"`
 	ThumbnailInterval      int    `env:"THUMBNAIL_INTERVAL" envDefault:"2"`
 	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"1152"`
