@@ -25,7 +25,7 @@ type Config struct {
 	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
-	Encoder                string `env:"ENCODER" envDefault:"h264-8bit"`
+	Encoder                string `env:"ENCODER" envDefault:"av1,hevc,h264-10bit,h264-8bit"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
 	Av1Preset              string `env:"AV1_PRESET" envDefault:"6"`
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
@@ -42,7 +42,7 @@ type Config struct {
 	EnableSprite               bool `env:"ENABLE_SPRITE" envDefault:"true"`
 	EnableAudioExtraction      bool `env:"ENABLE_AUDIO_EXTRACTION" envDefault:"true"`
 	EnableAttachmentExtraction bool `env:"ENABLE_ATTACHMENT_EXTRACTION" envDefault:"true"`
-	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
+	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"true"`
 }
 
 var TheConfig = &Config{}

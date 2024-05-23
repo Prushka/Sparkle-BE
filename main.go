@@ -369,7 +369,7 @@ func processFile(file os.DirEntry, parent string) bool {
 		}
 		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		if job.State == Complete && TheConfig.RemoveOnSuccess {
-			err = os.Remove(job.Input)
+			err = os.Remove(job.InputJoin(job.Input))
 			if err != nil {
 				log.Errorf("error removing file: %v", err)
 			}
@@ -392,13 +392,13 @@ func encode() error {
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			fs, err := os.ReadDir(filepath.Join(TheConfig.Input, file.Name()))
+			fs, err := os.ReadDir(InputJoin(file.Name()))
 			if err != nil {
 				return err
 			}
 			for _, f := range fs {
 				if processFile(f, file.Name()) && TheConfig.RemoveOnSuccess {
-					err = os.RemoveAll(filepath.Join(TheConfig.Input, file.Name()))
+					err = os.RemoveAll(InputJoin(file.Name()))
 				}
 			}
 		} else {
