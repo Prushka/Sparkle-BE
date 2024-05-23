@@ -62,6 +62,20 @@ type Job struct {
 	EncodedExt        string
 }
 
+type Stream struct {
+	Bitrate    int
+	CodecName  string
+	CodecType  string
+	Index      int
+	Location   string
+	Language   string
+	Title      string
+	Filename   string
+	MimeType   string
+	Channels   int
+	SampleRate int
+}
+
 func (job *Job) InputExt() string {
 	sp := strings.Split(job.Input, ".")
 	return sp[len(sp)-1]
@@ -86,20 +100,6 @@ func (job *Job) InputJoin(args ...string) string {
 
 func (job *Job) GetCodecVideo(codec string) string {
 	return job.OutputJoin(fmt.Sprintf("%s.%s", codec, TheConfig.VideoExt))
-}
-
-type Stream struct {
-	Bitrate    int
-	CodecName  string
-	CodecType  string
-	Index      int
-	Location   string
-	Language   string
-	Title      string
-	Filename   string
-	MimeType   string
-	Channels   int
-	SampleRate int
 }
 
 var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}

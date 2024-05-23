@@ -197,11 +197,12 @@ func populate(path string) interface{} {
 			return nil
 		}
 		for _, file := range files {
-			stat, err := os.Stat(file.Name())
+			stat, err := os.Stat(OutputJoin(path, file.Name()))
 			if err == nil {
 				fileSizes[file.Name()] = stat.Size()
 			}
 		}
+		job["Files"] = fileSizes
 		return job
 	}
 	return nil
