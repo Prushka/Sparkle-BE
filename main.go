@@ -369,7 +369,7 @@ func processFile(file os.DirEntry, parent string) bool {
 		}
 		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		if job.State == Complete && TheConfig.RemoveOnSuccess {
-			err = os.Remove(job.InputJoin(job.Input))
+			err = os.Remove(job.InputJoin(job.InputAfterRename()))
 			if err != nil {
 				log.Errorf("error removing file: %v", err)
 			}
