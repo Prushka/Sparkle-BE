@@ -115,14 +115,14 @@ func (player *Player) Send(message interface{}) {
 	default:
 		messageBytes, err := json.Marshal(message)
 		if err != nil {
-			log.Error(err)
+			log.Errorf("error marshalling message: %v", err)
 			return
 		}
 		messageStr = string(messageBytes)
 	}
 	err := websocket.Message.Send(player.ws, messageStr)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("error sending message: %v", err)
 		return
 	}
 }
@@ -168,7 +168,7 @@ func REST() {
 				})
 				playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted, Timestamp: time.Now().UnixMilli()})
 				if err != nil {
-					log.Error(err)
+					log.Errorf("error marshalling players status: %v", err)
 					return
 				}
 				room.mutex.RLock()
@@ -278,7 +278,7 @@ func routes() {
 		defer func() {
 			err := src.Close()
 			if err != nil {
-				log.Error(err)
+				log.Errorf("error closing file: %v", err)
 			}
 		}()
 		err = os.MkdirAll(TheConfig.Output+"/pfp", 0755)
@@ -292,7 +292,7 @@ func routes() {
 		defer func(dst *os.File) {
 			err := dst.Close()
 			if err != nil {
-				log.Error(err)
+				log.Errorf("error closing file: %v", err)
 			}
 		}(dst)
 		if _, err = io.Copy(dst, src); err != nil {
@@ -306,7 +306,7 @@ func routes() {
 				payload := SendPayload{Type: PfpSync, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()}
 				payloadStr, err := json.Marshal(payload)
 				if err != nil {
-					log.Error(err)
+					log.Errorf("error marshalling payload: %v", err)
 					room.mutex.RUnlock()
 					firedBy.mutex.RUnlock()
 					return err
@@ -357,13 +357,13 @@ func routes() {
 				msg := ""
 				err := websocket.Message.Receive(ws, &msg)
 				if err != nil {
-					log.Error(err)
+					log.Errorf("error receiving message: %v", err)
 					return
 				}
 				payload := &PlayerPayload{}
 				err = json.Unmarshal([]byte(msg), payload)
 				if err != nil {
-					log.Error(err)
+					log.Errorf("error unmarshalling message: %v", err)
 					return
 				}
 				func() {
