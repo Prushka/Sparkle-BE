@@ -104,11 +104,10 @@ func (job *Job) handbrakeTranscode() error {
 	encoders := strings.Split(TheConfig.Encoder, ",")
 	wg := sync.WaitGroup{}
 	job.EncodedExt = TheConfig.VideoExt
-	runEncoder := func(encoder string, encoderCmd string, encoderPreset string) {
+	runEncoder := func(encoder, encoderCmd, encoderPreset, encoderProfile, encoderTune string) {
 		outputFile := job.OutputJoin(fmt.Sprintf("%s.%s", encoder, TheConfig.VideoExt))
 		log.Infof("Converting video: %s -> %s", job.Input, outputFile)
-		cmd := exec.Command(
-			TheConfig.HandbrakeCli,
+		args := []string{
 			"-i", job.InputJoin(job.InputAfterRename()),
 			"-o", outputFile,
 			"--encoder", encoderCmd,
@@ -119,8 +118,15 @@ func (job *Job) handbrakeTranscode() error {
 			"--aencoder", "opus",
 			"--audio-lang-list", "any",
 			"--all-audio",
-			"--mixdown", "stereo",
-		)
+			"--mixdown", "stereo"}
+		if encoderProfile != "" {
+			args = append(args, "--encoder-profile", encoderProfile)
+		}
+		if encoderTune != "" {
+			args = append(args, "--encoder-tune", encoderTune)
+		}
+		cmd := exec.Command(
+			TheConfig.HandbrakeCli, args...)
 		wg.Add(1)
 		go func() {
 			out, err := runCommand(cmd)
@@ -136,13 +142,13 @@ func (job *Job) handbrakeTranscode() error {
 	for _, encoder := range encoders {
 		switch encoder {
 		case "av1":
-			runEncoder(encoder, TheConfig.Av1Encoder, TheConfig.Av1Preset)
+			runEncoder(encoder, TheConfig.Av1Encoder, TheConfig.Av1Preset, "", "")
 		case "hevc":
-			runEncoder(encoder, TheConfig.HevcEncoder, TheConfig.HevcPreset)
+			runEncoder(encoder, TheConfig.HevcEncoder, TheConfig.HevcPreset, "", "")
 		case "h264-10bit":
-			runEncoder(encoder, TheConfig.H26410BitEncoder, TheConfig.H26410BitPreset)
+			runEncoder(encoder, TheConfig.H26410BitEncoder, TheConfig.H26410BitPreset, "", "")
 		case "h264-8bit":
-			runEncoder(encoder, TheConfig.H2648BitEncoder, TheConfig.H2648BitPreset)
+			runEncoder(encoder, TheConfig.H2648BitEncoder, TheConfig.H2648BitPreset, TheConfig.H2648BitProfile, TheConfig.H2648BitTune)
 		default:
 			return fmt.Errorf("unsupported encoder: %s", encoder)
 		}
