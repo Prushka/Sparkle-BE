@@ -33,6 +33,7 @@ const (
 	PlayersStatusSync = "players"
 	PfpSync           = "pfp"
 	StateSync         = "state"
+	BroadcastSync     = "broadcast"
 )
 
 type Room struct {
@@ -63,22 +64,24 @@ type VideoState struct {
 }
 
 type PlayerPayload struct {
-	Type   string   `json:"type"`
-	Time   *float64 `json:"time"`
-	Name   string   `json:"name"`
-	Paused *bool    `json:"paused"`
-	Chat   string   `json:"chat"`
-	State  string   `json:"state"`
+	Type             string                 `json:"type"`
+	Time             *float64               `json:"time"`
+	Name             string                 `json:"name"`
+	Paused           *bool                  `json:"paused"`
+	Chat             string                 `json:"chat"`
+	State            string                 `json:"state"`
+	BroadcastPayload map[string]interface{} `json:"broadcastPayload,omitempty"`
 }
 
 type SendPayload struct {
-	Type      string   `json:"type"`
-	Time      *float64 `json:"time,omitempty"`
-	Paused    *bool    `json:"paused,omitempty"`
-	FiredBy   *Player  `json:"firedBy,omitempty"`
-	Chats     []*Chat  `json:"chats,omitempty"`
-	Players   []Player `json:"players"`
-	Timestamp int64    `json:"timestamp"`
+	Type             string                 `json:"type"`
+	Time             *float64               `json:"time,omitempty"`
+	Paused           *bool                  `json:"paused,omitempty"`
+	FiredBy          *Player                `json:"firedBy,omitempty"`
+	Chats            []*Chat                `json:"chats,omitempty"`
+	Players          []Player               `json:"players"`
+	Timestamp        int64                  `json:"timestamp"`
+	BroadcastPayload map[string]interface{} `json:"broadcastPayload,omitempty"`
 }
 
 func (room *Room) syncChatsToPlayerUnsafe(player *Player) {
@@ -360,6 +363,13 @@ func routes() {
 						}
 						for _, player := range room.Players {
 							room.syncChatsToPlayerUnsafe(player)
+						}
+					case BroadcastSync:
+						now := time.Now().UnixMilli()
+						for _, player := range room.Players {
+							player.Send(SendPayload{Type: BroadcastSync,
+								FiredBy: currentPlayer, Timestamp: now,
+								BroadcastPayload: payload.BroadcastPayload})
 						}
 					case ChatSync:
 						if strings.TrimSpace(payload.Chat) == "" {
