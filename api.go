@@ -213,18 +213,10 @@ func populate(path string) interface{} {
 	return nil
 }
 
-func Exit(roomId, playerId string) {
-	wssMutex.Lock()
-	defer wssMutex.Unlock()
-	room := wss[roomId]
+func Exit(room *Room, player *Player) {
 	if room == nil {
 		return
 	}
-	room.mutex.Lock()
-	defer room.mutex.Unlock()
-	player := room.Players[playerId]
-	player.mutex.Lock()
-	defer player.mutex.Unlock()
 	if player.exited {
 		return
 	}
@@ -325,9 +317,6 @@ func routes() {
 		room := c.Param("room")
 		id := c.Param("id")
 		websocket.Handler(func(ws *websocket.Conn) {
-			defer func(ws *websocket.Conn) {
-				Exit(room, id)
-			}(ws)
 			currentPlayer := &Player{ws: ws,
 				PlayerState: PlayerState{Id: id, LastSeen: time.Now().Unix()},
 			}
@@ -338,11 +327,19 @@ func routes() {
 			}
 			room := wss[room]
 			wssMutex.Unlock()
+			defer func(ws *websocket.Conn) {
+				room.mutex.Lock()
+				defer room.mutex.Unlock()
+				currentPlayer.mutex.Lock()
+				defer currentPlayer.mutex.Unlock()
+				Exit(room, currentPlayer)
+			}(ws)
 			room.mutex.Lock()
 			if room.Players[id] != nil {
-				room.mutex.Unlock()
-				Exit(room.id, id)
-				room.mutex.Lock()
+				old := room.Players[id]
+				old.mutex.Lock()
+				Exit(room, old)
+				old.mutex.Unlock()
 			}
 			room.Players[id] = currentPlayer
 			room.mutex.Unlock()
