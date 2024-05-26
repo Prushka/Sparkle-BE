@@ -34,6 +34,7 @@ const (
 	PfpSync           = "pfp"
 	StateSync         = "state"
 	BroadcastSync     = "broadcast"
+	ExitSync          = "exit"
 )
 
 type Room struct {
@@ -49,6 +50,7 @@ type Player struct {
 	mutex sync.RWMutex
 	VideoState
 	PlayerState
+	exited bool
 }
 
 type PlayerState struct {
@@ -211,6 +213,35 @@ func populate(path string) interface{} {
 	return nil
 }
 
+func Exit(roomId, playerId string) {
+	wssMutex.Lock()
+	defer wssMutex.Unlock()
+	room := wss[roomId]
+	if room == nil {
+		return
+	}
+	room.mutex.Lock()
+	defer room.mutex.Unlock()
+	player := room.Players[playerId]
+	player.mutex.Lock()
+	defer player.mutex.Unlock()
+	if player.exited {
+		return
+	}
+	ws := player.ws
+	player.Send(SendPayload{Type: ExitSync, Timestamp: time.Now().UnixMilli()})
+	err := ws.Close()
+	if err != nil {
+		log.Errorf("error closing websocket: %v", err)
+	}
+	delete(room.Players, player.Id)
+	if len(room.Players) == 0 {
+		room.VideoState = defaultVideoState()
+	}
+	log.Infof("[%v] disconnected", player.Id)
+	player.exited = true
+}
+
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
 		files, err := os.ReadDir(TheConfig.Output)
@@ -295,22 +326,7 @@ func routes() {
 		id := c.Param("id")
 		websocket.Handler(func(ws *websocket.Conn) {
 			defer func(ws *websocket.Conn) {
-				err := ws.Close()
-				if err != nil {
-					c.Logger().Error(err)
-				}
-				wssMutex.Lock()
-				room := wss[room]
-				if room != nil {
-					room.mutex.Lock()
-					delete(room.Players, id)
-					if len(room.Players) == 0 {
-						room.VideoState = defaultVideoState()
-					}
-					room.mutex.Unlock()
-				}
-				wssMutex.Unlock()
-				log.Infof("[%v] disconnected", id)
+				Exit(room, id)
 			}(ws)
 			currentPlayer := &Player{ws: ws,
 				PlayerState: PlayerState{Id: id, LastSeen: time.Now().Unix()},
@@ -323,6 +339,11 @@ func routes() {
 			room := wss[room]
 			wssMutex.Unlock()
 			room.mutex.Lock()
+			if room.Players[id] != nil {
+				room.mutex.Unlock()
+				Exit(room.id, id)
+				room.mutex.Lock()
+			}
 			room.Players[id] = currentPlayer
 			room.mutex.Unlock()
 			log.Infof("[%v] connected", id)
