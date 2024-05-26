@@ -35,6 +35,9 @@ const (
 	StateSync         = "state"
 	BroadcastSync     = "broadcast"
 	ExitSync          = "exit"
+	CodecSwitch       = "codec"
+	AudioSwitch       = "audio"
+	SubtitleSwitch    = "subtitle"
 )
 
 type Room struct {
@@ -58,6 +61,9 @@ type PlayerState struct {
 	Id       string `json:"id"`
 	InBg     bool   `json:"inBg,omitempty"`
 	LastSeen int64  `json:"lastSeen"`
+	Codec    string `json:"codec,omitempty"`
+	Audio    string `json:"audio,omitempty"`
+	Subtitle string `json:"subtitle,omitempty"`
 }
 
 type VideoState struct {
@@ -73,6 +79,9 @@ type PlayerPayload struct {
 	Chat      string                 `json:"chat"`
 	State     string                 `json:"state"`
 	Broadcast map[string]interface{} `json:"broadcast,omitempty"`
+	Codec     string                 `json:"codec,omitempty"`
+	Audio     string                 `json:"audio,omitempty"`
+	Subtitle  string                 `json:"subtitle,omitempty"`
 }
 
 type SendPayload struct {
@@ -372,6 +381,12 @@ func routes() {
 							currentPlayer.InBg = false
 							room.syncChatsToPlayerUnsafe(currentPlayer)
 						}
+					case CodecSwitch:
+						currentPlayer.Codec = payload.Codec
+					case AudioSwitch:
+						currentPlayer.Audio = payload.Audio
+					case SubtitleSwitch:
+						currentPlayer.Subtitle = payload.Subtitle
 					case NameSync:
 						currentPlayer.Name = payload.Name
 						for _, chat := range room.Chats {
