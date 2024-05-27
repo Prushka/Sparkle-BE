@@ -29,7 +29,7 @@ type Config struct {
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
 	Av1Preset              string `env:"AV1_PRESET" envDefault:"6"`
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
-	HevcPreset             string `env:"HEVC_PRESET" envDefault:"slower"`
+	HevcPreset             string `env:"HEVC_PRESET" envDefault:"slowest"`
 	H26410BitEncoder       string `env:"H264_ENCODER" envDefault:"x264_10bit"`
 	H26410BitPreset        string `env:"H264_PRESET" envDefault:"slow"`
 	H2648BitEncoder        string `env:"H264_ENCODER" envDefault:"x264"`
