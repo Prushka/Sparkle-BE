@@ -139,45 +139,46 @@ func (player *Player) Sync(t *float64, paused *bool, firedBy *Player) {
 	}
 }
 
-func REST() {
-	scheduler.Every(1).Second().Do(
-		func() {
-			wssMutex.RLock()
-			defer wssMutex.RUnlock()
-			for _, room := range wss {
-				playersStatusListSorted := make([]Player, 0)
-				room.mutex.RLock()
-				for _, player := range room.Players {
-					player.mutex.RLock()
-					if player.Name == "" {
-						player.mutex.RUnlock()
-						continue
-					}
-					playersStatusListSorted = append(playersStatusListSorted, Player{PlayerState: player.PlayerState, VideoState: player.VideoState})
-					player.mutex.RUnlock()
-				}
-				room.mutex.RUnlock()
-				if len(playersStatusListSorted) == 0 {
-					continue
-				}
-				sort.Slice(playersStatusListSorted, func(i, j int) bool {
-					if playersStatusListSorted[i].Name == playersStatusListSorted[j].Name {
-						return playersStatusListSorted[i].Id < playersStatusListSorted[j].Id
-					}
-					return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
-				})
-				playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted, Timestamp: time.Now().UnixMilli()})
-				if err != nil {
-					log.Errorf("error marshalling players status: %v", err)
-					return
-				}
-				room.mutex.RLock()
-				for _, player := range room.Players {
-					player.Send(string(playersStatusListSortedStr))
-				}
-				room.mutex.RUnlock()
+func syncPlayerStates() {
+	wssMutex.RLock()
+	defer wssMutex.RUnlock()
+	for _, room := range wss {
+		playersStatusListSorted := make([]Player, 0)
+		room.mutex.RLock()
+		for _, player := range room.Players {
+			player.mutex.RLock()
+			if player.Name == "" {
+				player.mutex.RUnlock()
+				continue
 			}
+			playersStatusListSorted = append(playersStatusListSorted, Player{PlayerState: player.PlayerState, VideoState: player.VideoState})
+			player.mutex.RUnlock()
+		}
+		room.mutex.RUnlock()
+		if len(playersStatusListSorted) == 0 {
+			continue
+		}
+		sort.Slice(playersStatusListSorted, func(i, j int) bool {
+			if playersStatusListSorted[i].Name == playersStatusListSorted[j].Name {
+				return playersStatusListSorted[i].Id < playersStatusListSorted[j].Id
+			}
+			return playersStatusListSorted[i].Name < playersStatusListSorted[j].Name
 		})
+		playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted, Timestamp: time.Now().UnixMilli()})
+		if err != nil {
+			log.Errorf("error marshalling players status: %v", err)
+			return
+		}
+		room.mutex.RLock()
+		for _, player := range room.Players {
+			player.Send(string(playersStatusListSortedStr))
+		}
+		room.mutex.RUnlock()
+	}
+}
+
+func REST() {
+	scheduler.Every(1).Second().Do(syncPlayerStates)
 	scheduler.StartAsync()
 	e = echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -366,6 +367,7 @@ func routes() {
 					log.Errorf("error unmarshalling message: %v", err)
 					return
 				}
+				syncStates := false
 				func() {
 					currentPlayer.mutex.Lock()
 					room.mutex.Lock()
@@ -449,8 +451,12 @@ func routes() {
 							p.Sync(nil, &paused, currentPlayer)
 						}
 						room.syncChatsToPlayerUnsafe(currentPlayer)
+						syncStates = true
 					}
 				}()
+				if syncStates {
+					syncPlayerStates()
+				}
 			}
 		}).ServeHTTP(c.Response(), c.Request())
 		return nil
