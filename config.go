@@ -20,7 +20,7 @@ type Config struct {
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
 	Opusenc                string `env:"OPUSENC" envDefault:"opusenc"`
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
-	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"22"`
+	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"21"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
 	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
