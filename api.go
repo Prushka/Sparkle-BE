@@ -367,7 +367,6 @@ func routes() {
 					log.Errorf("error unmarshalling message: %v", err)
 					return
 				}
-				syncStates := false
 				func() {
 					currentPlayer.mutex.Lock()
 					room.mutex.Lock()
@@ -451,12 +450,8 @@ func routes() {
 							p.Sync(nil, &paused, currentPlayer)
 						}
 						room.syncChatsToPlayerUnsafe(currentPlayer)
-						syncStates = true
 					}
 				}()
-				if syncStates {
-					syncPlayerStates()
-				}
 			}
 		}).ServeHTTP(c.Response(), c.Request())
 		return nil
