@@ -246,17 +246,12 @@ func Exit(room *Room, player *Player) {
 
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
-		files, err := os.ReadDir(TheConfig.Output)
+		now := time.Now()
+		jobs, err := jobsCache.Get()
 		if err != nil {
 			return err
 		}
-		jobs := make([]interface{}, 0)
-		for _, file := range files {
-			job := populate(file.Name())
-			if job != nil {
-				jobs = append(jobs, job)
-			}
-		}
+		log.Infof("took %v to get all jobs", time.Since(now))
 		return c.JSON(http.StatusOK, jobs)
 	})
 	e.GET("/job/:id", func(c echo.Context) error {
