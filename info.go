@@ -86,7 +86,11 @@ func (job *Job) InputName() string {
 }
 
 func (job *Job) InputAfterRename() string {
-	return fmt.Sprintf("%s.%s", job.Id, job.InputExt())
+	if TheConfig.EnableRename {
+		return fmt.Sprintf("%s.%s", job.Id, job.InputExt())
+	} else {
+		return job.Input
+	}
 }
 
 func (job *Job) OutputJoin(args ...string) string {

@@ -158,9 +158,12 @@ func (job *Job) handbrakeTranscode() error {
 }
 
 func (job *Job) pipeline() error {
-	err := os.Rename(job.InputJoin(job.Input), job.InputJoin(job.InputAfterRename()))
-	if err != nil {
-		return err
+	var err error
+	if TheConfig.EnableRename {
+		err = os.Rename(job.InputJoin(job.Input), job.InputJoin(job.InputAfterRename()))
+		if err != nil {
+			return err
+		}
 	}
 	job.SHA256, err = calculateFileSHA256(job.InputJoin(job.InputAfterRename()))
 	if err != nil {
@@ -380,7 +383,7 @@ func processFile(file os.DirEntry, parent string) bool {
 				log.Errorf("error removing file: %v", err)
 			}
 			return true
-		} else {
+		} else if TheConfig.EnableRename {
 			err = os.Rename(job.InputJoin(job.InputAfterRename()), job.InputJoin(job.Input))
 			if err != nil {
 				log.Errorf("error renaming file: %v", err)
