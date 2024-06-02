@@ -436,13 +436,86 @@ func encode() error {
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 }
-var showsRoot = "O:\\Managed-Videos\\Anime"
-var moviesRoot = "O:\\Managed-Videos\\Movies"
+var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
+var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
 var moviesKeywords = []string{
 	"Soda Pop",
 }
 
 var re = regexp.MustCompile(`Season\s+\d+`)
+
+func encodeShows(root string) {
+	files, err := os.ReadDir(root)
+	if err != nil {
+		log.Fatalf("error reading directory: %v", err)
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			for _, keyword := range showsKeywords {
+				s := strings.Split(keyword, ",")
+				showName := s[0]
+				seasons := mapset.NewSet[string]()
+				if len(s) > 1 {
+					for i := 1; i < len(s); i++ {
+						if strings.ToLower(s[i]) == "specials" {
+							seasons.Add("Specials")
+						} else {
+							seasons.Add(fmt.Sprintf("Season %s", s[i]))
+						}
+					}
+				}
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(showName)) {
+					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
+					if err != nil {
+						log.Fatalf("error reading directory: %v", err)
+					}
+					for _, f := range fs {
+						p := func() {
+							root := filepath.Join(root, file.Name(), f.Name())
+							log.Infof("Processing %s", root)
+							TheConfig.Input = root
+							err := encode()
+							if err != nil {
+								log.Errorf("error: %v", err)
+							}
+						}
+						if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
+							if seasons.Cardinality() > 0 {
+								if seasons.Contains(f.Name()) {
+									p()
+								}
+							} else {
+								p()
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func encodeMovies(root string) {
+	files, err := os.ReadDir(root)
+	if err != nil {
+		log.Fatalf("error reading directory: %v", err)
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			for _, keyword := range moviesKeywords {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(keyword)) {
+					root := filepath.Join(root, file.Name())
+					log.Infof("Processing %s", root)
+					TheConfig.Input = root
+					err = encode()
+					if err != nil {
+						log.Errorf("error: %v", err)
+					}
+				}
+			}
+		}
+	}
+}
 
 func main() {
 	log.SetLevel(log.InfoLevel)
@@ -451,73 +524,11 @@ func main() {
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
-		files, err := os.ReadDir(showsRoot)
-		if err != nil {
-			log.Fatalf("error reading directory: %v", err)
+		for _, root := range showsRoots {
+			encodeShows(root)
 		}
-		for _, file := range files {
-			if file.IsDir() {
-				for _, keyword := range showsKeywords {
-					s := strings.Split(keyword, ",")
-					showName := s[0]
-					seasons := mapset.NewSet[string]()
-					if len(s) > 1 {
-						for i := 1; i < len(s); i++ {
-							if strings.ToLower(s[i]) == "specials" {
-								seasons.Add("Specials")
-							} else {
-								seasons.Add(fmt.Sprintf("Season %s", s[i]))
-							}
-						}
-					}
-					if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(showName)) {
-						fs, err := os.ReadDir(filepath.Join(showsRoot, file.Name()))
-						if err != nil {
-							log.Fatalf("error reading directory: %v", err)
-						}
-						for _, f := range fs {
-							p := func() {
-								root := filepath.Join(showsRoot, file.Name(), f.Name())
-								log.Infof("Processing %s", root)
-								TheConfig.Input = root
-								err := encode()
-								if err != nil {
-									log.Errorf("error: %v", err)
-								}
-							}
-							if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
-								if seasons.Cardinality() > 0 {
-									if seasons.Contains(f.Name()) {
-										p()
-									}
-								} else {
-									p()
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		files, err = os.ReadDir(moviesRoot)
-		if err != nil {
-			log.Fatalf("error reading directory: %v", err)
-		}
-		for _, file := range files {
-			if file.IsDir() {
-				for _, keyword := range moviesKeywords {
-					if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(keyword)) {
-						root := filepath.Join(moviesRoot, file.Name())
-						log.Infof("Processing %s", root)
-						TheConfig.Input = root
-						err = encode()
-						if err != nil {
-							log.Errorf("error: %v", err)
-						}
-					}
-				}
-			}
+		for _, root := range moviesRoot {
+			encodeMovies(root)
 		}
 	case RESTMode:
 		REST()
