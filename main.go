@@ -4,11 +4,13 @@ import (
 	"Sparkle/cleanup"
 	"encoding/json"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	log "github.com/sirupsen/logrus"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -431,6 +433,13 @@ func encode() error {
 	return nil
 }
 
+var showsKeywords = []string{
+	"blessing on this wonderful world,specials,3",
+}
+var showsRoot = "O:\\Managed-Videos\\Anime"
+
+var re = regexp.MustCompile(`Season\s+\d+`)
+
 func main() {
 	log.SetLevel(log.InfoLevel)
 	configure()
@@ -438,9 +447,55 @@ func main() {
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
-		err := encode()
+		files, err := os.ReadDir(showsRoot)
 		if err != nil {
-			log.Errorf("error: %v", err)
+			log.Fatalf("error reading directory: %v", err)
+		}
+		for _, file := range files {
+			if file.IsDir() {
+				for _, keyword := range showsKeywords {
+					s := strings.Split(keyword, ",")
+					showName := s[0]
+					seasons := mapset.NewSet[string]()
+					if len(s) > 1 {
+						for i := 1; i < len(s); i++ {
+							if strings.ToLower(s[i]) == "specials" {
+								seasons.Add("Specials")
+							} else {
+								seasons.Add(fmt.Sprintf("Season %s", s[i]))
+							}
+						}
+					}
+					if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(showName)) {
+						fs, err := os.ReadDir(filepath.Join(showsRoot, file.Name()))
+						if err != nil {
+							log.Fatalf("error reading directory: %v", err)
+						}
+						for _, f := range fs {
+							p := func() {
+								root := filepath.Join(showsRoot, file.Name(), f.Name())
+								log.Infof("Processing %s", root)
+								TheConfig.Input = root
+								err := encode()
+								if err != nil {
+									log.Errorf("error: %v", err)
+								}
+							}
+							if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
+								if seasons.Cardinality() > 0 {
+									if seasons.Contains(f.Name()) {
+										p()
+									}
+								} else {
+									p()
+								}
+							}
+						}
+					}
+				}
+			} else {
+				processFile(file, "")
+			}
 		}
 	case RESTMode:
 		REST()
