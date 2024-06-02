@@ -437,6 +437,10 @@ var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 }
 var showsRoot = "O:\\Managed-Videos\\Anime"
+var moviesRoot = "O:\\Managed-Videos\\Movies"
+var moviesKeywords = []string{
+	"Soda Pop",
+}
 
 var re = regexp.MustCompile(`Season\s+\d+`)
 
@@ -490,6 +494,26 @@ func main() {
 									p()
 								}
 							}
+						}
+					}
+				}
+			}
+		}
+
+		files, err = os.ReadDir(moviesRoot)
+		if err != nil {
+			log.Fatalf("error reading directory: %v", err)
+		}
+		for _, file := range files {
+			if file.IsDir() {
+				for _, keyword := range moviesKeywords {
+					if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(keyword)) {
+						root := filepath.Join(moviesRoot, file.Name())
+						log.Infof("Processing %s", root)
+						TheConfig.Input = root
+						err = encode()
+						if err != nil {
+							log.Errorf("error: %v", err)
 						}
 					}
 				}
