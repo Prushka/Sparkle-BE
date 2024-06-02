@@ -493,8 +493,6 @@ func main() {
 						}
 					}
 				}
-			} else {
-				processFile(file, "")
 			}
 		}
 	case RESTMode:
