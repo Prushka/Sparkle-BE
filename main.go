@@ -367,6 +367,17 @@ func (job *Job) updateState(newState string) error {
 
 func processFile(file os.DirEntry, parent string) bool {
 	ext := filepath.Ext(file.Name())
+	jobs, err := jobsCache.Get()
+	if err != nil {
+		log.Errorf("error getting all jobs: %v", err)
+		return false
+	}
+	for _, job := range jobs {
+		if job["Input"] == file.Name() && job["State"] == Complete {
+			log.Infof("File exists: %s", file.Name())
+			return false
+		}
+	}
 	if slices.Contains(ValidExtensions, ext[1:]) {
 		job := Job{
 			Id:          RandomString(8),

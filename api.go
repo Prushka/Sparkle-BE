@@ -195,7 +195,7 @@ func REST() {
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
-func populate(path string) interface{} {
+func populate(path string) map[string]interface{} {
 	content, err := os.ReadFile(OutputJoin(path, JobFile))
 	if err != nil {
 		return nil

@@ -8,9 +8,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var jobsCache = CreateCache[[]interface{}](7*time.Minute,
-	func() ([]interface{}, error) {
-		jobs := make([]interface{}, 0)
+var jobsCache = CreateCache[[]map[string]interface{}](7*time.Minute,
+	func() ([]map[string]interface{}, error) {
+		jobs := make([]map[string]interface{}, 0)
 		files, err := os.ReadDir(TheConfig.Output)
 		if err != nil {
 			return jobs, err
