@@ -218,6 +218,9 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
+	for _, codec := range job.EncodedCodecs {
+		err = os.Remove(job.OutputJoin(fmt.Sprintf("%s.%s", codec, TheConfig.VideoExt)))
+	}
 	return nil
 }
 
