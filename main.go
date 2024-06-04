@@ -503,7 +503,7 @@ func encodeShows(root string) {
 					for _, f := range fs {
 						p := func(matches func(s string) bool) {
 							root := filepath.Join(root, file.Name(), f.Name())
-							log.Infof("Processing %s", root)
+							log.Infof("Scanning %s", root)
 							TheConfig.Input = root
 							err := encode(matches)
 							if err != nil {
@@ -524,7 +524,6 @@ func encodeShows(root string) {
 													return false
 												}
 												if currentEpisode >= *season.StartEpisode {
-													log.Infof("Matched episode number: %s\n", match[1])
 													return true
 												}
 											} else {
