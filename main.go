@@ -29,21 +29,32 @@ func runCommand(cmd *exec.Cmd) ([]byte, error) {
 	return out, err
 }
 
+func (job *Job) extractChapters() error {
+	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_chapters", job.InputJoin(job.InputAfterRename()))
+	out, err := runCommand(cmd)
+	if err != nil {
+		return err
+	}
+	var probeOutput FFProbeOutput
+	err = json.Unmarshal(out, &probeOutput)
+	if err != nil {
+		return err
+	}
+	job.Chapters = probeOutput.Chapters
+	return nil
+}
+
 func (job *Job) extractStreams(path, t string) error {
 	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
 	out, err := runCommand(cmd)
 	if err != nil {
-		fmt.Println(string(out))
 		return err
 	}
-
 	var probeOutput FFProbeOutput
 	err = json.Unmarshal(out, &probeOutput)
-	fmt.Println(string(out))
 	if err != nil {
 		return err
 	}
-	log.Debugf("%+v", string(out))
 	for _, stream := range probeOutput.Streams {
 		if stream.CodecType == t {
 			log.Debugf("Stream: %+v", stream)
@@ -181,6 +192,10 @@ func (job *Job) pipeline() error {
 		return err
 	}
 	err = job.thumbnailsNfo()
+	if err != nil {
+		return err
+	}
+	err = job.extractChapters()
 	if err != nil {
 		return err
 	}
