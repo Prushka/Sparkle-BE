@@ -37,7 +37,14 @@ type StreamInfo struct {
 
 // FFProbeOutput holds the structure for ffprobe output
 type FFProbeOutput struct {
-	Streams []StreamInfo `json:"streams"`
+	Streams  []StreamInfo `json:"streams"`
+	Chapters []Chapter    `json:"chapters"`
+}
+
+type Chapter struct {
+	ID    int    `json:"id"`
+	Start string `json:"start_time"`
+	End   string `json:"end_time"`
 }
 
 var codecMap = map[string]string{
@@ -59,6 +66,7 @@ type Job struct {
 	Width         int
 	Height        int
 	EncodedExt    string
+	Chapters      []Chapter
 }
 
 type Stream struct {

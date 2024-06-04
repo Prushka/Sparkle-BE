@@ -4,7 +4,6 @@ import (
 	"Sparkle/cleanup"
 	"encoding/json"
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
 	log "github.com/sirupsen/logrus"
 	"math"
 	"os"
@@ -410,7 +409,7 @@ func processFile(file os.DirEntry, parent string) bool {
 	return false
 }
 
-func encode() error {
+func encode(matches func(s string) bool) error {
 	files, err := os.ReadDir(TheConfig.Input)
 	if err != nil {
 		return err
@@ -422,12 +421,16 @@ func encode() error {
 				return err
 			}
 			for _, f := range fs {
-				if processFile(f, file.Name()) && TheConfig.RemoveOnSuccess {
-					err = os.RemoveAll(InputJoin(file.Name()))
+				if matches == nil || matches(f.Name()) {
+					if processFile(f, file.Name()) && TheConfig.RemoveOnSuccess {
+						err = os.RemoveAll(InputJoin(file.Name()))
+					}
 				}
 			}
 		} else {
-			processFile(file, "")
+			if matches == nil || matches(file.Name()) {
+				processFile(file, "")
+			}
 		}
 	}
 	return nil
@@ -435,14 +438,54 @@ func encode() error {
 
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
+	"kaiju,1|7",
+	"fractale",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
 var moviesKeywords = []string{
 	"Soda Pop",
 }
+var shows []Show
 
 var re = regexp.MustCompile(`Season\s+\d+`)
+
+var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
+
+type Show struct {
+	Name    string
+	Seasons map[string]Season
+}
+
+type Season struct {
+	Name         string
+	StartEpisode *int
+}
+
+func stringToShow(keyword string) Show {
+	s := strings.Split(keyword, ",")
+	showName := s[0]
+	seasons := make(map[string]Season)
+	if len(s) > 1 {
+		for i := 1; i < len(s); i++ {
+			ss := strings.Split(s[i], "|")
+			var startEpisode *int
+			seasonName := s[i]
+			if len(ss) > 1 {
+				se, _ := strconv.Atoi(ss[1])
+				startEpisode = &se
+				seasonName = ss[0]
+			}
+			if strings.ToLower(s[i]) == "specials" {
+				seasons["Specials"] = Season{Name: "Specials", StartEpisode: startEpisode}
+			} else {
+				name := fmt.Sprintf("Season %s", seasonName)
+				seasons[name] = Season{Name: name, StartEpisode: startEpisode}
+			}
+		}
+	}
+	return Show{Name: showName, Seasons: seasons}
+}
 
 func encodeShows(root string) {
 	files, err := os.ReadDir(root)
@@ -451,41 +494,47 @@ func encodeShows(root string) {
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			for _, keyword := range showsKeywords {
-				s := strings.Split(keyword, ",")
-				showName := s[0]
-				seasons := mapset.NewSet[string]()
-				if len(s) > 1 {
-					for i := 1; i < len(s); i++ {
-						if strings.ToLower(s[i]) == "specials" {
-							seasons.Add("Specials")
-						} else {
-							seasons.Add(fmt.Sprintf("Season %s", s[i]))
-						}
-					}
-				}
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(showName)) {
+			for _, show := range shows {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
 					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
 					if err != nil {
 						log.Fatalf("error reading directory: %v", err)
 					}
 					for _, f := range fs {
-						p := func() {
+						p := func(matches func(s string) bool) {
 							root := filepath.Join(root, file.Name(), f.Name())
 							log.Infof("Processing %s", root)
 							TheConfig.Input = root
-							err := encode()
+							err := encode(matches)
 							if err != nil {
 								log.Errorf("error: %v", err)
 							}
 						}
 						if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
-							if seasons.Cardinality() > 0 {
-								if seasons.Contains(f.Name()) {
-									p()
+							if len(show.Seasons) > 0 {
+								if season, ok := show.Seasons[f.Name()]; ok {
+									if season.StartEpisode == nil {
+										p(nil)
+									} else {
+										p(func(s string) bool {
+											match := episodeRe.FindStringSubmatch(s)
+											if match != nil && len(match) > 1 {
+												currentEpisode, err := strconv.Atoi(match[1])
+												if err != nil {
+													return false
+												}
+												if currentEpisode >= *season.StartEpisode {
+													fmt.Printf("Episode number: %s\n", match[1])
+												}
+											} else {
+												fmt.Println("No episode number found")
+											}
+											return false
+										})
+									}
 								}
 							} else {
-								p()
+								p(nil)
 							}
 						}
 					}
@@ -507,7 +556,7 @@ func encodeMovies(root string) {
 					root := filepath.Join(root, file.Name())
 					log.Infof("Processing %s", root)
 					TheConfig.Input = root
-					err = encode()
+					err = encode(nil)
 					if err != nil {
 						log.Errorf("error: %v", err)
 					}
@@ -524,6 +573,11 @@ func main() {
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
+		for _, keyword := range showsKeywords {
+			show := stringToShow(keyword)
+			PrintAsJson(show)
+			shows = append(shows, show)
+		}
 		for _, root := range showsRoots {
 			encodeShows(root)
 		}
