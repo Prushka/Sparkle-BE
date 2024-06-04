@@ -524,7 +524,8 @@ func encodeShows(root string) {
 													return false
 												}
 												if currentEpisode >= *season.StartEpisode {
-													fmt.Printf("Episode number: %s\n", match[1])
+													log.Infof("Matched episode number: %s\n", match[1])
+													return true
 												}
 											} else {
 												fmt.Println("No episode number found")
