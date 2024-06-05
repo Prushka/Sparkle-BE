@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/windows"
 	"io"
 	"math/rand"
 	"os"
@@ -20,23 +19,6 @@ func RandomString(length int) string {
 		b[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(b)
-}
-
-const PROCESS_ALL_ACCESS = windows.STANDARD_RIGHTS_REQUIRED | windows.SYNCHRONIZE | 0xffff
-
-func SetPriorityWindows(pid int, priority uint32) error {
-	handle, err := windows.OpenProcess(PROCESS_ALL_ACCESS, false, uint32(pid))
-	if err != nil {
-		return err
-	}
-	defer func(handle windows.Handle) {
-		err := windows.CloseHandle(handle)
-		if err != nil {
-			log.Errorf("error closing handle: %v", err)
-		}
-	}(handle)
-
-	return windows.SetPriorityClass(handle, priority)
 }
 
 func copyFile(src, dst string) (int64, error) {

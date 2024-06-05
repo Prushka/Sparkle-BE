@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/windows"
 	"math"
 	"os"
 	"os/exec"
@@ -25,7 +24,7 @@ func Run(c *exec.Cmd) error {
 		return err
 	}
 	if TheConfig.EnableLowPriority {
-		err := SetPriorityWindows(c.Process.Pid, windows.BELOW_NORMAL_PRIORITY_CLASS)
+		err := lowPriority(c.Process.Pid)
 		if err != nil {
 			log.Errorf("error setting priority: %v", err)
 		}
