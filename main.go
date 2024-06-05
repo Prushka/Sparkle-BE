@@ -2,9 +2,12 @@ package main
 
 import (
 	"Sparkle/cleanup"
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/windows"
 	"math"
 	"os"
 	"os/exec"
@@ -17,8 +20,35 @@ import (
 	"time"
 )
 
+func Run(c *exec.Cmd) error {
+	if err := c.Start(); err != nil {
+		return err
+	}
+	if TheConfig.EnableLowPriority {
+		err := SetPriorityWindows(c.Process.Pid, windows.BELOW_NORMAL_PRIORITY_CLASS)
+		if err != nil {
+			log.Errorf("error setting priority: %v", err)
+		}
+	}
+	return c.Wait()
+}
+
+func CombinedOutput(c *exec.Cmd) ([]byte, error) {
+	if c.Stdout != nil {
+		return nil, errors.New("exec: Stdout already set")
+	}
+	if c.Stderr != nil {
+		return nil, errors.New("exec: Stderr already set")
+	}
+	var b bytes.Buffer
+	c.Stdout = &b
+	c.Stderr = &b
+	err := Run(c)
+	return b.Bytes(), err
+}
+
 func runCommand(cmd *exec.Cmd) ([]byte, error) {
-	out, err := cmd.CombinedOutput()
+	out, err := CombinedOutput(cmd)
 	if err != nil {
 		log.Error(cmd.String())
 		fmt.Println(string(out))

@@ -46,6 +46,7 @@ type Config struct {
 	EnableAttachmentExtraction bool `env:"ENABLE_ATTACHMENT_EXTRACTION" envDefault:"true"`
 	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
 	EnableRename               bool `env:"DISABLED_RENAME" envDefault:"false"`
+	EnableLowPriority          bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
 }
 
 var TheConfig = &Config{}
