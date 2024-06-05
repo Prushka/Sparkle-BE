@@ -20,7 +20,7 @@ import (
 func runCommand(cmd *exec.Cmd) ([]byte, error) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Info(cmd.String())
+		log.Error(cmd.String())
 		fmt.Println(string(out))
 		return out, err
 	} else {
@@ -141,11 +141,8 @@ func (job *Job) handbrakeTranscode() error {
 			TheConfig.HandbrakeCli, args...)
 		wg.Add(1)
 		go func() {
-			out, err := runCommand(cmd)
-			if err != nil {
-				log.Errorf("output: %s", out)
-			} else {
-				log.Debugf("output: %s", out)
+			_, err := runCommand(cmd)
+			if err == nil {
 				job.EncodedCodecs = append(job.EncodedCodecs, encoder)
 			}
 			wg.Done()
@@ -383,26 +380,26 @@ func (job *Job) updateState(newState string) error {
 
 func processFile(file os.DirEntry, parent string) bool {
 	ext := filepath.Ext(file.Name())
-	jobs, err := jobsCache.Get()
-	if err != nil {
-		log.Errorf("error getting all jobs: %v", err)
-		return false
-	}
-	for _, job := range jobs {
-		if job["Input"] == file.Name() && job["State"] == Complete {
-			log.Infof("File exists: %s", file.Name())
+	if slices.Contains(ValidExtensions, ext[1:]) {
+		jobs, err := jobsCache.Get()
+		if err != nil {
+			log.Errorf("error getting all jobs: %v", err)
 			return false
 		}
-	}
-	if slices.Contains(ValidExtensions, ext[1:]) {
+		for _, job := range jobs {
+			if job["Input"] == file.Name() && job["State"] == Complete {
+				log.Infof("File exists: %s", file.Name())
+				return false
+			}
+		}
 		job := Job{
-			Id:          RandomString(8),
+			Id:          newRandomString(jobs, 5),
 			InputParent: parent,
 			Input:       file.Name(),
 		}
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())
-		err := job.pipeline()
+		err = job.pipeline()
 		if err != nil {
 			log.Errorf("error processing file: %v", err)
 		}
@@ -451,10 +448,25 @@ func encode(matches func(s string) bool) error {
 	return nil
 }
 
+func newRandomString(jobs []map[string]interface{}, n int) string {
+	existing := make(map[string]bool)
+	for _, job := range jobs {
+		existing[job["Id"].(string)] = true
+	}
+	for {
+		s := RandomString(n)
+		if !existing[s] {
+			return s
+		}
+	}
+}
+
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 	"kaiju,1|7",
 	"fractale",
+	"mushoku,2",
+	"MERCHANT MEETS THE WISE WOLF",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
@@ -588,6 +600,7 @@ func main() {
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
+		jobsCache.TTL = -1
 		for _, keyword := range showsKeywords {
 			show := stringToShow(keyword)
 			PrintAsJson(show)
