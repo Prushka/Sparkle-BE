@@ -36,12 +36,7 @@ func SetPriorityWindows(pid int, priority uint32) error {
 		}
 	}(handle)
 
-	err = windows.SetPriorityClass(handle, priority)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return windows.SetPriorityClass(handle, priority)
 }
 
 func copyFile(src, dst string) (int64, error) {
