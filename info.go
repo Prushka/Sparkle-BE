@@ -58,19 +58,20 @@ var codecMap = map[string]string{
 }
 
 type Job struct {
-	Id            string
-	InputParent   string
-	Input         string
-	State         string
-	SHA256        string
-	EncodedCodecs []string
-	MappedAudio   map[string][]Stream
-	Streams       []Stream
-	Duration      float64
-	Width         int
-	Height        int
-	EncodedExt    string
-	Chapters      []Chapter
+	Id             string
+	InputParent    string
+	Input          string
+	State          string
+	SHA256         string
+	EncodedCodecs  []string
+	MappedAudio    map[string][]Stream
+	Streams        []Stream
+	Duration       float64
+	Width          int
+	Height         int
+	EncodedExt     string
+	Chapters       []Chapter
+	DominantColors []string
 }
 
 type Stream struct {

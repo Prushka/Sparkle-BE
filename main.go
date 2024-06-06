@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cenkalti/dominantcolor"
 	log "github.com/sirupsen/logrus"
+	"image"
 	"math"
 	"os"
 	"os/exec"
@@ -70,6 +72,7 @@ func (job *Job) extractChapters() error {
 		return err
 	}
 	job.Chapters = probeOutput.Chapters
+	log.Infof("Chapters: %+v", job.Chapters)
 	return nil
 }
 
@@ -221,6 +224,7 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
+	_ = job.extractDominantColor()
 	err = job.extractChapters()
 	if err != nil {
 		return err
@@ -317,6 +321,28 @@ func (job *Job) thumbnailsNfo() (err error) {
 	job.renameAndMove("poster.jpg", "poster.jpg")
 	job.renameAndMove("fanart.jpg", "fanart.jpg")
 	return
+}
+
+func (job *Job) extractDominantColor() (err error) {
+	f, err := os.Open(job.OutputJoin("poster.jpg"))
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			log.Errorf("error closing file: %v", err)
+		}
+	}(f)
+	if err != nil {
+		log.Errorf("Poster not found")
+		return err
+	}
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return err
+	}
+	color := dominantcolor.Hex(dominantcolor.Find(img))
+	job.DominantColors = append(job.DominantColors, color)
+	log.Infof("Dominant color: %s", color)
+	return nil
 }
 
 func (job *Job) spriteVtt() (err error) {
@@ -496,6 +522,7 @@ var showsKeywords = []string{
 	"fractale",
 	"mushoku,2",
 	"MERCHANT MEETS THE WISE WOLF",
+	"the new gate",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
