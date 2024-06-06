@@ -337,6 +337,7 @@ func (job *Job) extractDominantColor() (err error) {
 	}
 	img, _, err := image.Decode(f)
 	if err != nil {
+		log.Errorf("Error decoding image: %v", err)
 		return err
 	}
 	color := dominantcolor.Hex(dominantcolor.Find(img))
