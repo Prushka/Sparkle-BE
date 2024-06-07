@@ -71,23 +71,28 @@ func (c *Cache[T]) Get() (T, error) {
 	return c.Data, nil
 }
 
+func (c *Cache[T]) GetLFData() (time.Time, T) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return c.LastFetched, c.Data
+}
+
 func (c *Cache[T]) BypassGet() T {
-	if c.LastFetched.IsZero() {
+	lf, data := c.GetLFData()
+	if lf.IsZero() {
 		d, err := c.Get()
 		if err != nil {
 			log.Errorf("Error fetching data: %v", err)
 		}
 		return d
 	}
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 	go func() {
 		_, err := c.Get()
 		if err != nil {
 			log.Errorf("Error fetching data: %v", err)
 		}
 	}()
-	return c.Data
+	return data
 }
 
 func CreateCache[T any](ttl time.Duration, fetchMethod func() (T, error)) *Cache[T] {
