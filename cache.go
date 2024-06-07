@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var jobsCache = CreateCache[[]map[string]interface{}](7*time.Minute,
+var jobsCache = CreateCache[[]map[string]interface{}](10*time.Minute,
 	func() ([]map[string]interface{}, error) {
 		jobs := make([]map[string]interface{}, 0)
 		files, err := os.ReadDir(TheConfig.Output)
@@ -30,7 +30,7 @@ type Cache[T any] struct {
 	LastFetched time.Time
 	TTL         time.Duration
 	FetchMethod func() (T, error)
-	mutex       sync.Mutex
+	mutex       sync.RWMutex
 }
 
 type MapCache[T any] struct {
@@ -69,6 +69,25 @@ func (c *Cache[T]) Get() (T, error) {
 		c.LastFetched = time.Now()
 	}
 	return c.Data, nil
+}
+
+func (c *Cache[T]) BypassGet() T {
+	if c.LastFetched.IsZero() {
+		d, err := c.Get()
+		if err != nil {
+			log.Errorf("Error fetching data: %v", err)
+		}
+		return d
+	}
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	go func() {
+		_, err := c.Get()
+		if err != nil {
+			log.Errorf("Error fetching data: %v", err)
+		}
+	}()
+	return c.Data
 }
 
 func CreateCache[T any](ttl time.Duration, fetchMethod func() (T, error)) *Cache[T] {

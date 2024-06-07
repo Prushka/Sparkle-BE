@@ -246,12 +246,7 @@ func Exit(room *Room, player *Player) {
 
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
-		now := time.Now()
-		jobs, err := jobsCache.Get()
-		if err != nil {
-			return err
-		}
-		log.Infof("took %v to get all jobs", time.Since(now))
+		jobs := jobsCache.BypassGet()
 		return c.JSON(http.StatusOK, jobs)
 	})
 	e.GET("/job/:id", func(c echo.Context) error {
