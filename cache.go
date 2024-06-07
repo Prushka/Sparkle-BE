@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"sync"
 	"time"
@@ -71,20 +72,12 @@ func (c *Cache[T]) Get() (T, error) {
 	return c.Data, nil
 }
 
-func (c *Cache[T]) GetLFData() (time.Time, T) {
+func (c *Cache[T]) BypassGet() string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	return c.LastFetched, c.Data
-}
-
-func (c *Cache[T]) BypassGet() T {
-	lf, data := c.GetLFData()
-	if lf.IsZero() {
-		d, err := c.Get()
-		if err != nil {
-			log.Errorf("Error fetching data: %v", err)
-		}
-		return d
+	s, err := json.Marshal(c.Data)
+	if err != nil {
+		log.Errorf("Error marshalling data: %v", err)
 	}
 	go func() {
 		_, err := c.Get()
@@ -92,7 +85,7 @@ func (c *Cache[T]) BypassGet() T {
 			log.Errorf("Error fetching data: %v", err)
 		}
 	}()
-	return data
+	return string(s)
 }
 
 func CreateCache[T any](ttl time.Duration, fetchMethod func() (T, error)) *Cache[T] {

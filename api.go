@@ -178,6 +178,10 @@ func syncPlayerStates() {
 }
 
 func REST() {
+	_, err := jobsCache.Get()
+	if err != nil {
+		log.Errorf("error initializing jobs: %v", err)
+	}
 	scheduler.Every(1).Second().Do(syncPlayerStates)
 	scheduler.StartAsync()
 	e = echo.New()
@@ -247,7 +251,7 @@ func Exit(room *Room, player *Player) {
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
 		jobs := jobsCache.BypassGet()
-		return c.JSON(http.StatusOK, jobs)
+		return c.String(http.StatusOK, jobs)
 	})
 	e.GET("/job/:id", func(c echo.Context) error {
 		id := c.Param("id")
