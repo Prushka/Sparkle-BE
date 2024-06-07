@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var jobsCache = CreateCache[[]map[string]interface{}](10*time.Minute,
+var jobsCache = CreateCache[[]map[string]interface{}](10*time.Minute, true,
 	func() ([]map[string]interface{}, error) {
 		jobs := make([]map[string]interface{}, 0)
 		files, err := os.ReadDir(TheConfig.Output)
@@ -27,11 +27,13 @@ var jobsCache = CreateCache[[]map[string]interface{}](10*time.Minute,
 )
 
 type Cache[T any] struct {
-	Data        T
-	LastFetched time.Time
-	TTL         time.Duration
-	FetchMethod func() (T, error)
-	mutex       sync.RWMutex
+	Data          T
+	Marshalled    string
+	LastFetched   time.Time
+	TTL           time.Duration
+	FetchMethod   func() (T, error)
+	EnableMarshal bool
+	mutex         sync.RWMutex
 }
 
 type MapCache[T any] struct {
@@ -68,6 +70,13 @@ func (c *Cache[T]) Get() (T, error) {
 		}
 		c.Data = data
 		c.LastFetched = time.Now()
+		if c.EnableMarshal {
+			s, err := json.Marshal(c.Data)
+			if err != nil {
+				return c.Data, err
+			}
+			c.Marshalled = string(s)
+		}
 	}
 	return c.Data, nil
 }
@@ -75,23 +84,20 @@ func (c *Cache[T]) Get() (T, error) {
 func (c *Cache[T]) BypassGet() string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	s, err := json.Marshal(c.Data)
-	if err != nil {
-		log.Errorf("Error marshalling data: %v", err)
-	}
 	go func() {
 		_, err := c.Get()
 		if err != nil {
 			log.Errorf("Error fetching data: %v", err)
 		}
 	}()
-	return string(s)
+	return c.Marshalled
 }
 
-func CreateCache[T any](ttl time.Duration, fetchMethod func() (T, error)) *Cache[T] {
+func CreateCache[T any](ttl time.Duration, enabledMarshal bool, fetchMethod func() (T, error)) *Cache[T] {
 	cache := &Cache[T]{
-		TTL:         ttl,
-		FetchMethod: fetchMethod,
+		TTL:           ttl,
+		FetchMethod:   fetchMethod,
+		EnableMarshal: enabledMarshal,
 	}
 	return cache
 }
