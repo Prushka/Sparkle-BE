@@ -250,7 +250,7 @@ func Exit(room *Room, player *Player) {
 
 func routes() {
 	e.GET("/all", func(c echo.Context) error {
-		jobs := jobsCache.BypassGet()
+		jobs := jobsCache.GetMarshalled()
 		return c.String(http.StatusOK, jobs)
 	})
 	e.GET("/job/:id", func(c echo.Context) error {

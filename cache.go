@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var jobsCache = CreateCache[[]map[string]interface{}](10*time.Minute, true,
+var jobsCache = CreateCache[[]map[string]interface{}](15*time.Minute, true,
 	func() ([]map[string]interface{}, error) {
 		jobs := make([]map[string]interface{}, 0)
 		files, err := os.ReadDir(TheConfig.Output)
@@ -81,7 +81,7 @@ func (c *Cache[T]) Get() (T, error) {
 	return c.Data, nil
 }
 
-func (c *Cache[T]) BypassGet() string {
+func (c *Cache[T]) GetMarshalled() string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	go func() {
