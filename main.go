@@ -520,16 +520,14 @@ func newRandomString(jobs []map[string]interface{}, n int) string {
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 	"kaiju,1|7",
-	"fractale",
 	"mushoku,2",
 	"MERCHANT MEETS THE WISE WOLF",
 	"the new gate",
+	"jellyfish,1|9",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
-var moviesKeywords = []string{
-	"Soda Pop",
-}
+var moviesKeywords = []string{}
 var shows []Show
 
 var re = regexp.MustCompile(`Season\s+\d+`)
@@ -657,7 +655,6 @@ func main() {
 	log.Infof("Starting in %s mode", TheConfig.Mode)
 	switch TheConfig.Mode {
 	case EncodingMode:
-		jobsCache.TTL = -1
 		for _, keyword := range showsKeywords {
 			show := stringToShow(keyword)
 			PrintAsJson(show)
