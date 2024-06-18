@@ -455,7 +455,7 @@ func processFile(file os.DirEntry, parent string) bool {
 					return false
 				} else {
 					log.Infof("File modified: %s, remove old", file.Name())
-					err := os.Remove(OutputJoin(job["Id"].(string)))
+					err := os.RemoveAll(OutputJoin(job["Id"].(string)))
 					if err != nil {
 						log.Errorf("error removing file: %v", err)
 					}
