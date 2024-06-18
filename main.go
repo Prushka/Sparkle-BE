@@ -442,16 +442,32 @@ func processFile(file os.DirEntry, parent string) bool {
 			log.Errorf("error getting all jobs: %v", err)
 			return false
 		}
+		stats, err := file.Info()
+		if err != nil {
+			log.Errorf("error getting file info: %v", err)
+			return false
+		}
 		for _, job := range jobs {
-			if job["Input"] == file.Name() && job["State"] == Complete {
+			if job["Input"] == file.Name() &&
+				job["State"] == Complete {
 				log.Infof("File exists: %s", file.Name())
-				return false
+				if job["OriModTime"] == nil || job["OriModTime"] == 0 || job["OriModTime"].(int64) == stats.ModTime().Unix() {
+					return false
+				} else {
+					log.Infof("File modified: %s, remove old", file.Name())
+					err := os.Remove(OutputJoin(job["Id"].(string)))
+					if err != nil {
+						log.Errorf("error removing file: %v", err)
+					}
+				}
 			}
 		}
 		job := Job{
 			Id:          newRandomString(jobs, 5),
 			InputParent: parent,
 			Input:       file.Name(),
+			OriSize:     stats.Size(),
+			OriModTime:  stats.ModTime().Unix(),
 		}
 		startTime := time.Now()
 		log.Infof("Processing file: %s", file.Name())

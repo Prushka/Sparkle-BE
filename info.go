@@ -72,6 +72,8 @@ type Job struct {
 	EncodedExt     string
 	Chapters       []Chapter
 	DominantColors []string
+	OriSize        int64
+	OriModTime     int64
 }
 
 type Stream struct {
