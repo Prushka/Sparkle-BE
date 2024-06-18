@@ -451,7 +451,7 @@ func processFile(file os.DirEntry, parent string) bool {
 			if job["Input"] == file.Name() &&
 				job["State"] == Complete {
 				log.Infof("File exists: %s", file.Name())
-				if job["OriModTime"] == nil || job["OriModTime"] == 0 || job["OriModTime"].(int64) == stats.ModTime().Unix() {
+				if job["OriSize"] == nil || job["OriSize"] == 0 || job["OriSize"].(int64) == stats.Size() {
 					return false
 				} else {
 					log.Infof("File modified: %s, remove old", file.Name())
