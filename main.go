@@ -447,8 +447,9 @@ func processFile(file os.DirEntry, parent string) bool {
 			log.Errorf("error getting file info: %v", err)
 			return false
 		}
+		currId := getTitleId(file.Name())
+		log.Infof("Current ID: %s", currId)
 		for _, job := range jobs {
-			currId := getTitleId(file.Name())
 			prevId := getTitleId(job["Input"].(string))
 			if currId == prevId &&
 				job["State"] == Complete {
