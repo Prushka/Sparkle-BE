@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +27,24 @@ var jobsCache = CreateCache[[]map[string]interface{}](15*time.Minute, true,
 		return jobs, nil
 	},
 )
+
+func getTitleId(title string) string {
+	parts := strings.Split(title, " - ")
+	se := ""
+
+	for i, part := range parts {
+		matched, _ := regexp.MatchString(`S\d{2}E\d{2}`, part)
+		if matched {
+			se = part
+			// seTitle = strings.Join(parts[i+1:], " - ")
+			title = strings.Join(parts[:i], " - ")
+			break
+		}
+	}
+
+	titleId := strings.ToLower(regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(title, ""))
+	return titleId + se
+}
 
 type Cache[T any] struct {
 	Data          T

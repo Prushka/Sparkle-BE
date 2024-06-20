@@ -448,7 +448,9 @@ func processFile(file os.DirEntry, parent string) bool {
 			return false
 		}
 		for _, job := range jobs {
-			if job["Input"] == file.Name() &&
+			currId := getTitleId(file.Name())
+			prevId := getTitleId(job["Input"].(string))
+			if currId == prevId &&
 				job["State"] == Complete {
 				log.Infof("File exists: %s", file.Name())
 				if job["OriSize"] == nil || job["OriSize"] == 0 || int64(job["OriSize"].(float64)) == stats.Size() {
@@ -533,6 +535,7 @@ func newRandomString(jobs []map[string]interface{}, n int) string {
 	}
 }
 
+var moviesKeywords = []string{}
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 	"kaiju,1|7",
@@ -543,7 +546,6 @@ var showsKeywords = []string{
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
-var moviesKeywords = []string{}
 var shows []Show
 
 var re = regexp.MustCompile(`Season\s+\d+`)
