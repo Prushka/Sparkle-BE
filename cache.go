@@ -42,7 +42,7 @@ func getTitleId(title string) string {
 		}
 	}
 
-	titleId := strings.ToLower(regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(title, ""))
+	titleId := regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(strings.ToLower(title), "")
 	return titleId + se
 }
 
