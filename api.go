@@ -330,11 +330,11 @@ func routes() {
 			}
 			roomI, _ := wss.Load(room)
 			room := roomI.(*Room)
-			defer func(ws *websocket.Conn) {
+			defer func() {
 				room.mutex.Lock()
 				defer room.mutex.Unlock()
 				Exit(room, currentPlayer)
-			}(ws)
+			}()
 			room.mutex.Lock()
 			if room.Players[id] != nil {
 				old := room.Players[id]
