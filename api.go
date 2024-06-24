@@ -19,9 +19,8 @@ import (
 )
 
 var scheduler = gocron.NewScheduler(time.Now().Location())
-var wss = make(map[string]*Room)
+var wss sync.Map // map[string]*Room
 var e *echo.Echo
-var wssMutex sync.RWMutex
 
 const (
 	NewPlayer         = "new player"
@@ -49,8 +48,7 @@ type Room struct {
 }
 
 type Player struct {
-	ws    *websocket.Conn
-	mutex sync.RWMutex
+	ws *websocket.Conn
 	VideoState
 	PlayerState
 	exited bool
@@ -120,11 +118,13 @@ func (player *Player) Send(message interface{}) {
 		}
 		messageStr = string(messageBytes)
 	}
-	err := websocket.Message.Send(player.ws, messageStr)
-	if err != nil {
-		log.Errorf("error sending message: %v", err)
-		return
-	}
+	go func() {
+		err := websocket.Message.Send(player.ws, messageStr)
+		if err != nil {
+			log.Errorf("error sending message: %v", err)
+			return
+		}
+	}()
 }
 
 func (player *Player) Sync(t *float64, paused *bool, firedBy *Player) {
@@ -140,21 +140,17 @@ func (player *Player) Sync(t *float64, paused *bool, firedBy *Player) {
 }
 
 func syncPlayerStates() {
-	wssMutex.RLock()
-	defer wssMutex.RUnlock()
-	for _, room := range wss {
+	wss.Range(func(key, value interface{}) bool {
+		room := value.(*Room)
 		playersStatusListSorted := make([]Player, 0)
 		func() {
 			room.mutex.RLock()
 			defer room.mutex.RUnlock()
 			for _, player := range room.Players {
-				player.mutex.RLock()
 				if player.Name == "" {
-					player.mutex.RUnlock()
 					continue
 				}
 				playersStatusListSorted = append(playersStatusListSorted, Player{PlayerState: player.PlayerState, VideoState: player.VideoState})
-				player.mutex.RUnlock()
 			}
 			if len(playersStatusListSorted) == 0 {
 				return
@@ -174,7 +170,8 @@ func syncPlayerStates() {
 				player.Send(string(playersStatusListSortedStr))
 			}
 		}()
-	}
+		return true
+	})
 }
 
 func REST() {
@@ -294,15 +291,12 @@ func routes() {
 			return err
 		}
 		err = func() error {
-			wssMutex.RLock()
-			defer wssMutex.RUnlock()
-			for _, room := range wss {
+			wss.Range(func(key, value interface{}) bool {
+				room := value.(*Room)
 				err = func() error {
 					room.mutex.RLock()
 					defer room.mutex.RUnlock()
 					if firedBy, ok := room.Players[id]; ok {
-						firedBy.mutex.RLock()
-						defer firedBy.mutex.RUnlock()
 						payload := SendPayload{Type: PfpSync, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()}
 						payloadStr, err := json.Marshal(payload)
 						if err != nil {
@@ -315,7 +309,8 @@ func routes() {
 					}
 					return nil
 				}()
-			}
+				return true
+			})
 			return nil
 		}()
 		if err != nil {
@@ -331,26 +326,21 @@ func routes() {
 			currentPlayer := &Player{ws: ws,
 				PlayerState: PlayerState{Id: id, LastSeen: time.Now().Unix()},
 			}
-			wssMutex.Lock()
-			if wss[room] == nil {
-				wss[room] = &Room{Players: make(map[string]*Player), id: id,
-					VideoState: defaultVideoState(), Chats: make([]*Chat, 0)}
+			if _, ok := wss.Load(room); !ok {
+				wss.Store(room, &Room{Players: make(map[string]*Player), id: id,
+					VideoState: defaultVideoState(), Chats: make([]*Chat, 0)})
 			}
-			room := wss[room]
-			wssMutex.Unlock()
+			roomI, _ := wss.Load(room)
+			room := roomI.(*Room)
 			defer func(ws *websocket.Conn) {
 				room.mutex.Lock()
 				defer room.mutex.Unlock()
-				currentPlayer.mutex.Lock()
-				defer currentPlayer.mutex.Unlock()
 				Exit(room, currentPlayer)
 			}(ws)
 			room.mutex.Lock()
 			if room.Players[id] != nil {
 				old := room.Players[id]
-				old.mutex.Lock()
 				Exit(room, old)
-				old.mutex.Unlock()
 			}
 			room.Players[id] = currentPlayer
 			room.mutex.Unlock()
@@ -369,9 +359,7 @@ func routes() {
 					return
 				}
 				func() {
-					currentPlayer.mutex.Lock()
 					room.mutex.Lock()
-					defer currentPlayer.mutex.Unlock()
 					defer room.mutex.Unlock()
 					currentPlayer.LastSeen = time.Now().Unix()
 					switch payload.Type {
