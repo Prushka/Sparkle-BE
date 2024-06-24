@@ -118,13 +118,11 @@ func (player *Player) Send(message interface{}) {
 		}
 		messageStr = string(messageBytes)
 	}
-	go func() {
-		err := websocket.Message.Send(player.ws, messageStr)
-		if err != nil {
-			log.Errorf("error sending message: %v", err)
-			return
-		}
-	}()
+	err := websocket.Message.Send(player.ws, messageStr)
+	if err != nil {
+		log.Errorf("error sending message: %v", err)
+		return
+	}
 }
 
 func (player *Player) Sync(t *float64, paused *bool, firedBy *Player) {
