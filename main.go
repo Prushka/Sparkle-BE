@@ -450,15 +450,15 @@ func processFile(file os.DirEntry, parent string) bool {
 		currId := getTitleId(file.Name())
 		log.Infof("Current ID: %s", currId)
 		for _, job := range jobs {
-			prevId := getTitleId(job["Input"].(string))
+			prevId := getTitleId(job.Input)
 			if currId == prevId &&
-				job["State"] == Complete {
+				job.State == Complete {
 				log.Infof("File exists: %s", file.Name())
-				if job["OriSize"] == nil || job["OriSize"] == 0 || int64(job["OriSize"].(float64)) == stats.Size() {
+				if job.OriSize == 0 || job.OriSize == stats.Size() {
 					return false
 				} else {
 					log.Infof("File modified: %s, remove old", file.Name())
-					err := os.RemoveAll(OutputJoin(job["Id"].(string)))
+					err := os.RemoveAll(OutputJoin(job.Id))
 					if err != nil {
 						log.Errorf("error removing file: %v", err)
 					}
@@ -523,10 +523,10 @@ func encode(matches func(s string) bool) error {
 	return nil
 }
 
-func newRandomString(jobs []map[string]interface{}, n int) string {
+func newRandomString(jobs []*JobStripped, n int) string {
 	existing := make(map[string]bool)
 	for _, job := range jobs {
-		existing[job["Id"].(string)] = true
+		existing[job.Id] = true
 	}
 	for {
 		s := RandomString(n)

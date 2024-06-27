@@ -11,9 +11,37 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var jobsCache = CreateCache[[]map[string]interface{}](15*time.Minute, true,
-	func() ([]map[string]interface{}, error) {
-		jobs := make([]map[string]interface{}, 0)
+func populate(path string) *JobStripped {
+	content, err := os.ReadFile(OutputJoin(path, JobFile))
+	if err != nil {
+		return nil
+	}
+	job := &JobStripped{}
+	err = json.Unmarshal(content, job)
+	if err != nil {
+		return nil
+	}
+	fileSizes := make(map[string]int64)
+	if job.State == Complete {
+		files, err := os.ReadDir(OutputJoin(path))
+		if err != nil {
+			return nil
+		}
+		for _, file := range files {
+			stat, err := os.Stat(OutputJoin(path, file.Name()))
+			if err == nil {
+				fileSizes[file.Name()] = stat.Size()
+			}
+		}
+		job.Files = fileSizes
+		return job
+	}
+	return nil
+}
+
+var jobsCache = CreateCache[[]*JobStripped](15*time.Minute, true,
+	func() ([]*JobStripped, error) {
+		jobs := make([]*JobStripped, 0)
 		files, err := os.ReadDir(TheConfig.Output)
 		if err != nil {
 			return jobs, err

@@ -195,34 +195,6 @@ func REST() {
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
-func populate(path string) map[string]interface{} {
-	content, err := os.ReadFile(OutputJoin(path, JobFile))
-	if err != nil {
-		return nil
-	}
-	job := make(map[string]interface{})
-	err = json.Unmarshal(content, &job)
-	if err != nil {
-		return nil
-	}
-	fileSizes := make(map[string]int64)
-	if job["State"] == Complete {
-		files, err := os.ReadDir(OutputJoin(path))
-		if err != nil {
-			return nil
-		}
-		for _, file := range files {
-			stat, err := os.Stat(OutputJoin(path, file.Name()))
-			if err == nil {
-				fileSizes[file.Name()] = stat.Size()
-			}
-		}
-		job["Files"] = fileSizes
-		return job
-	}
-	return nil
-}
-
 func Exit(room *Room, player *Player) {
 	if room == nil {
 		return

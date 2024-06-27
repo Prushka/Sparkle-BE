@@ -47,6 +47,37 @@ var codecMap = map[string]string{
 	"webvtt":            "vtt",
 }
 
+type JobStripped struct {
+	Id             string
+	Input          string
+	State          string
+	EncodedCodecs  []string
+	MappedAudio    map[string][]StreamStripped
+	Streams        []StreamStripped
+	Duration       float64
+	Chapters       []ChapterStripped
+	DominantColors []string
+	Files          map[string]int64
+	OriSize        int64
+	OriModTime     int64
+}
+
+type StreamStripped struct {
+	CodecName string
+	CodecType string
+	Index     int
+	Location  string
+	Language  string
+	Title     string
+	Filename  string
+}
+
+type ChapterStripped struct {
+	Start int                    `json:"start"`
+	End   int                    `json:"end"`
+	Tags  map[string]interface{} `json:"tags"`
+}
+
 type Job struct {
 	Id             string
 	InputParent    string
