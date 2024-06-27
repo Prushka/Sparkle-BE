@@ -391,7 +391,7 @@ func routes() {
 					case TimeSync:
 						currentPlayer.Time = *payload.Time
 						if math.Abs(room.Time-currentPlayer.Time) > 5 &&
-							room.LastSeek.Add(700*time.Millisecond).Before(time.Now()) {
+							room.LastSeek.Add(1*time.Second).Before(time.Now()) {
 							log.Debugf("[%v] player time: %v, room time: %v", currentPlayer.Name, currentPlayer.Time, room.Time)
 							for _, p := range room.Players {
 								if currentPlayer.Id == p.Id {
