@@ -536,9 +536,7 @@ func newRandomString(jobs []map[string]interface{}, n int) string {
 	}
 }
 
-var moviesKeywords = []string{
-	"oppenheimer",
-}
+var moviesKeywords = []string{}
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 	"kaiju,1|7",
@@ -547,6 +545,7 @@ var showsKeywords = []string{
 	"the new gate",
 	"jellyfish,1|9",
 	"made in abyss",
+	"demon slayer,3|9,4,5",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}

@@ -59,9 +59,9 @@ type PlayerState struct {
 	Id       string `json:"id"`
 	InBg     bool   `json:"inBg,omitempty"`
 	LastSeen int64  `json:"lastSeen"`
-	Codec    string `json:"codec,omitempty"`
-	Audio    string `json:"audio,omitempty"`
-	Subtitle string `json:"subtitle,omitempty"`
+	codec    string
+	audio    string
+	subtitle string
 }
 
 type VideoState struct {
@@ -316,19 +316,29 @@ func routes() {
 		}
 		return c.String(http.StatusOK, "File uploaded")
 	})
-
+	e.GET("/sync/:room", func(c echo.Context) error {
+		roomId := c.Param("room")
+		roomI, ok := wss.Load(roomId)
+		if !ok {
+			return c.String(http.StatusNotFound, "Room not found")
+		}
+		room := roomI.(*Room)
+		room.mutex.RLock()
+		defer room.mutex.RUnlock()
+		return c.JSON(http.StatusOK, room)
+	})
 	e.GET("/sync/:room/:id", func(c echo.Context) error {
-		room := c.Param("room")
+		roomId := c.Param("room")
 		id := c.Param("id")
 		websocket.Handler(func(ws *websocket.Conn) {
 			currentPlayer := &Player{ws: ws,
 				PlayerState: PlayerState{Id: id, LastSeen: time.Now().Unix()},
 			}
-			if _, ok := wss.Load(room); !ok {
-				wss.Store(room, &Room{Players: make(map[string]*Player), id: id,
+			if _, ok := wss.Load(roomId); !ok {
+				wss.Store(roomId, &Room{Players: make(map[string]*Player), id: id,
 					VideoState: defaultVideoState(), Chats: make([]*Chat, 0)})
 			}
-			roomI, _ := wss.Load(room)
+			roomI, _ := wss.Load(roomId)
 			room := roomI.(*Room)
 			defer func() {
 				room.mutex.Lock()
@@ -370,11 +380,11 @@ func routes() {
 							room.syncChatsToPlayerUnsafe(currentPlayer)
 						}
 					case CodecSwitch:
-						currentPlayer.Codec = payload.Codec
+						currentPlayer.codec = payload.Codec
 					case AudioSwitch:
-						currentPlayer.Audio = payload.Audio
+						currentPlayer.audio = payload.Audio
 					case SubtitleSwitch:
-						currentPlayer.Subtitle = payload.Subtitle
+						currentPlayer.subtitle = payload.Subtitle
 					case NameSync:
 						currentPlayer.Name = payload.Name
 						for _, chat := range room.Chats {

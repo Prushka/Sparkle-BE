@@ -41,16 +41,6 @@ type FFProbeOutput struct {
 	Chapters []Chapter    `json:"chapters"`
 }
 
-type Chapter struct {
-	ID        int64                  `json:"id"`
-	StartTime string                 `json:"start_time"`
-	EndTime   string                 `json:"end_time"`
-	Start     int                    `json:"start"`
-	End       int                    `json:"end"`
-	TimeBase  string                 `json:"time_base"`
-	Tags      map[string]interface{} `json:"tags"`
-}
-
 var codecMap = map[string]string{
 	"hdmv_pgs_subtitle": "sup",
 	"subrip":            "srt",
@@ -88,6 +78,16 @@ type Stream struct {
 	MimeType   string
 	Channels   int
 	SampleRate int
+}
+
+type Chapter struct {
+	ID        int64                  `json:"id"`
+	StartTime string                 `json:"start_time"`
+	EndTime   string                 `json:"end_time"`
+	Start     int                    `json:"start"`
+	End       int                    `json:"end"`
+	TimeBase  string                 `json:"time_base"`
+	Tags      map[string]interface{} `json:"tags"`
 }
 
 func (job *Job) InputExt() string {
