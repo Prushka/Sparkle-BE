@@ -40,10 +40,11 @@ const (
 )
 
 type Room struct {
-	Players map[string]*Player
-	mutex   sync.RWMutex
-	id      string
-	Chats   []*Chat `json:"chats"`
+	Players  map[string]*Player
+	mutex    sync.RWMutex
+	id       string
+	Chats    []*Chat   `json:"chats"`
+	LastSeek time.Time `json:"lastSeek"`
 	VideoState
 }
 
@@ -417,7 +418,8 @@ func routes() {
 						}()
 					case TimeSync:
 						currentPlayer.Time = *payload.Time
-						if math.Abs(room.Time-currentPlayer.Time) > 5 {
+						if math.Abs(room.Time-currentPlayer.Time) > 5 &&
+							room.LastSeek.Add(700*time.Millisecond).Before(time.Now()) {
 							log.Debugf("[%v] player time: %v, room time: %v", currentPlayer.Name, currentPlayer.Time, room.Time)
 							for _, p := range room.Players {
 								if currentPlayer.Id == p.Id {
@@ -425,6 +427,7 @@ func routes() {
 								}
 								p.Sync(&currentPlayer.Time, nil, currentPlayer)
 							}
+							room.LastSeek = time.Now()
 						}
 						room.Time = currentPlayer.Time
 					case PauseSync:
