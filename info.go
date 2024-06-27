@@ -53,13 +53,13 @@ type JobStripped struct {
 	State          string
 	EncodedCodecs  []string
 	MappedAudio    map[string][]StreamStripped
-	Streams        []StreamStripped
+	Streams        []StreamStripped `json:",omitempty"`
 	Duration       float64
-	Chapters       []ChapterStripped
-	DominantColors []string
+	Chapters       []ChapterStripped `json:",omitempty"`
+	DominantColors []string          `json:",omitempty"`
 	Files          map[string]int64
-	OriSize        int64
-	OriModTime     int64
+	OriSize        int64 `json:",omitempty"`
+	OriModTime     int64 `json:",omitempty"`
 }
 
 type StreamStripped struct {
@@ -68,8 +68,8 @@ type StreamStripped struct {
 	Index     int
 	Location  string
 	Language  string
-	Title     string
-	Filename  string
+	Title     string `json:",omitempty"`
+	Filename  string `json:",omitempty"`
 }
 
 type ChapterStripped struct {
