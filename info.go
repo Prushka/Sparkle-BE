@@ -63,13 +63,11 @@ type JobStripped struct {
 }
 
 type StreamStripped struct {
-	CodecName string
-	CodecType string
+	CodecType string `json:",omitempty"`
 	Index     int
-	Location  string
-	Language  string
+	Location  string `json:",omitempty"`
+	Language  string `json:",omitempty"`
 	Title     string `json:",omitempty"`
-	Filename  string `json:",omitempty"`
 }
 
 type ChapterStripped struct {
