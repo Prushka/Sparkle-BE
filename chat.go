@@ -11,7 +11,6 @@ type Chat struct {
 	Timestamp int64   `json:"timestamp"`
 	MediaSec  float64 `json:"mediaSec"`
 	Uid       string  `json:"uid"`
-	UserId    string  `json:"userId"`
 }
 
 func DiscordWebhook(chat string, name string, id string) {
