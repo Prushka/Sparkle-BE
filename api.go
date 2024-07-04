@@ -24,7 +24,7 @@ var e *echo.Echo
 
 const (
 	NewPlayer         = "new player"
-	NameSync          = "name"
+	ProfileSync       = "profile"
 	TimeSync          = "time"
 	PauseSync         = "pause"
 	ChatSync          = "chat"
@@ -56,13 +56,23 @@ type Player struct {
 }
 
 type PlayerState struct {
-	Name     string `json:"name"`
-	Id       string `json:"id"`
-	InBg     bool   `json:"inBg,omitempty"`
-	LastSeen int64  `json:"lastSeen"`
-	codec    string
-	audio    string
-	subtitle string
+	Name        string `json:"name"`
+	Id          string `json:"id"`
+	InBg        bool   `json:"inBg,omitempty"`
+	LastSeen    int64  `json:"lastSeen"`
+	codec       string
+	audio       string
+	subtitle    string
+	DiscordUser *DiscordUser `json:"discordUser,omitempty"`
+}
+
+type DiscordUser struct {
+	Username      string `json:"username"`
+	Discriminator string `json:"discriminator"`
+	ID            string `json:"id"`
+	// PublicFlags   int     `json:"public_flags"`
+	Avatar     *string `json:"avatar,omitempty"`
+	GlobalName *string `json:"global_name,omitempty"`
 }
 
 type VideoState struct {
@@ -71,16 +81,17 @@ type VideoState struct {
 }
 
 type PlayerPayload struct {
-	Type      string                 `json:"type"`
-	Time      *float64               `json:"time"`
-	Name      string                 `json:"name"`
-	Paused    *bool                  `json:"paused"`
-	Chat      string                 `json:"chat"`
-	State     string                 `json:"state"`
-	Broadcast map[string]interface{} `json:"broadcast,omitempty"`
-	Codec     string                 `json:"codec,omitempty"`
-	Audio     string                 `json:"audio,omitempty"`
-	Subtitle  string                 `json:"subtitle,omitempty"`
+	Type        string                 `json:"type"`
+	Time        *float64               `json:"time"`
+	Name        string                 `json:"name"`
+	DiscordUser *DiscordUser           `json:"discordUser,omitempty"`
+	Paused      *bool                  `json:"paused"`
+	Chat        string                 `json:"chat"`
+	State       string                 `json:"state"`
+	Broadcast   map[string]interface{} `json:"broadcast,omitempty"`
+	Codec       string                 `json:"codec,omitempty"`
+	Audio       string                 `json:"audio,omitempty"`
+	Subtitle    string                 `json:"subtitle,omitempty"`
 }
 
 type SendPayload struct {
@@ -149,7 +160,8 @@ func syncPlayerStates() {
 				if player.Name == "" {
 					continue
 				}
-				playersStatusListSorted = append(playersStatusListSorted, Player{PlayerState: player.PlayerState, VideoState: player.VideoState})
+				playersStatusListSorted = append(playersStatusListSorted,
+					Player{PlayerState: player.PlayerState, VideoState: player.VideoState})
 			}
 			if len(playersStatusListSorted) == 0 {
 				return
@@ -364,16 +376,9 @@ func routes() {
 						currentPlayer.audio = payload.Audio
 					case SubtitleSwitch:
 						currentPlayer.subtitle = payload.Subtitle
-					case NameSync:
+					case ProfileSync:
 						currentPlayer.Name = payload.Name
-						for _, chat := range room.Chats {
-							if chat.Uid == currentPlayer.Id {
-								chat.Username = currentPlayer.Name
-							}
-						}
-						for _, player := range room.Players {
-							room.syncChatsToPlayerUnsafe(player)
-						}
+						currentPlayer.DiscordUser = payload.DiscordUser
 					case BroadcastSync:
 						now := time.Now().UnixMilli()
 						for _, player := range room.Players {
@@ -385,7 +390,7 @@ func routes() {
 						if strings.TrimSpace(payload.Chat) == "" {
 							return
 						}
-						room.Chats = append(room.Chats, &Chat{Username: currentPlayer.Name, Message: payload.Chat,
+						room.Chats = append(room.Chats, &Chat{Message: payload.Chat,
 							Uid:       currentPlayer.Id,
 							Timestamp: time.Now().UnixMilli(), MediaSec: currentPlayer.Time})
 						for _, player := range room.Players {
