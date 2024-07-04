@@ -221,11 +221,11 @@ func routes() {
 		jobs := jobsCache.GetMarshalled()
 		return c.String(http.StatusOK, jobs)
 	})
-	e.GET("/job/:id", func(c echo.Context) error {
-		id := c.Param("id")
-		job := populate(id)
-		return c.JSON(http.StatusOK, job)
-	})
+	//e.GET("/job/:id", func(c echo.Context) error {
+	//	id := c.Param("id")
+	//	job := populate(id)
+	//	return c.JSON(http.StatusOK, job)
+	//})
 	e.POST("/pfp/:id", func(c echo.Context) error {
 		id := c.Param("id")
 		file, err := c.FormFile("pfp")
