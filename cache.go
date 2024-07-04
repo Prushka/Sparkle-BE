@@ -75,13 +75,14 @@ func getTitleId(title string) string {
 }
 
 type Cache[T any] struct {
-	Data          T
-	Marshalled    string
-	LastFetched   time.Time
-	TTL           time.Duration
-	FetchMethod   func() (T, error)
-	EnableMarshal bool
-	mutex         sync.RWMutex
+	Data            T
+	Marshalled      string
+	LastFetched     time.Time
+	TTL             time.Duration
+	FetchMethod     func() (T, error)
+	EnableMarshal   bool
+	mutex           sync.RWMutex
+	marshalledMutex sync.RWMutex
 }
 
 type MapCache[T any] struct {
@@ -123,6 +124,8 @@ func (c *Cache[T]) Get() (T, error) {
 			if err != nil {
 				return c.Data, err
 			}
+			c.marshalledMutex.Lock()
+			defer c.marshalledMutex.Unlock()
 			c.Marshalled = string(s)
 		}
 	}
@@ -130,8 +133,8 @@ func (c *Cache[T]) Get() (T, error) {
 }
 
 func (c *Cache[T]) GetMarshalled() string {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	c.marshalledMutex.RLock()
+	defer c.marshalledMutex.RUnlock()
 	go func() {
 		_, err := c.Get()
 		if err != nil {

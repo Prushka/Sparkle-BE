@@ -536,7 +536,14 @@ func newRandomString(jobs []*JobStripped, n int) string {
 	}
 }
 
-var moviesKeywords = []string{}
+var moviesKeywords = []string{
+	"heron",
+	"suzume",
+	"weathering with",
+	"your name",
+	"the garden of words",
+	"marnie",
+}
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
 	"kaiju,1|7",
