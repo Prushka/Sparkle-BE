@@ -437,7 +437,7 @@ func (job *Job) updateState(newState string) error {
 func processFile(file os.DirEntry, parent string) bool {
 	ext := filepath.Ext(file.Name())
 	if slices.Contains(ValidExtensions, ext[1:]) {
-		jobs, err := jobsCache.Get()
+		jobs, err := jobsCache.Get(false)
 		if err != nil {
 			log.Errorf("error getting all jobs: %v", err)
 			return false

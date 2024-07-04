@@ -85,33 +85,10 @@ type Cache[T any] struct {
 	marshalledMutex sync.RWMutex
 }
 
-type MapCache[T any] struct {
-	mutex       sync.Mutex
-	Data        map[string]T
-	FetchMethod func(key string) (T, error)
-	HasExpired  func(value T) bool
-}
-
-func (c *MapCache[T]) Get(key string) (T, error) {
+func (c *Cache[T]) Get(force bool) (T, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	_, ok := c.Data[key]
-	if !ok || c.HasExpired(c.Data[key]) {
-		log.Infof("Cache expired %s, fetching new data", key)
-		data, err := c.FetchMethod(key)
-		if err != nil {
-			log.Errorf("Error fetching data: %v", err)
-			return c.Data[key], err
-		}
-		c.Data[key] = data
-	}
-	return c.Data[key], nil
-}
-
-func (c *Cache[T]) Get() (T, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	if c.LastFetched.Add(c.TTL).Before(time.Now()) {
+	if c.LastFetched.Add(c.TTL).Before(time.Now()) || force {
 		log.Info("Cache expired, fetching new data")
 		data, err := c.FetchMethod()
 		if err != nil {
@@ -136,7 +113,7 @@ func (c *Cache[T]) GetMarshalled() string {
 	c.marshalledMutex.RLock()
 	defer c.marshalledMutex.RUnlock()
 	go func() {
-		_, err := c.Get()
+		_, err := c.Get(false)
 		if err != nil {
 			log.Errorf("Error fetching data: %v", err)
 		}
@@ -149,16 +126,6 @@ func CreateCache[T any](ttl time.Duration, enabledMarshal bool, fetchMethod func
 		TTL:           ttl,
 		FetchMethod:   fetchMethod,
 		EnableMarshal: enabledMarshal,
-	}
-	return cache
-}
-
-func CreateMapCache[T any](fetchMethod func(key string) (T, error),
-	hasExpired func(value T) bool) *MapCache[T] {
-	cache := &MapCache[T]{
-		FetchMethod: fetchMethod,
-		HasExpired:  hasExpired,
-		Data:        make(map[string]T),
 	}
 	return cache
 }
