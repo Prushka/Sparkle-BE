@@ -553,6 +553,12 @@ var showsKeywords = []string{
 	"jellyfish,1|9",
 	"made in abyss",
 	"demon slayer,3|9,4,5",
+	"Stepsister",
+	"Alya Sometimes",
+	"Oshi No Ko",
+	"tower of god",
+	"nier",
+	"harem",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
