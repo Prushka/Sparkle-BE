@@ -223,7 +223,7 @@ func Exit(room *Room, player *Player) {
 	delete(room.Players, player.Id)
 	if len(room.Players) == 0 {
 		room.VideoState = defaultVideoState()
-		room.Chats = make([]*Chat, 0)
+		//room.Chats = make([]*Chat, 0)
 	}
 	log.Infof("[%v] disconnected", player.Id)
 	player.exited = true
