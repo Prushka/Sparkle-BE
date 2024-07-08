@@ -14,9 +14,11 @@ import (
 	"time"
 )
 
-type messagePayload struct {
-	Content     string `json:"content"`
-	WebhookType int    `json:"webhookType"`
+type MessagePayload struct {
+	Content     *string `json:"content"`
+	WebhookType int     `json:"webhookType"`
+	Username    *string `json:"username"`
+	AvatarUrl   *string `json:"avatar_url"`
 }
 
 var messages = make(map[int][]string)
@@ -82,7 +84,9 @@ func messageTick() {
 				}
 			}
 			for _, chunk := range chunks {
-				send(messagePayload{Content: chunk, WebhookType: webhookType})
+				Send(MessagePayload{Content: &chunk,
+					WebhookType: webhookType,
+					Username:    &config.TheConfig.DiscordName})
 			}
 		}
 	}
@@ -112,13 +116,14 @@ type errorResponse struct {
 const (
 	InfoWebhook int = iota
 	ErrorWebhook
+	ChatWebhook
 )
 
-func send(payload messagePayload) {
-	name := config.TheConfig.DiscordName
+func Send(payload MessagePayload) {
 	message := discordwebhook.Message{
-		Username: &name,
-		Content:  &payload.Content,
+		Username:  payload.Username,
+		Content:   payload.Content,
+		AvatarUrl: payload.AvatarUrl,
 	}
 	var err error
 	switch payload.WebhookType {
@@ -127,6 +132,11 @@ func send(payload messagePayload) {
 			return
 		}
 		err = discordwebhook.SendMessage(config.TheConfig.DiscordWebhookError, message)
+	case ChatWebhook:
+		if config.TheConfig.DiscordWebhookChat == "" {
+			return
+		}
+		err = discordwebhook.SendMessage(config.TheConfig.DiscordWebhookChat, message)
 	default:
 		err = discordwebhook.SendMessage(config.TheConfig.DiscordWebhookInfo, message)
 	}
@@ -140,7 +150,7 @@ func send(payload messagePayload) {
 		}
 		if de.RetryAfter > 0 {
 			time.Sleep(time.Duration(de.RetryAfter) * time.Second)
-			send(payload)
+			Send(payload)
 		} else {
 			log.Errorf("error sending message to discord: %v", err)
 		}
