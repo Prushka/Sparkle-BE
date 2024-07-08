@@ -2,6 +2,8 @@ package main
 
 import (
 	"Sparkle/cleanup"
+	"Sparkle/config"
+	"Sparkle/discord"
 	"encoding/json"
 	"github.com/go-co-op/gocron"
 	"github.com/labstack/echo/v4"
@@ -125,14 +127,14 @@ func (player *Player) Send(message interface{}) {
 	default:
 		messageBytes, err := json.Marshal(message)
 		if err != nil {
-			log.Errorf("error marshalling message: %v", err)
+			discord.Errorf("error marshalling message: %v", err)
 			return
 		}
 		messageStr = string(messageBytes)
 	}
 	err := websocket.Message.Send(player.ws, messageStr)
 	if err != nil {
-		log.Errorf("error sending message: %v", err)
+		discord.Errorf("error sending message: %v", err)
 		return
 	}
 }
@@ -174,7 +176,7 @@ func syncPlayerStates() {
 			})
 			playersStatusListSortedStr, err := json.Marshal(SendPayload{Type: PlayersStatusSync, Players: playersStatusListSorted, Timestamp: time.Now().UnixMilli()})
 			if err != nil {
-				log.Errorf("error marshalling players status: %v", err)
+				discord.Errorf("error marshalling players status: %v", err)
 				return
 			}
 			for _, player := range room.Players {
@@ -188,7 +190,7 @@ func syncPlayerStates() {
 func REST() {
 	_, err := jobsCache.Get(true)
 	if err != nil {
-		log.Errorf("error initializing jobs: %v", err)
+		discord.Errorf("error initializing jobs: %v", err)
 	}
 	scheduler.Every(1).Second().Do(syncPlayerStates)
 	scheduler.StartAsync()
@@ -218,7 +220,7 @@ func Exit(room *Room, player *Player) {
 	player.Send(SendPayload{Type: ExitSync, Timestamp: time.Now().UnixMilli()})
 	err := ws.Close()
 	if err != nil {
-		log.Errorf("error closing websocket: %v", err)
+		discord.Errorf("error closing websocket: %v", err)
 	}
 	delete(room.Players, player.Id)
 	if len(room.Players) == 0 {
@@ -249,32 +251,32 @@ func routes() {
 		id := c.Param("id")
 		file, err := c.FormFile("pfp")
 		if err != nil {
-			log.Errorf("error getting file: %v", err)
+			discord.Errorf("error getting file: %v", err)
 			return err
 		}
 		src, err := file.Open()
 		if err != nil {
-			log.Errorf("error opening file: %v", err)
+			discord.Errorf("error opening file: %v", err)
 			return err
 		}
 		defer func() {
 			err := src.Close()
 			if err != nil {
-				log.Errorf("error closing file: %v", err)
+				discord.Errorf("error closing file: %v", err)
 			}
 		}()
-		err = os.MkdirAll(TheConfig.Output+"/pfp", 0755)
+		err = os.MkdirAll(config.TheConfig.Output+"/pfp", 0755)
 		if err != nil {
 			return err
 		}
-		dst, err := os.Create(TheConfig.Output + "/pfp/" + id + ".png")
+		dst, err := os.Create(config.TheConfig.Output + "/pfp/" + id + ".png")
 		if err != nil {
 			return err
 		}
 		defer func(dst *os.File) {
 			err := dst.Close()
 			if err != nil {
-				log.Errorf("error closing file: %v", err)
+				discord.Errorf("error closing file: %v", err)
 			}
 		}(dst)
 		if _, err = io.Copy(dst, src); err != nil {
@@ -290,7 +292,7 @@ func routes() {
 						payload := SendPayload{Type: PfpSync, FiredBy: firedBy, Timestamp: time.Now().UnixMilli()}
 						payloadStr, err := json.Marshal(payload)
 						if err != nil {
-							log.Errorf("error marshalling payload: %v", err)
+							discord.Errorf("error marshalling payload: %v", err)
 							return err
 						}
 						for _, player := range room.Players {
@@ -349,13 +351,13 @@ func routes() {
 				msg := ""
 				err := websocket.Message.Receive(ws, &msg)
 				if err != nil {
-					log.Errorf("error receiving message: %v", err)
+					discord.Errorf("error receiving message: %v", err)
 					return
 				}
 				payload := &PlayerPayload{}
 				err = json.Unmarshal([]byte(msg), payload)
 				if err != nil {
-					log.Errorf("error unmarshalling message: %v", err)
+					discord.Errorf("error unmarshalling message: %v", err)
 					return
 				}
 				func() {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Sparkle/config"
 	"fmt"
 	"os"
 	"strings"
@@ -130,7 +131,7 @@ func (job *Job) InputName() string {
 }
 
 func (job *Job) InputAfterRename() string {
-	if TheConfig.EnableRename {
+	if config.TheConfig.EnableRename {
 		return fmt.Sprintf("%s.%s", job.Id, job.InputExt())
 	} else {
 		return job.Input
@@ -146,7 +147,7 @@ func (job *Job) InputJoin(args ...string) string {
 }
 
 func (job *Job) GetCodecVideo(codec string) string {
-	return job.OutputJoin(fmt.Sprintf("%s.%s", codec, TheConfig.VideoExt))
+	return job.OutputJoin(fmt.Sprintf("%s.%s", codec, config.TheConfig.VideoExt))
 }
 
 var ValidExtensions = []string{"mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "vob", "3gp", "3g2"}

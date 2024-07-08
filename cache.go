@@ -1,14 +1,14 @@
 package main
 
 import (
+	"Sparkle/config"
+	"Sparkle/discord"
 	"encoding/json"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func populate(path string) *JobStripped {
@@ -22,27 +22,24 @@ func populate(path string) *JobStripped {
 		return nil
 	}
 	fileSizes := make(map[string]int64)
-	if job.State == Complete {
-		files, err := os.ReadDir(OutputJoin(path))
-		if err != nil {
-			return nil
-		}
-		for _, file := range files {
-			stat, err := os.Stat(OutputJoin(path, file.Name()))
-			if err == nil {
-				fileSizes[file.Name()] = stat.Size()
-			}
-		}
-		job.Files = fileSizes
-		return job
+	files, err := os.ReadDir(OutputJoin(path))
+	if err != nil {
+		return nil
 	}
-	return nil
+	for _, file := range files {
+		stat, err := os.Stat(OutputJoin(path, file.Name()))
+		if err == nil {
+			fileSizes[file.Name()] = stat.Size()
+		}
+	}
+	job.Files = fileSizes
+	return job
 }
 
 var jobsCache = CreateCache[[]*JobStripped](15*time.Minute, true,
 	func() ([]*JobStripped, error) {
 		jobs := make([]*JobStripped, 0)
-		files, err := os.ReadDir(TheConfig.Output)
+		files, err := os.ReadDir(config.TheConfig.Output)
 		if err != nil {
 			return jobs, err
 		}
@@ -89,7 +86,7 @@ func (c *Cache[T]) Get(force bool) (T, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	if c.LastFetched.Add(c.TTL).Before(time.Now()) || force {
-		log.Info("Cache expired, fetching new data")
+		discord.Infof("Cache expired, fetching new data")
 		data, err := c.FetchMethod()
 		if err != nil {
 			return c.Data, err
@@ -115,7 +112,7 @@ func (c *Cache[T]) GetMarshalled() string {
 	go func() {
 		_, err := c.Get(false)
 		if err != nil {
-			log.Errorf("Error fetching data: %v", err)
+			discord.Errorf("Error fetching data: %v", err)
 		}
 	}()
 	return c.Marshalled

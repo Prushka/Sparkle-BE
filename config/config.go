@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"github.com/caarlos0/env"
@@ -22,8 +22,6 @@ type Config struct {
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"21"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
-	DiscordUserName        string `env:"DISCORD_USER_NAME" envDefault:"Sparkle"`
-	DiscordWebhook         string `env:"DISCORD_WEBHOOK" envDefault:""`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
 	Encoder                string `env:"ENCODER" envDefault:"av1,hevc,h264-8bit"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
@@ -47,11 +45,16 @@ type Config struct {
 	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
 	EnableRename               bool `env:"DISABLED_RENAME" envDefault:"false"`
 	EnableLowPriority          bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
+
+	DiscordName         string `env:"DISCORD_NAME" envDefault:"Encoding"`
+	DiscordWebhookError string `env:"DISCORD_WEBHOOK_ERROR" envDefault:""`
+	DiscordWebhookInfo  string `env:"DISCORD_WEBHOOK_INFO" envDefault:""`
+	DiscordWebhookChat  string `env:"DISCORD_WEBHOOK_CHAT" envDefault:""`
 }
 
 var TheConfig = &Config{}
 
-func configure() {
+func Configure() {
 	err := env.Parse(TheConfig)
 	if err != nil {
 		log.Fatalf("error parsing config: %v", err)

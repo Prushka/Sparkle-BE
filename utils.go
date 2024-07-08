@@ -1,11 +1,12 @@
 package main
 
 import (
+	"Sparkle/config"
+	"Sparkle/discord"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"os"
@@ -38,7 +39,7 @@ func copyFile(src, dst string) (int64, error) {
 	defer func(source *os.File) {
 		err := source.Close()
 		if err != nil {
-			log.Errorf("error closing file: %v", err)
+			discord.Errorf("error closing file: %v", err)
 		}
 	}(source)
 
@@ -49,7 +50,7 @@ func copyFile(src, dst string) (int64, error) {
 	defer func(destination *os.File) {
 		err := destination.Close()
 		if err != nil {
-			log.Errorf("error closing file: %v", err)
+			discord.Errorf("error closing file: %v", err)
 		}
 	}(destination)
 	nBytes, err := io.Copy(destination, source)
@@ -59,7 +60,7 @@ func copyFile(src, dst string) (int64, error) {
 func PrintAsJson(v interface{}) {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		log.Error(err)
+		discord.Errorf(err.Error())
 	}
 	fmt.Println(string(b))
 }
@@ -72,7 +73,7 @@ func calculateFileSHA256(filePath string) (string, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Errorf("error closing file: %v", err)
+			discord.Errorf("error closing file: %v", err)
 		}
 	}(file)
 	hash := sha256.New()
@@ -91,9 +92,9 @@ func FormatSecondsToTime(seconds float64) string {
 }
 
 func InputJoin(args ...string) string {
-	return filepath.Join(TheConfig.Input, filepath.Join(args...))
+	return filepath.Join(config.TheConfig.Input, filepath.Join(args...))
 }
 
 func OutputJoin(args ...string) string {
-	return filepath.Join(TheConfig.Output, filepath.Join(args...))
+	return filepath.Join(config.TheConfig.Output, filepath.Join(args...))
 }

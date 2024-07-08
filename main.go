@@ -2,6 +2,8 @@ package main
 
 import (
 	"Sparkle/cleanup"
+	"Sparkle/config"
+	"Sparkle/discord"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -25,10 +27,10 @@ func Run(c *exec.Cmd) error {
 	if err := c.Start(); err != nil {
 		return err
 	}
-	if TheConfig.EnableLowPriority {
+	if config.TheConfig.EnableLowPriority {
 		err := lowPriority(c.Process.Pid)
 		if err != nil {
-			log.Errorf("error setting priority: %v", err)
+			discord.Errorf("error setting priority: %v", err)
 		}
 	}
 	return c.Wait()
@@ -51,7 +53,7 @@ func CombinedOutput(c *exec.Cmd) ([]byte, error) {
 func runCommand(cmd *exec.Cmd) ([]byte, error) {
 	out, err := CombinedOutput(cmd)
 	if err != nil {
-		log.Error(cmd.String())
+		discord.Errorf(cmd.String())
 		fmt.Println(string(out))
 		return out, err
 	} else {
@@ -61,7 +63,7 @@ func runCommand(cmd *exec.Cmd) ([]byte, error) {
 }
 
 func (job *Job) extractChapters() error {
-	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_chapters", job.InputJoin(job.InputAfterRename()))
+	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_chapters", job.InputJoin(job.InputAfterRename()))
 	out, err := runCommand(cmd)
 	if err != nil {
 		return err
@@ -72,12 +74,12 @@ func (job *Job) extractChapters() error {
 		return err
 	}
 	job.Chapters = probeOutput.Chapters
-	log.Infof("Chapters: %+v", job.Chapters)
+	discord.Infof("Chapters: %+v", job.Chapters)
 	return nil
 }
 
 func (job *Job) extractStreams(path, t string) error {
-	cmd := exec.Command(TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
+	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
 	out, err := runCommand(cmd)
 	if err != nil {
 		return err
@@ -94,7 +96,7 @@ func (job *Job) extractStreams(path, t string) error {
 			var cmd *exec.Cmd
 			var err error
 			convert := func(codec, cs, filename string) error {
-				log.Infof("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
+				discord.Infof("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
 				s := Stream{
 					CodecName: codec,
 					CodecType: stream.CodecType,
@@ -107,15 +109,15 @@ func (job *Job) extractStreams(path, t string) error {
 					Channels:  stream.Channels,
 				}
 				if stream.CodecType == AttachmentType {
-					cmd = exec.Command(TheConfig.Ffmpeg, "-y", fmt.Sprintf("-dump_attachment:%d", stream.Index), job.OutputJoin(filename), "-i", path, "-t", "0", "-f", "null", "null")
+					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", fmt.Sprintf("-dump_attachment:%d", stream.Index), job.OutputJoin(filename), "-i", path, "-t", "0", "-f", "null", "null")
 				} else {
-					cmd = exec.Command(TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
+					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
 				}
 				_, err = runCommand(cmd)
 				if err == nil {
 					job.Streams = append(job.Streams, s)
 				} else {
-					log.Errorf("error converting %s: %v", t, err)
+					discord.Errorf("error converting %s: %v", t, err)
 				}
 				return err
 			}
@@ -131,11 +133,11 @@ func (job *Job) extractStreams(path, t string) error {
 					err = convert(toCodec, "copy", fmt.Sprintf("%s.%s", id, toCodec))
 				}
 			case AudioType:
-				if TheConfig.EnableAudioExtraction {
+				if config.TheConfig.EnableAudioExtraction {
 					err = convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName))
 				}
 			case AttachmentType:
-				if TheConfig.EnableAttachmentExtraction {
+				if config.TheConfig.EnableAttachmentExtraction {
 					err = convert(stream.Tags.MimeType, "copy", stream.Tags.Filename)
 				}
 			}
@@ -145,18 +147,18 @@ func (job *Job) extractStreams(path, t string) error {
 }
 
 func (job *Job) handbrakeTranscode() error {
-	encoders := strings.Split(TheConfig.Encoder, ",")
+	encoders := strings.Split(config.TheConfig.Encoder, ",")
 	wg := sync.WaitGroup{}
-	job.EncodedExt = TheConfig.VideoExt
+	job.EncodedExt = config.TheConfig.VideoExt
 	runEncoder := func(encoder, encoderCmd, encoderPreset, encoderProfile, encoderTune string) {
-		outputFile := job.OutputJoin(fmt.Sprintf("%s.%s", encoder, TheConfig.VideoExt))
-		log.Infof("Converting video: %s -> %s", job.Input, outputFile)
+		outputFile := job.OutputJoin(fmt.Sprintf("%s.%s", encoder, config.TheConfig.VideoExt))
+		discord.Infof("Converting video: %s -> %s", job.Input, outputFile)
 		args := []string{
 			"-i", job.InputJoin(job.InputAfterRename()),
 			"-o", outputFile,
 			"--encoder", encoderCmd,
 			"--vfr",
-			"--quality", TheConfig.ConstantQuality,
+			"--quality", config.TheConfig.ConstantQuality,
 			"--encoder-preset", encoderPreset,
 			"--subtitle", "none",
 			"--aencoder", "opus",
@@ -170,7 +172,7 @@ func (job *Job) handbrakeTranscode() error {
 			args = append(args, "--encoder-tune", encoderTune)
 		}
 		cmd := exec.Command(
-			TheConfig.HandbrakeCli, args...)
+			config.TheConfig.HandbrakeCli, args...)
 		wg.Add(1)
 		go func() {
 			_, err := runCommand(cmd)
@@ -183,13 +185,13 @@ func (job *Job) handbrakeTranscode() error {
 	for _, encoder := range encoders {
 		switch encoder {
 		case "av1":
-			runEncoder(encoder, TheConfig.Av1Encoder, TheConfig.Av1Preset, "", "")
+			runEncoder(encoder, config.TheConfig.Av1Encoder, config.TheConfig.Av1Preset, "", "")
 		case "hevc":
-			runEncoder(encoder, TheConfig.HevcEncoder, TheConfig.HevcPreset, "", "")
+			runEncoder(encoder, config.TheConfig.HevcEncoder, config.TheConfig.HevcPreset, "", "")
 		case "h264-10bit":
-			runEncoder(encoder, TheConfig.H26410BitEncoder, TheConfig.H26410BitPreset, "", "")
+			runEncoder(encoder, config.TheConfig.H26410BitEncoder, config.TheConfig.H26410BitPreset, "", "")
 		case "h264-8bit":
-			runEncoder(encoder, TheConfig.H2648BitEncoder, TheConfig.H2648BitPreset, TheConfig.H2648BitProfile, TheConfig.H2648BitTune)
+			runEncoder(encoder, config.TheConfig.H2648BitEncoder, config.TheConfig.H2648BitPreset, config.TheConfig.H2648BitProfile, config.TheConfig.H2648BitTune)
 		default:
 			return fmt.Errorf("unsupported encoder: %s", encoder)
 		}
@@ -200,7 +202,7 @@ func (job *Job) handbrakeTranscode() error {
 
 func (job *Job) pipeline() error {
 	var err error
-	if TheConfig.EnableRename {
+	if config.TheConfig.EnableRename {
 		err = os.Rename(job.InputJoin(job.Input), job.InputJoin(job.InputAfterRename()))
 		if err != nil {
 			return err
@@ -210,7 +212,7 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
-	log.Infof("Processing Job: %+v", job)
+	discord.Infof("Processing Job: %+v", job)
 	err = os.MkdirAll(job.OutputJoin(), 0755)
 	if err != nil {
 		return err
@@ -241,13 +243,13 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
-	if TheConfig.EnableSprite {
+	if config.TheConfig.EnableSprite {
 		err = job.spriteVtt()
 		if err != nil {
 			return err
 		}
 	}
-	if TheConfig.EnableEncode {
+	if config.TheConfig.EnableEncode {
 		err = job.handbrakeTranscode()
 		if err != nil {
 			return err
@@ -265,7 +267,7 @@ func (job *Job) pipeline() error {
 		return err
 	}
 	for _, codec := range job.EncodedCodecs {
-		err = os.Remove(job.OutputJoin(fmt.Sprintf("%s.%s", codec, TheConfig.VideoExt)))
+		err = os.Remove(job.OutputJoin(fmt.Sprintf("%s.%s", codec, config.TheConfig.VideoExt)))
 	}
 	return nil
 }
@@ -278,12 +280,12 @@ func (job *Job) mapAudioTracks() {
 		}
 		for _, codec := range job.EncodedCodecs {
 			id := fmt.Sprintf("%s-%d-%s", codec, audio.Index, audio.Language)
-			cmd := exec.Command(TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", job.OutputJoin(audio.Location),
-				"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", job.OutputJoin(fmt.Sprintf("%s.%s", id, TheConfig.VideoExt)))
-			log.Infof("Command: %s", cmd.String())
+			cmd := exec.Command(config.TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", job.OutputJoin(audio.Location),
+				"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", job.OutputJoin(fmt.Sprintf("%s.%s", id, config.TheConfig.VideoExt)))
+			discord.Infof("Command: %s", cmd.String())
 			_, err := runCommand(cmd)
 			if err != nil {
-				log.Errorf("error mapping audio tracks: %v", err)
+				discord.Errorf("error mapping audio tracks: %v", err)
 			} else {
 				if _, ok := job.MappedAudio[codec]; !ok {
 					job.MappedAudio[codec] = make([]Stream, 0)
@@ -300,15 +302,15 @@ func (job *Job) renameAndMove(source string, dest string) {
 	dest = job.OutputJoin(dest)
 	_, err := os.Stat(source)
 	if err == nil {
-		if TheConfig.RemoveOnSuccess {
+		if config.TheConfig.RemoveOnSuccess {
 			err = os.Rename(source, dest)
 			if err != nil {
-				log.Errorf("error moving file: %s->%s %v", source, dest, err)
+				discord.Errorf("error moving file: %s->%s %v", source, dest, err)
 			}
 		} else {
 			_, err = copyFile(source, dest)
 			if err != nil {
-				log.Errorf("error copying file: %s->%s %v", source, dest, err)
+				discord.Errorf("error copying file: %s->%s %v", source, dest, err)
 			}
 		}
 	}
@@ -328,41 +330,41 @@ func (job *Job) extractDominantColor() (err error) {
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
-			log.Errorf("error closing file: %v", err)
+			discord.Errorf("error closing file: %v", err)
 		}
 	}(f)
 	if err != nil {
-		log.Errorf("Poster not found")
+		discord.Errorf("Poster not found")
 		return err
 	}
 	img, _, err := image.Decode(f)
 	if err != nil {
-		log.Errorf("Error decoding image: %v", err)
+		discord.Errorf("Error decoding image: %v", err)
 		return err
 	}
 	color := dominantcolor.Hex(dominantcolor.Find(img))
 	job.DominantColors = append(job.DominantColors, color)
-	log.Infof("Dominant color: %s", color)
+	discord.Infof("Dominant color: %s", color)
 	return nil
 }
 
 func (job *Job) spriteVtt() (err error) {
 	vttFile := job.OutputJoin(ThumbnailVtt)
 	videoFile := job.InputJoin(job.InputAfterRename())
-	thumbnailHeight := TheConfig.ThumbnailHeight
-	thumbnailInterval := TheConfig.ThumbnailInterval
-	chunkInterval := TheConfig.ThumbnailChunkInterval
+	thumbnailHeight := config.TheConfig.ThumbnailHeight
+	thumbnailInterval := config.TheConfig.ThumbnailInterval
+	chunkInterval := config.TheConfig.ThumbnailChunkInterval
 
 	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile).Output()
 	if err != nil {
-		log.Errorf("Error getting video duration: %v\n", err)
+		discord.Errorf("Error getting video duration: %v\n", err)
 		return
 	}
 	job.Duration, _ = strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
 
 	out, err = exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", videoFile).Output()
 	if err != nil {
-		log.Errorf("Error getting video aspect ratio: %v\n", err)
+		discord.Errorf("Error getting video aspect ratio: %v\n", err)
 		return
 	}
 	aspectRatioStr := strings.TrimSpace(string(out))
@@ -370,7 +372,7 @@ func (job *Job) spriteVtt() (err error) {
 	job.Width, _ = strconv.Atoi(aspectRatioParts[0])
 	job.Height, _ = strconv.Atoi(aspectRatioParts[1])
 	aspectRatio := float64(job.Width) / float64(job.Height)
-	log.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
+	discord.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
 	numThumbnailsPerChunk := chunkInterval / thumbnailInterval
 	numChunks := int(math.Ceil(job.Duration / float64(chunkInterval)))
 	thumbnailWidth := int(math.Round(float64(thumbnailHeight) * aspectRatio))
@@ -382,10 +384,10 @@ func (job *Job) spriteVtt() (err error) {
 		spriteFile := job.OutputJoin(fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
 		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
 			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
-		log.Infof("Command: %s", cmd.String())
+		discord.Infof("Command: %s", cmd.String())
 		_, err = runCommand(cmd)
 		if err != nil {
-			log.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
+			discord.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
 			return
 		}
 
@@ -411,11 +413,11 @@ func (job *Job) spriteVtt() (err error) {
 
 	err = os.WriteFile(vttFile, []byte(vttContent), 0644)
 	if err != nil {
-		log.Errorf("Error writing WebVTT file: %v\n", err)
+		discord.Errorf("Error writing WebVTT file: %v\n", err)
 		return
 	}
 
-	log.Infof("Sprite sheets and WebVTT file generated successfully!")
+	discord.Infof("Sprite sheets and WebVTT file generated successfully!")
 	return
 }
 
@@ -423,12 +425,12 @@ func (job *Job) updateState(newState string) error {
 	job.State = newState
 	jobStr, err := json.Marshal(job)
 	if err != nil {
-		log.Errorf("error persisting job: %v", err)
+		discord.Errorf("error persisting job: %v", err)
 		return err
 	}
 	err = os.WriteFile(job.OutputJoin(JobFile), jobStr, 0644)
 	if err != nil {
-		log.Errorf("error persisting job: %v", err)
+		discord.Errorf("error persisting job: %v", err)
 		return err
 	}
 	return nil
@@ -439,28 +441,27 @@ func processFile(file os.DirEntry, parent string) bool {
 	if slices.Contains(ValidExtensions, ext[1:]) {
 		jobs, err := jobsCache.Get(false)
 		if err != nil {
-			log.Errorf("error getting all jobs: %v", err)
+			discord.Errorf("error getting all jobs: %v", err)
 			return false
 		}
 		stats, err := file.Info()
 		if err != nil {
-			log.Errorf("error getting file info: %v", err)
+			discord.Errorf("error getting file info: %v", err)
 			return false
 		}
 		currId := getTitleId(file.Name())
-		log.Infof("Current ID: %s", currId)
+		discord.Infof("Current ID: %s", currId)
 		for _, job := range jobs {
 			prevId := getTitleId(job.Input)
-			if currId == prevId &&
-				job.State == Complete {
-				log.Infof("File exists: %s", file.Name())
-				if job.OriSize == 0 || job.OriSize == stats.Size() {
+			if currId == prevId {
+				discord.Infof("File exists: %s", file.Name())
+				if job.State == Complete && (job.OriSize == 0 || job.OriSize == stats.Size()) {
 					return false
 				} else {
-					log.Infof("File modified: %s, remove old", file.Name())
+					discord.Infof("File modified or prev encoding incomplete: %s, remove old", file.Name())
 					err := os.RemoveAll(OutputJoin(job.Id))
 					if err != nil {
-						log.Errorf("error removing file: %v", err)
+						discord.Errorf("error removing file: %v", err)
 					}
 				}
 			}
@@ -473,22 +474,22 @@ func processFile(file os.DirEntry, parent string) bool {
 			OriModTime:  stats.ModTime().Unix(),
 		}
 		startTime := time.Now()
-		log.Infof("Processing file: %s", file.Name())
+		discord.Infof("Processing file: %s", file.Name())
 		err = job.pipeline()
 		if err != nil {
-			log.Errorf("error processing file: %v", err)
+			discord.Errorf("error processing file: %v", err)
 		}
-		log.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
-		if job.State == Complete && TheConfig.RemoveOnSuccess {
+		discord.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
+		if job.State == Complete && config.TheConfig.RemoveOnSuccess {
 			err = os.Remove(job.InputJoin(job.InputAfterRename()))
 			if err != nil {
-				log.Errorf("error removing file: %v", err)
+				discord.Errorf("error removing file: %v", err)
 			}
 			return true
-		} else if TheConfig.EnableRename {
+		} else if config.TheConfig.EnableRename {
 			err = os.Rename(job.InputJoin(job.InputAfterRename()), job.InputJoin(job.Input))
 			if err != nil {
-				log.Errorf("error renaming file: %v", err)
+				discord.Errorf("error renaming file: %v", err)
 			}
 			return false
 		}
@@ -497,7 +498,7 @@ func processFile(file os.DirEntry, parent string) bool {
 }
 
 func encode(matches func(s string) bool) error {
-	files, err := os.ReadDir(TheConfig.Input)
+	files, err := os.ReadDir(config.TheConfig.Input)
 	if err != nil {
 		return err
 	}
@@ -509,7 +510,7 @@ func encode(matches func(s string) bool) error {
 			}
 			for _, f := range fs {
 				if matches == nil || matches(f.Name()) {
-					if processFile(f, file.Name()) && TheConfig.RemoveOnSuccess {
+					if processFile(f, file.Name()) && config.TheConfig.RemoveOnSuccess {
 						err = os.RemoveAll(InputJoin(file.Name()))
 					}
 				}
@@ -543,6 +544,7 @@ var moviesKeywords = []string{
 	"your name",
 	"the garden of words",
 	"marnie",
+	"made in abyss",
 }
 var showsKeywords = []string{
 	"blessing on this wonderful world,specials,3",
@@ -559,6 +561,8 @@ var showsKeywords = []string{
 	"tower of god",
 	"nier",
 	"harem",
+	"Fairy Tail",
+	"Nokonoko",
 }
 var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
 var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
@@ -606,7 +610,8 @@ func stringToShow(keyword string) Show {
 func encodeShows(root string) {
 	files, err := os.ReadDir(root)
 	if err != nil {
-		log.Fatalf("error reading directory: %v", err)
+		discord.Errorf("error reading directory: %v", err)
+		return
 	}
 	for _, file := range files {
 		if file.IsDir() {
@@ -614,16 +619,17 @@ func encodeShows(root string) {
 				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
 					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
 					if err != nil {
-						log.Fatalf("error reading directory: %v", err)
+						discord.Errorf("error reading directory: %v", err)
+						return
 					}
 					for _, f := range fs {
 						p := func(matches func(s string) bool) {
 							root := filepath.Join(root, file.Name(), f.Name())
-							log.Infof("Scanning %s", root)
-							TheConfig.Input = root
+							discord.Infof("Scanning %s", root)
+							config.TheConfig.Input = root
 							err := encode(matches)
 							if err != nil {
-								log.Errorf("error: %v", err)
+								discord.Errorf("error: %v", err)
 							}
 						}
 						if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
@@ -663,18 +669,19 @@ func encodeShows(root string) {
 func encodeMovies(root string) {
 	files, err := os.ReadDir(root)
 	if err != nil {
-		log.Fatalf("error reading directory: %v", err)
+		discord.Errorf("error reading directory: %v", err)
+		return
 	}
 	for _, file := range files {
 		if file.IsDir() {
 			for _, keyword := range moviesKeywords {
 				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(keyword)) {
 					root := filepath.Join(root, file.Name())
-					log.Infof("Processing %s", root)
-					TheConfig.Input = root
+					discord.Infof("Processing %s", root)
+					config.TheConfig.Input = root
 					err = encode(nil)
 					if err != nil {
-						log.Errorf("error: %v", err)
+						discord.Errorf("error: %v", err)
 					}
 				}
 			}
@@ -684,11 +691,12 @@ func encodeMovies(root string) {
 
 func main() {
 	log.SetLevel(log.InfoLevel)
-	configure()
+	config.Configure()
+	discord.Init()
 	cleanup.InitSignalCallback()
-	log.Infof("Starting in %s mode", TheConfig.Mode)
-	switch TheConfig.Mode {
-	case EncodingMode:
+	discord.Infof("Starting in %s mode", config.TheConfig.Mode)
+	switch config.TheConfig.Mode {
+	case config.EncodingMode:
 		for _, keyword := range showsKeywords {
 			show := stringToShow(keyword)
 			PrintAsJson(show)
@@ -700,7 +708,7 @@ func main() {
 		for _, root := range moviesRoot {
 			encodeMovies(root)
 		}
-	case RESTMode:
+	case config.RESTMode:
 		REST()
 	}
 }

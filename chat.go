@@ -1,8 +1,9 @@
 package main
 
 import (
+	"Sparkle/config"
+	"Sparkle/discord"
 	"github.com/gtuk/discordwebhook"
-	log "github.com/sirupsen/logrus"
 	"os"
 )
 
@@ -14,8 +15,8 @@ type Chat struct {
 }
 
 func DiscordWebhook(chat string, name string, id string) {
-	avatarUrl := TheConfig.Host + "/static/pfp/" + id + ".png"
-	_, err := os.Stat(TheConfig.Output + "/pfp/" + id + ".png")
+	avatarUrl := config.TheConfig.Host + "/static/pfp/" + id + ".png"
+	_, err := os.Stat(config.TheConfig.Output + "/pfp/" + id + ".png")
 	message := discordwebhook.Message{
 		Username: &name,
 		Content:  &chat,
@@ -23,8 +24,8 @@ func DiscordWebhook(chat string, name string, id string) {
 	if err == nil {
 		message.AvatarUrl = &avatarUrl
 	}
-	err = discordwebhook.SendMessage(TheConfig.DiscordWebhook, message)
+	err = discordwebhook.SendMessage(config.TheConfig.DiscordWebhookChat, message)
 	if err != nil {
-		log.Errorf("error sending message to discord: %v", err)
+		discord.Errorf("error sending message to discord: %v", err)
 	}
 }

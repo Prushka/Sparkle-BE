@@ -3,7 +3,7 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
+	"Sparkle/discord"
 	"golang.org/x/sys/windows"
 )
 
@@ -17,7 +17,7 @@ func setPriorityWindows(pid int, priority uint32) error {
 	defer func(handle windows.Handle) {
 		err := windows.CloseHandle(handle)
 		if err != nil {
-			log.Errorf("error closing handle: %v", err)
+			discord.Errorf("error closing handle: %v", err)
 		}
 	}(handle)
 

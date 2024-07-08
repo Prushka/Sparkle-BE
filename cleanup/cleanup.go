@@ -13,6 +13,7 @@ import (
 const (
 	Redis = iota
 	Echo
+	Discord
 )
 
 type OnStop func(sig os.Signal)
