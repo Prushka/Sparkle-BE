@@ -57,12 +57,12 @@ func copyFile(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func PrintAsJson(v interface{}) {
+func AsJson(v interface{}) string {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		discord.Errorf(err.Error())
 	}
-	fmt.Println(string(b))
+	return string(b)
 }
 
 func calculateFileSHA256(filePath string) (string, error) {

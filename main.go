@@ -606,7 +606,7 @@ func encodeShows(root string, shows []Show) {
 													return true
 												}
 											} else {
-												fmt.Println("No episode number found")
+												discord.Infof("No episode number found")
 											}
 											return false
 										})
@@ -674,7 +674,7 @@ func process() {
 	shows := make([]Show, 0)
 	for _, keyword := range showSet.ToSlice() {
 		show := stringToShow(keyword)
-		PrintAsJson(show)
+		discord.Infof(AsJson(show))
 		shows = append(shows, show)
 	}
 	for _, root := range config.TheConfig.ShowDirs {
