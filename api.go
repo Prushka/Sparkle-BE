@@ -200,7 +200,7 @@ func REST() {
 		AllowCredentials: true,
 	}), middleware.GzipWithConfig(middleware.DefaultGzipConfig), middleware.Logger(), middleware.Recover())
 	routes()
-	cleanup.AddOnStopFunc(cleanup.Echo, func(_ os.Signal) {
+	cleanup.AddOnStopFunc(func(_ os.Signal) {
 		err := e.Close()
 		if err != nil {
 			return

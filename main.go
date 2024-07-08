@@ -564,7 +564,7 @@ func stringToShow(keyword string) Show {
 	return Show{Name: showName, Seasons: seasons}
 }
 
-func encodeShows(root string) {
+func encodeShows(root string, shows []Show) {
 	files, err := os.ReadDir(root)
 	if err != nil {
 		discord.Errorf("error reading directory: %v", err)
@@ -651,14 +651,11 @@ type EncodeList struct {
 	Movies []string `json:"movies"`
 }
 
-var showSet mapset.Set[string]
-var movieSet mapset.Set[string]
+var showSet = mapset.NewSet[string]()
+var movieSet = mapset.NewSet[string]()
 var smMutex sync.Mutex
 
-var shows []Show
-
 var re = regexp.MustCompile(`Season\s+\d+`)
-
 var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
 
 type Show struct {
@@ -674,13 +671,14 @@ type Season struct {
 func process() {
 	smMutex.Lock()
 	defer smMutex.Unlock()
+	shows := make([]Show, 0)
 	for _, keyword := range showSet.ToSlice() {
 		show := stringToShow(keyword)
 		PrintAsJson(show)
 		shows = append(shows, show)
 	}
 	for _, root := range config.TheConfig.ShowDirs {
-		encodeShows(root)
+		encodeShows(root, shows)
 	}
 	for _, root := range config.TheConfig.MovieDirs {
 		encodeMovies(root, movieSet.ToSlice())
@@ -697,6 +695,9 @@ func main() {
 	switch config.TheConfig.Mode {
 	case config.EncodingMode:
 		scheduler := gocron.NewScheduler(time.Now().Location())
+		cleanup.AddOnStopFunc(func(_ os.Signal) {
+			scheduler.Stop()
+		})
 		panicOnSec(scheduler.SingletonMode().Every(5).Minute().Do(func() {
 			encodeList := EncodeList{}
 			encodeListFile := config.TheConfig.EncodeListFile
@@ -714,11 +715,11 @@ func main() {
 			currShows := mapset.NewSet[string](encodeList.Shows...)
 			currMovies := mapset.NewSet[string](encodeList.Movies...)
 			changed := false
-			if showSet == nil || !showSet.Equal(currShows) {
+			if !showSet.Equal(currShows) {
 				showSet = currShows
 				changed = true
 			}
-			if movieSet == nil || !movieSet.Equal(currMovies) {
+			if !movieSet.Equal(currMovies) {
 				movieSet = currMovies
 				changed = true
 			}
@@ -732,6 +733,8 @@ func main() {
 		panicOnSec(scheduler.SingletonMode().Every(2).Hours().Do(func() {
 			process()
 		}))
+		scheduler.StartAsync()
+		<-blocking
 	case config.RESTMode:
 		REST()
 	}
