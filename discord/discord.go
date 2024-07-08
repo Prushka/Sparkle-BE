@@ -99,7 +99,7 @@ func Init() {
 		log.Fatalf("error scheduling discord service: %v", err)
 	}
 	scheduler.StartAsync()
-	cleanup.AddOnStopFunc(cleanup.Discord, func(_ os.Signal) {
+	cleanup.AddOnStopFunc(func(_ os.Signal) {
 		scheduler.Stop()
 		if len(messages) > 0 {
 			messageTick()

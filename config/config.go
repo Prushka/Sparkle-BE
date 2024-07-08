@@ -46,10 +46,14 @@ type Config struct {
 	EnableRename               bool `env:"DISABLED_RENAME" envDefault:"false"`
 	EnableLowPriority          bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
 
-	DiscordName         string `env:"DISCORD_NAME" envDefault:"Encoding"`
-	DiscordWebhookError string `env:"DISCORD_WEBHOOK_ERROR" envDefault:""`
-	DiscordWebhookInfo  string `env:"DISCORD_WEBHOOK_INFO" envDefault:""`
-	DiscordWebhookChat  string `env:"DISCORD_WEBHOOK_CHAT" envDefault:""`
+	DiscordName         string   `env:"DISCORD_NAME" envDefault:"Encoding"`
+	DiscordWebhookError string   `env:"DISCORD_WEBHOOK_ERROR" envDefault:""`
+	DiscordWebhookInfo  string   `env:"DISCORD_WEBHOOK_INFO" envDefault:""`
+	DiscordWebhookChat  string   `env:"DISCORD_WEBHOOK_CHAT" envDefault:""`
+	PGUrl               string   `env:"PG_URL" envDefault:""`
+	EncodeListFile      string   `env:"ENCODE_LIST_FILE" envDefault:"encode_list.json"`
+	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
+	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 }
 
 var TheConfig = &Config{}

@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cenkalti/dominantcolor"
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 	"image"
 	"math"
@@ -537,51 +539,6 @@ func newRandomString(jobs []*JobStripped, n int) string {
 	}
 }
 
-var moviesKeywords = []string{
-	"heron",
-	"suzume",
-	"weathering with",
-	"your name",
-	"the garden of words",
-	"marnie",
-	"made in abyss",
-}
-var showsKeywords = []string{
-	"blessing on this wonderful world,specials,3",
-	"kaiju,1|7",
-	"mushoku,2",
-	"MERCHANT MEETS THE WISE WOLF",
-	"the new gate",
-	"jellyfish,1|9",
-	"made in abyss",
-	"demon slayer,3|9,4,5",
-	"Stepsister",
-	"Alya Sometimes",
-	"Oshi No Ko",
-	"tower of god",
-	"nier",
-	"harem",
-	"Fairy Tail",
-	"Nokonoko",
-}
-var showsRoots = []string{"O:\\Managed-Videos\\Anime"}
-var moviesRoot = []string{"O:\\Managed-Videos\\Movies"}
-var shows []Show
-
-var re = regexp.MustCompile(`Season\s+\d+`)
-
-var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
-
-type Show struct {
-	Name    string
-	Seasons map[string]Season
-}
-
-type Season struct {
-	Name         string
-	StartEpisode *int
-}
-
 func stringToShow(keyword string) Show {
 	s := strings.Split(keyword, ",")
 	showName := s[0]
@@ -666,7 +623,7 @@ func encodeShows(root string) {
 	}
 }
 
-func encodeMovies(root string) {
+func encodeMovies(root string, movies []string) {
 	files, err := os.ReadDir(root)
 	if err != nil {
 		discord.Errorf("error reading directory: %v", err)
@@ -674,7 +631,7 @@ func encodeMovies(root string) {
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			for _, keyword := range moviesKeywords {
+			for _, keyword := range movies {
 				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(keyword)) {
 					root := filepath.Join(root, file.Name())
 					discord.Infof("Processing %s", root)
@@ -689,26 +646,99 @@ func encodeMovies(root string) {
 	}
 }
 
+type EncodeList struct {
+	Shows  []string `json:"shows"`
+	Movies []string `json:"movies"`
+}
+
+var showSet mapset.Set[string]
+var movieSet mapset.Set[string]
+var smMutex sync.Mutex
+
+var shows []Show
+
+var re = regexp.MustCompile(`Season\s+\d+`)
+
+var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
+
+type Show struct {
+	Name    string
+	Seasons map[string]Season
+}
+
+type Season struct {
+	Name         string
+	StartEpisode *int
+}
+
+func process() {
+	smMutex.Lock()
+	defer smMutex.Unlock()
+	for _, keyword := range showSet.ToSlice() {
+		show := stringToShow(keyword)
+		PrintAsJson(show)
+		shows = append(shows, show)
+	}
+	for _, root := range config.TheConfig.ShowDirs {
+		encodeShows(root)
+	}
+	for _, root := range config.TheConfig.MovieDirs {
+		encodeMovies(root, movieSet.ToSlice())
+	}
+}
+
 func main() {
 	log.SetLevel(log.InfoLevel)
 	config.Configure()
 	discord.Init()
-	cleanup.InitSignalCallback()
+	blocking := make(chan bool, 1)
+	cleanup.InitSignalCallback(blocking)
 	discord.Infof("Starting in %s mode", config.TheConfig.Mode)
 	switch config.TheConfig.Mode {
 	case config.EncodingMode:
-		for _, keyword := range showsKeywords {
-			show := stringToShow(keyword)
-			PrintAsJson(show)
-			shows = append(shows, show)
-		}
-		for _, root := range showsRoots {
-			encodeShows(root)
-		}
-		for _, root := range moviesRoot {
-			encodeMovies(root)
-		}
+		scheduler := gocron.NewScheduler(time.Now().Location())
+		panicOnSec(scheduler.SingletonMode().Every(5).Minute().Do(func() {
+			encodeList := EncodeList{}
+			encodeListFile := config.TheConfig.EncodeListFile
+			if _, err := os.Stat(encodeListFile); err == nil {
+				content, err := os.ReadFile(encodeListFile)
+				if err != nil {
+					discord.Errorf("error reading file: %v", err)
+				}
+				err = json.Unmarshal(content, &encodeList)
+				if err != nil {
+					discord.Errorf("error unmarshalling file: %v", err)
+				}
+			}
+			smMutex.Lock()
+			currShows := mapset.NewSet[string](encodeList.Shows...)
+			currMovies := mapset.NewSet[string](encodeList.Movies...)
+			changed := false
+			if showSet == nil || !showSet.Equal(currShows) {
+				showSet = currShows
+				changed = true
+			}
+			if movieSet == nil || !movieSet.Equal(currMovies) {
+				movieSet = currMovies
+				changed = true
+			}
+			smMutex.Unlock()
+			if changed {
+				discord.Infof("List updated: %v", encodeList)
+				process()
+			}
+		}))
+
+		panicOnSec(scheduler.SingletonMode().Every(2).Hours().Do(func() {
+			process()
+		}))
 	case config.RESTMode:
 		REST()
+	}
+}
+
+func panicOnSec(a interface{}, err error) {
+	if err != nil {
+		panic(err)
 	}
 }
