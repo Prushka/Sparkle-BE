@@ -469,7 +469,7 @@ func processFile(file os.DirEntry, parent string) bool {
 			}
 		}
 		job := Job{
-			Id:          newRandomString(jobs, 5),
+			Id:          newRandomString(5),
 			InputParent: parent,
 			Input:       file.Name(),
 			OriSize:     stats.Size(),
@@ -526,14 +526,11 @@ func encode(matches func(s string) bool) error {
 	return nil
 }
 
-func newRandomString(jobs []*JobStripped, n int) string {
-	existing := make(map[string]bool)
-	for _, job := range jobs {
-		existing[job.Id] = true
-	}
+func newRandomString(n int) string {
 	for {
 		s := RandomString(n)
-		if !existing[s] {
+		if !sessionIds.Contains(s) {
+			sessionIds.Add(s)
 			return s
 		}
 	}
@@ -668,10 +665,21 @@ type Season struct {
 	StartEpisode *int
 }
 
+var sessionIds = mapset.NewSet[string]()
+
 func process() {
 	smMutex.Lock()
 	defer smMutex.Unlock()
 	shows := make([]Show, 0)
+	sessionIds.Clear()
+	jobs, err := jobsCache.Get(true)
+	if err != nil {
+		discord.Errorf("error getting all jobs: %v", err)
+		return
+	}
+	for _, job := range jobs {
+		sessionIds.Add(job.Id)
+	}
 	for _, keyword := range showSet.ToSlice() {
 		show := stringToShow(keyword)
 		discord.Infof(AsJson(show))
