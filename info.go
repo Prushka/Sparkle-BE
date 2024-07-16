@@ -61,6 +61,7 @@ type JobStripped struct {
 	Files          map[string]int64
 	OriSize        int64 `json:",omitempty"`
 	OriModTime     int64 `json:",omitempty"`
+	JobModTime     int64 `json:",omitempty"`
 }
 
 type StreamStripped struct {

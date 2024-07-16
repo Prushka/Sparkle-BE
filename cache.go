@@ -30,6 +30,9 @@ func populate(path string) *JobStripped {
 		stat, err := os.Stat(OutputJoin(path, file.Name()))
 		if err == nil {
 			fileSizes[file.Name()] = stat.Size()
+			if time.Unix(job.JobModTime, 0).Before(stat.ModTime()) {
+				job.JobModTime = stat.ModTime().Unix()
+			}
 		}
 	}
 	job.Files = fileSizes
