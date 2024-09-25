@@ -9,6 +9,7 @@ const (
 	EncodingMode = "encoding"
 	RESTMode     = "rest"
 	CLEARMode    = "clear"
+	DEDUPMode    = "dedup"
 )
 
 type Config struct {

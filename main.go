@@ -765,6 +765,9 @@ func main() {
 				}
 			}
 		}
+	case config.DEDUPMode:
+		root := "/Users/dan/Downloads/test"
+		dedup(root)
 	}
 }
 
