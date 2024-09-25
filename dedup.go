@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/sha512"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -58,8 +59,8 @@ func DeleteDuplicateFiles(files []DupFile) error {
 			return err
 		}
 		if !bytes.Equal(hash, firstHash) {
-			log.Errorf("Files %s and %s have different content", files[0], dupFile)
-			return nil
+			log.Errorf("Files %s and %s have different content", files[0].Path, dupFile.Path)
+			return errors.New("files have different content")
 		}
 	}
 	for _, dupFile := range files[1:] {
@@ -77,14 +78,11 @@ func DeleteDuplicateFiles(files []DupFile) error {
 func findDuplicates(root string) (map[string][]DupFile, error) {
 	sizeMap := make(map[int64][]string)
 
-	// First pass: Walk the directory tree, group files by size
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			// Can't access the path, skip it
 			return nil
 		}
 		if !info.Mode().IsRegular() {
-			// Not a regular file, skip it
 			return nil
 		}
 
@@ -96,16 +94,12 @@ func findDuplicates(root string) (map[string][]DupFile, error) {
 		return nil, err
 	}
 
-	// Second pass: For files with the same size, compute MD5 hash
-	hashMap := make(map[string][]DupFile) // map from hash to list of file paths
+	hashMap := make(map[string][]DupFile)
 
 	for size, files := range sizeMap {
 		if len(files) < 2 {
-			// Only one file of this size, cannot be duplicate
 			continue
 		}
-
-		// For files of the same size, compute their MD5 hash
 		for _, file := range files {
 			hash, err := computeMD5(file)
 			if err != nil {
