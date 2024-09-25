@@ -8,6 +8,7 @@ import (
 const (
 	EncodingMode = "encoding"
 	RESTMode     = "rest"
+	CLEARMode    = "clear"
 )
 
 type Config struct {

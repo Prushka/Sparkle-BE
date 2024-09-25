@@ -315,11 +315,14 @@ func (job *Job) renameAndMove(source string, dest string) {
 				discord.Errorf("error copying file: %s->%s %v", source, dest, err)
 			}
 		}
+		discord.Infof("Moved %s to %s", source, dest)
 	}
 }
 
 func (job *Job) thumbnailsNfo() (err error) {
+	discord.Infof("Generating thumbnails and nfo files")
 	job.renameAndMove("movie.nfo", "info.nfo")
+	job.renameAndMove("tvshow.nfo", "info.nfo")
 	job.renameAndMove(job.InputName()+".nfo", "info.nfo")
 	job.renameAndMove(job.InputName()+"-thumb.jpg", "poster.jpg")
 	job.renameAndMove("poster.jpg", "poster.jpg")
@@ -336,7 +339,7 @@ func (job *Job) extractDominantColor() (err error) {
 		}
 	}(f)
 	if err != nil {
-		discord.Errorf("Poster not found")
+		discord.Errorf("Poster not found: " + job.OutputJoin("poster.jpg"))
 		return err
 	}
 	img, _, err := image.Decode(f)
@@ -745,6 +748,23 @@ func main() {
 		<-blocking
 	case config.RESTMode:
 		REST()
+	case config.CLEARMode:
+		titleId := "harem"
+		jobs, err := jobsCache.Get(true)
+		if err != nil {
+			discord.Errorf("error getting all jobs: %v", err)
+			return
+		}
+		for _, job := range jobs {
+			id := getTitleId(job.Input)
+			if strings.Contains(id, titleId) {
+				discord.Infof("File: %s, remove old, %s", OutputJoin(job.Id), job.Input)
+				err := os.RemoveAll(OutputJoin(job.Id))
+				if err != nil {
+					discord.Errorf("error removing file: %v", err)
+				}
+			}
+		}
 	}
 }
 
