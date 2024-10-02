@@ -232,10 +232,11 @@ func Exit(room *Room, player *Player) {
 }
 
 func routes() {
+	e.Static("/static", config.TheConfig.Output)
 	e.GET("/all", func(c echo.Context) error {
 		return c.String(http.StatusOK, jobsCache.GetMarshalled())
 	})
-	e.GET("/force/refresh", func(c echo.Context) error {
+	e.GET("/purge", func(c echo.Context) error {
 		_, err := jobsCache.Get(true)
 		if err != nil {
 			return err
