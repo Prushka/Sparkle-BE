@@ -57,6 +57,8 @@ type Config struct {
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
+	PurgeCacheUrl string `env:"PURGE_CACHE_URL" envDefault:""`
+
 	Fast bool `env:"FAST" envDefault:"false"`
 }
 

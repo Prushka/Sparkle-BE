@@ -269,11 +269,9 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
-	if config.TheConfig.EnableSprite && !config.TheConfig.Fast {
-		err = job.spriteVtt()
-		if err != nil {
-			return err
-		}
+	err = job.probe()
+	if err != nil {
+		return err
 	}
 	if config.TheConfig.EnableEncode {
 		if config.TheConfig.Fast {
@@ -384,7 +382,7 @@ func (job *Job) extractDominantColor() (err error) {
 	return nil
 }
 
-func (job *Job) spriteVtt() (err error) {
+func (job *Job) probe() (err error) {
 	vttFile := job.OutputJoin(ThumbnailVtt)
 	videoFile := job.InputJoin(job.InputAfterRename())
 	thumbnailHeight := config.TheConfig.ThumbnailHeight
@@ -409,6 +407,11 @@ func (job *Job) spriteVtt() (err error) {
 	job.Height, _ = strconv.Atoi(aspectRatioParts[1])
 	aspectRatio := float64(job.Width) / float64(job.Height)
 	discord.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
+
+	if !config.TheConfig.EnableSprite || config.TheConfig.Fast {
+		return
+	}
+
 	numThumbnailsPerChunk := chunkInterval / thumbnailInterval
 	numChunks := int(math.Ceil(job.Duration / float64(chunkInterval)))
 	thumbnailWidth := int(math.Round(float64(thumbnailHeight) * aspectRatio))
