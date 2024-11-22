@@ -166,6 +166,7 @@ func (job *Job) handbrakeTranscode() error {
 			"--aencoder", "opus",
 			"--audio-lang-list", "any",
 			"--all-audio",
+			"--optimize", // web optimized
 			"--mixdown", "stereo"}
 		if encoderProfile != "" {
 			args = append(args, "--encoder-profile", encoderProfile)
