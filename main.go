@@ -495,7 +495,8 @@ func processFile(file os.DirEntry, parent string) bool {
 			if currId == prevId {
 				discord.Infof("File exists: %s", file.Name())
 				if job.State == Complete && len(job.EncodedCodecs) > 0 &&
-					(job.OriSize == 0 || job.OriSize == stats.Size()) && job.Fast == config.TheConfig.Fast {
+					(job.OriSize == 0 || job.OriSize == stats.Size()) &&
+					(!job.Fast || config.TheConfig.Fast) {
 					return false
 				} else {
 					discord.Infof("File modified or prev encoding incomplete: %s, remove old", file.Name())
