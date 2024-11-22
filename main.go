@@ -148,6 +148,27 @@ func (job *Job) extractStreams(path, t string) error {
 	return nil
 }
 
+func (job *Job) ffmpegCopyOnly() error {
+	outputFile := job.OutputJoin(fmt.Sprintf("hevc.%s", config.TheConfig.VideoExt))
+	discord.Infof("Converting video: %s -> %s", job.Input, outputFile)
+	args := []string{
+		"-i", job.InputJoin(job.InputAfterRename()),
+		"-map", "0",
+		"-c:v", "copy",
+		"-c:a", "copy",
+		"-c:s", "none",
+		"-map", "-0:s",
+		outputFile,
+	}
+	cmd := exec.Command(
+		config.TheConfig.Ffmpeg, args...)
+	_, err := runCommand(cmd)
+	if err == nil {
+		job.EncodedCodecs = append(job.EncodedCodecs, "hevc")
+	}
+	return err
+}
+
 func (job *Job) handbrakeTranscode() error {
 	encoders := strings.Split(config.TheConfig.Encoder, ",")
 	wg := sync.WaitGroup{}
@@ -246,16 +267,23 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
-	if config.TheConfig.EnableSprite {
+	if config.TheConfig.EnableSprite && !config.TheConfig.Fast {
 		err = job.spriteVtt()
 		if err != nil {
 			return err
 		}
 	}
 	if config.TheConfig.EnableEncode {
-		err = job.handbrakeTranscode()
-		if err != nil {
-			return err
+		if config.TheConfig.Fast {
+			err = job.ffmpegCopyOnly()
+			if err != nil {
+				return err
+			}
+		} else {
+			err = job.handbrakeTranscode()
+			if err != nil {
+				return err
+			}
 		}
 		if len(job.EncodedCodecs) > 0 {
 			err = job.extractStreams(job.GetCodecVideo(job.EncodedCodecs[0]), AudioType)
@@ -585,6 +613,7 @@ func encodeShows(root string, shows []Show) {
 							root := filepath.Join(root, file.Name(), f.Name())
 							discord.Infof("Scanning %s", root)
 							config.TheConfig.Input = root
+							updateConfig(show.ToEncode)
 							err := encode(matches)
 							if err != nil {
 								discord.Errorf("error: %v", err)
@@ -624,7 +653,7 @@ func encodeShows(root string, shows []Show) {
 	}
 }
 
-func encodeMovies(root string, movies []string) {
+func encodeMovies(root string, movies []Movie) {
 	files, err := os.ReadDir(root)
 	if err != nil {
 		discord.Errorf("error reading directory: %v", err)
@@ -632,11 +661,12 @@ func encodeMovies(root string, movies []string) {
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			for _, keyword := range movies {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(keyword)) {
+			for _, movie := range movies {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) {
 					root := filepath.Join(root, file.Name())
 					discord.Infof("Processing %s", root)
 					config.TheConfig.Input = root
+					updateConfig(movie.ToEncode)
 					err = encode(nil)
 					if err != nil {
 						discord.Errorf("error: %v", err)
@@ -644,6 +674,15 @@ func encodeMovies(root string, movies []string) {
 				}
 			}
 		}
+	}
+}
+
+func updateConfig(te ToEncode) {
+	config.TheConfig.Fast = te.Fast
+	if te.Fast {
+		config.TheConfig.Output = filepath.Join(config.TheConfig.Output, "temp")
+	} else {
+		config.TheConfig.Output = config.TheConfig.OriginalOutput
 	}
 }
 
@@ -659,9 +698,19 @@ var smMutex sync.Mutex
 var re = regexp.MustCompile(`Season\s+\d+`)
 var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
 
+type ToEncode struct {
+	Fast bool
+}
+
+type Movie struct {
+	Name string
+	ToEncode
+}
+
 type Show struct {
 	Name    string
 	Seasons map[string]Season
+	ToEncode
 }
 
 type Season struct {
@@ -671,10 +720,18 @@ type Season struct {
 
 var sessionIds = mapset.NewSet[string]()
 
+func isFast(keyword string) (bool, string) {
+	if strings.HasPrefix(keyword, "f:") {
+		return true, keyword[2:]
+	}
+	return false, keyword
+}
+
 func process() {
 	smMutex.Lock()
 	defer smMutex.Unlock()
 	shows := make([]Show, 0)
+	movies := make([]Movie, 0)
 	sessionIds.Clear()
 	jobs, err := jobsCache.Get(true)
 	if err != nil {
@@ -685,15 +742,24 @@ func process() {
 		sessionIds.Add(job.Id)
 	}
 	for _, keyword := range showSet.ToSlice() {
+		isFast, keyword := isFast(keyword)
 		show := stringToShow(keyword)
+		show.Fast = isFast
 		discord.Infof(AsJson(show))
 		shows = append(shows, show)
+	}
+	for _, keyword := range movieSet.ToSlice() {
+		isFast, keyword := isFast(keyword)
+		movie := Movie{Name: keyword}
+		movie.Fast = isFast
+		discord.Infof(AsJson(movie))
+		movies = append(movies, movie)
 	}
 	for _, root := range config.TheConfig.ShowDirs {
 		encodeShows(root, shows)
 	}
 	for _, root := range config.TheConfig.MovieDirs {
-		encodeMovies(root, movieSet.ToSlice())
+		encodeMovies(root, movies)
 	}
 }
 

@@ -16,6 +16,7 @@ type Config struct {
 	Redis                  string `env:"REDIS" envDefault:"localhost:6379"`
 	RedisPassword          string `env:"REDIS_PASSWORD" envDefault:""`
 	Output                 string `env:"OUTPUT" envDefault:"./output"`
+	OriginalOutput         string
 	Input                  string `env:"INPUT" envDefault:"./input"`
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
@@ -55,6 +56,8 @@ type Config struct {
 	EncodeListFile      string   `env:"ENCODE_LIST_FILE" envDefault:"encode_list.json"`
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
+
+	Fast bool `env:"FAST" envDefault:"false"`
 }
 
 var TheConfig = &Config{}
@@ -64,4 +67,5 @@ func Configure() {
 	if err != nil {
 		log.Fatalf("error parsing config: %v", err)
 	}
+	TheConfig.OriginalOutput = TheConfig.Output
 }
