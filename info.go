@@ -96,6 +96,7 @@ type Job struct {
 	DominantColors []string
 	OriSize        int64
 	OriModTime     int64
+	Fast           bool
 }
 
 type Stream struct {
