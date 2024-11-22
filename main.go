@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"image"
 	"math"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -153,10 +154,11 @@ func (job *Job) ffmpegCopyOnly() error {
 	discord.Infof("Converting video: %s -> %s", job.Input, outputFile)
 	args := []string{
 		"-i", job.InputJoin(job.InputAfterRename()),
-		"-map", "0",
+		"-map", "0:v",
 		"-c:v", "copy",
-		"-c:a", "copy",
-		"-c:s", "none",
+		"-map", "0:a",
+		"-c:a", "libopus",
+		"-ac", "2",
 		"-map", "-0:s",
 		outputFile,
 	}
@@ -489,7 +491,8 @@ func processFile(file os.DirEntry, parent string) bool {
 			prevId := getTitleId(job.Input)
 			if currId == prevId {
 				discord.Infof("File exists: %s", file.Name())
-				if job.State == Complete && len(job.EncodedCodecs) > 0 && (job.OriSize == 0 || job.OriSize == stats.Size()) {
+				if job.State == Complete && len(job.EncodedCodecs) > 0 &&
+					(job.OriSize == 0 || job.OriSize == stats.Size()) && job.Fast == config.TheConfig.Fast {
 					return false
 				} else {
 					discord.Infof("File modified or prev encoding incomplete: %s, remove old", file.Name())
@@ -512,6 +515,8 @@ func processFile(file os.DirEntry, parent string) bool {
 		err = job.pipeline()
 		if err != nil {
 			discord.Errorf("error processing file: %v", err)
+		} else {
+			totalProcessed++
 		}
 		discord.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		if job.State == Complete && config.TheConfig.RemoveOnSuccess {
@@ -679,11 +684,6 @@ func encodeMovies(root string, movies []Movie) {
 
 func updateConfig(te ToEncode) {
 	config.TheConfig.Fast = te.Fast
-	if te.Fast {
-		config.TheConfig.Output = filepath.Join(config.TheConfig.Output, "temp")
-	} else {
-		config.TheConfig.Output = config.TheConfig.OriginalOutput
-	}
 }
 
 type EncodeList struct {
@@ -727,7 +727,10 @@ func isFast(keyword string) (bool, string) {
 	return false, keyword
 }
 
+var totalProcessed = 0
+
 func process() {
+	totalProcessed = 0
 	smMutex.Lock()
 	defer smMutex.Unlock()
 	shows := make([]Show, 0)
@@ -760,6 +763,13 @@ func process() {
 	}
 	for _, root := range config.TheConfig.MovieDirs {
 		encodeMovies(root, movies)
+	}
+	discord.Infof("Total processed: %d", totalProcessed)
+	if totalProcessed > 0 && len(config.TheConfig.PurgeCacheUrl) > 0 {
+		_, err := http.Get(config.TheConfig.PurgeCacheUrl)
+		if err != nil {
+			discord.Errorf("error purging cache: %v", err)
+		}
 	}
 }
 
