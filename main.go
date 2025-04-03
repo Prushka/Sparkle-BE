@@ -781,12 +781,7 @@ func process() {
 		encodeMovies(root, movies)
 	}
 	discord.Infof("Total processed: %d", totalProcessed)
-	if totalProcessed > 0 && len(config.TheConfig.PurgeCacheUrl) > 0 {
-		_, err := http.Get(config.TheConfig.PurgeCacheUrl)
-		if err != nil {
-			discord.Errorf("error purging cache: %v", err)
-		}
-	}
+	totalDeleted := 0
 	if config.TheConfig.EnableCleanup {
 		discord.Infof("Cleaning up old files")
 		jobs, err := jobsCache.Get(false)
@@ -811,8 +806,17 @@ func process() {
 				err := os.RemoveAll(OutputJoin(job.Id))
 				if err != nil {
 					discord.Errorf("error removing file: %v", err)
+				} else {
+					totalDeleted++
 				}
 			}
+		}
+	}
+
+	if (totalProcessed > 0 || totalDeleted > 0) && len(config.TheConfig.PurgeCacheUrl) > 0 {
+		_, err := http.Get(config.TheConfig.PurgeCacheUrl)
+		if err != nil {
+			discord.Errorf("error purging cache: %v", err)
 		}
 	}
 }
