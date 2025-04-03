@@ -291,6 +291,14 @@ func (job *Job) pipeline() error {
 				return err
 			}
 			job.mapAudioTracks()
+			for _, audio := range job.Streams {
+				if audio.CodecType == AudioType {
+					err = os.Remove(job.OutputJoin(audio.Location))
+					if err != nil {
+						discord.Errorf("error removing file: %v", err)
+					}
+				}
+			}
 		}
 	}
 	err = job.updateState(Complete)
@@ -738,6 +746,9 @@ func process() {
 	totalProcessed = 0
 	smMutex.Lock()
 	defer smMutex.Unlock()
+	if showSet.Cardinality() == 0 && movieSet.Cardinality() == 0 {
+		return
+	}
 	shows := make([]Show, 0)
 	movies := make([]Movie, 0)
 	sessionIds.Clear()
@@ -774,6 +785,34 @@ func process() {
 		_, err := http.Get(config.TheConfig.PurgeCacheUrl)
 		if err != nil {
 			discord.Errorf("error purging cache: %v", err)
+		}
+	}
+	if config.TheConfig.EnableCleanup {
+		discord.Infof("Cleaning up old files")
+		jobs, err := jobsCache.Get(false)
+		if err != nil {
+			discord.Errorf("error getting all jobs: %v", err)
+			return
+		}
+		for _, job := range jobs {
+			markedForRemoval := true
+			for _, show := range shows {
+				if strings.Contains(strings.ToLower(job.Input), strings.ToLower(show.Name)) {
+					markedForRemoval = false
+				}
+			}
+			for _, movie := range movies {
+				if strings.Contains(strings.ToLower(job.Input), strings.ToLower(movie.Name)) {
+					markedForRemoval = false
+				}
+			}
+			if markedForRemoval {
+				discord.Infof("File: %s, remove old, %s", OutputJoin(job.Id), job.Input)
+				err := os.RemoveAll(OutputJoin(job.Id))
+				if err != nil {
+					discord.Errorf("error removing file: %v", err)
+				}
+			}
 		}
 	}
 }

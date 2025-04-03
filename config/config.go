@@ -25,7 +25,7 @@ type Config struct {
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"21"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
-	Encoder                string `env:"ENCODER" envDefault:"av1,hevc,h264-8bit"`
+	Encoder                string `env:"ENCODER" envDefault:"av1"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
 	Av1Preset              string `env:"AV1_PRESET" envDefault:"6"`
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
@@ -47,6 +47,7 @@ type Config struct {
 	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
 	EnableRename               bool `env:"DISABLED_RENAME" envDefault:"false"`
 	EnableLowPriority          bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
+	EnableCleanup              bool `env:"ENABLE_CLEANUP" envDefault:"true"`
 
 	DiscordName         string   `env:"DISCORD_NAME" envDefault:"Encoding"`
 	DiscordWebhookError string   `env:"DISCORD_WEBHOOK_ERROR" envDefault:""`
