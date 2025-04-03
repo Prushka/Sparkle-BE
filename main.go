@@ -811,6 +811,7 @@ func process() {
 				}
 			}
 		}
+		discord.Infof("Total deleted: %d", totalDeleted)
 	}
 
 	if (totalProcessed > 0 || totalDeleted > 0) && len(config.TheConfig.PurgeCacheUrl) > 0 {
