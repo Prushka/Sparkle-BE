@@ -20,8 +20,7 @@ type Config struct {
 	Input                  string `env:"INPUT" envDefault:"./input"`
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
-	Opusenc                string `env:"OPUSENC" envDefault:"opusenc"`
-	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
+	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"./HandBrakeCLI"`
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"21"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
