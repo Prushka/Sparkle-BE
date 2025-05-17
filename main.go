@@ -99,7 +99,7 @@ func (job *Job) extractStreams(path, t string) error {
 			var cmd *exec.Cmd
 			var err error
 			convert := func(codec, cs, filename string) error {
-				discord.Infof("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
+				log.Debugf("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
 				s := Stream{
 					CodecName: codec,
 					CodecType: stream.CodecType,
@@ -199,6 +199,7 @@ func (job *Job) handbrakeTranscode() error {
 		}
 		cmd := exec.Command(
 			config.TheConfig.HandbrakeCli, args...)
+		log.Infof("Command: %s", cmd.String())
 		wg.Add(1)
 		go func() {
 			_, err := runCommand(cmd)
@@ -269,10 +270,6 @@ func (job *Job) pipeline() error {
 	if err != nil {
 		return err
 	}
-	err = job.probe()
-	if err != nil {
-		return err
-	}
 	if config.TheConfig.EnableEncode {
 		if config.TheConfig.Fast {
 			err = job.ffmpegCopyOnly()
@@ -301,12 +298,18 @@ func (job *Job) pipeline() error {
 			}
 		}
 	}
+	if len(job.EncodedCodecs) > 0 {
+		err = job.probe()
+		if err != nil {
+			return err
+		}
+	}
 	err = job.updateState(Complete)
 	if err != nil {
 		return err
 	}
 	for _, codec := range job.EncodedCodecs {
-		err = os.Remove(job.OutputJoin(fmt.Sprintf("%s.%s", codec, config.TheConfig.VideoExt)))
+		err = os.Remove(job.GetCodecVideo(codec))
 	}
 	return nil
 }
@@ -392,7 +395,7 @@ func (job *Job) extractDominantColor() (err error) {
 
 func (job *Job) probe() (err error) {
 	vttFile := job.OutputJoin(ThumbnailVtt)
-	videoFile := job.InputJoin(job.InputAfterRename())
+	videoFile := job.GetCodecVideo(job.EncodedCodecs[0])
 	thumbnailHeight := config.TheConfig.ThumbnailHeight
 	thumbnailInterval := config.TheConfig.ThumbnailInterval
 	chunkInterval := config.TheConfig.ThumbnailChunkInterval
@@ -497,11 +500,11 @@ func processFile(file os.DirEntry, parent string) bool {
 			return false
 		}
 		currId := getTitleId(file.Name())
-		discord.Infof("Current ID: %s", currId)
+		log.Debugf("Current ID: %s", currId)
 		for _, job := range jobs {
 			prevId := getTitleId(job.Input)
 			if currId == prevId {
-				discord.Infof("File exists: %s", file.Name())
+				log.Debugf("File exists: %s", file.Name())
 				if job.State == Complete && len(job.EncodedCodecs) > 0 &&
 					(job.OriSize == 0 || job.OriSize == stats.Size()) &&
 					(!job.Fast || config.TheConfig.Fast) {
