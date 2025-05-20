@@ -414,11 +414,12 @@ func (job *Job) updateDuration(videoFile string) error {
 		discord.Errorf("Error getting video actual duration: %v\n", err)
 	} else {
 		split := strings.Split(strings.TrimSuffix(strings.TrimSpace(string(actual)), "\n"), "\n")
-		last := split[len(split)-1]
-		actualFloat, _ := strconv.ParseFloat(strings.TrimSpace(last), 64)
-		if actualFloat > 0 {
-			job.Duration = actualFloat
-			discord.Infof("Actual duration: %.2f", job.Duration)
+		if len(split) != 0 {
+			actualFloat, _ := strconv.ParseFloat(strings.TrimSpace(split[len(split)-1]), 64)
+			if actualFloat > 0 {
+				job.Duration = actualFloat
+				discord.Infof("Actual duration: %.2f", job.Duration)
+			}
 		}
 	}
 	if job.Duration == 0 {
