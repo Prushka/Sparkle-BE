@@ -393,21 +393,51 @@ func (job *Job) extractDominantColor() (err error) {
 	return nil
 }
 
+func (job *Job) updateDuration(videoFile string) error {
+	out, err := runCommand(exec.Command(config.TheConfig.Ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile))
+	if err != nil {
+		discord.Errorf("Error getting video duration: %v\n", err)
+	} else {
+		job.Duration, _ = strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+		discord.Infof("Container duration: %.2f", job.Duration)
+	}
+
+	actual, err := runCommand(exec.Command(
+		config.TheConfig.Ffprobe,
+		"-select_streams", "v:0",
+		"-show_entries", "packet=pts_time",
+		"-of", "csv=print_section=0",
+		"-v", "quiet",
+		videoFile,
+	))
+	if err != nil {
+		discord.Errorf("Error getting video actual duration: %v\n", err)
+	} else {
+		split := strings.Split(strings.TrimSuffix(strings.TrimSpace(string(actual)), "\n"), "\n")
+		last := split[len(split)-1]
+		actualFloat, _ := strconv.ParseFloat(strings.TrimSpace(last), 64)
+		if actualFloat > 0 {
+			job.Duration = actualFloat
+			discord.Infof("Actual duration: %.2f", job.Duration)
+		}
+	}
+	if job.Duration == 0 {
+		return fmt.Errorf("error getting video duration")
+	}
+	return nil
+}
+
 func (job *Job) probe() (err error) {
 	vttFile := job.OutputJoin(ThumbnailVtt)
 	videoFile := job.GetCodecVideo(job.EncodedCodecs[0])
 	thumbnailHeight := config.TheConfig.ThumbnailHeight
 	thumbnailInterval := config.TheConfig.ThumbnailInterval
 	chunkInterval := config.TheConfig.ThumbnailChunkInterval
-
-	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile).Output()
+	err = job.updateDuration(videoFile)
 	if err != nil {
-		discord.Errorf("Error getting video duration: %v\n", err)
 		return
 	}
-	job.Duration, _ = strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
-
-	out, err = exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", videoFile).Output()
+	out, err := exec.Command(config.TheConfig.Ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", videoFile).Output()
 	if err != nil {
 		discord.Errorf("Error getting video aspect ratio: %v\n", err)
 		return
@@ -432,7 +462,7 @@ func (job *Job) probe() (err error) {
 	for i := 0; i < numChunks; i++ {
 		chunkStartTime := i * chunkInterval
 		spriteFile := job.OutputJoin(fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
-		cmd := exec.Command("ffmpeg", "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
+		cmd := exec.Command(config.TheConfig.Ffmpeg, "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
 			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
 		discord.Infof("Command: %s", cmd.String())
 		_, err = runCommand(cmd)
