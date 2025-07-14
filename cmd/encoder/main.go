@@ -66,11 +66,7 @@ func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 			totalProcessed++
 		}
 		discord.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
-		if j.State == job.Complete && config.TheConfig.RemoveOnSuccess {
-			err = os.Remove(j.InputJoin(j.InputAfterRename()))
-			if err != nil {
-				discord.Errorf("error removing file: %v", err)
-			}
+		if j.State == job.Complete {
 			return true
 		} else if config.TheConfig.EnableRename {
 			err = os.Rename(j.InputJoin(j.InputAfterRename()), j.InputJoin(j.Input))
