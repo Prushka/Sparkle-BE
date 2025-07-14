@@ -68,12 +68,6 @@ func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 		discord.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
 		if j.State == job.Complete {
 			return true
-		} else if config.TheConfig.EnableRename {
-			err = os.Rename(j.InputJoin(j.InputAfterRename()), j.InputJoin(j.Input))
-			if err != nil {
-				discord.Errorf("error renaming file: %v", err)
-			}
-			return false
 		}
 	}
 	return false

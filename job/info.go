@@ -134,14 +134,6 @@ func (job *Job) InputName() string {
 	return strings.Join(sp[:len(sp)-1], ".")
 }
 
-func (job *Job) InputAfterRename() string {
-	if config.TheConfig.EnableRename {
-		return fmt.Sprintf("%s.%s", job.Id, job.InputExt())
-	} else {
-		return job.Input
-	}
-}
-
 func (job *Job) OutputJoin(args ...string) string {
 	return utils.OutputJoin(append([]string{job.Id}, args...)...)
 }

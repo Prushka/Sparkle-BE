@@ -41,7 +41,7 @@ func process() {
 }
 
 func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
-	log.Infof("File: %v, Parent: %v, te: %v", file, parent, utils.AsJson(te))
+	log.Infof("File: %v, Parent: %v, te: %v", file.Name(), parent, utils.AsJson(te))
 	return true
 }
 

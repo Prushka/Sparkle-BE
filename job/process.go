@@ -18,7 +18,7 @@ import (
 )
 
 func (job *Job) extractChapters() error {
-	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_chapters", job.InputJoin(job.InputAfterRename()))
+	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_chapters", job.InputJoin(job.Input))
 	out, err := utils.RunCommand(cmd)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (job *Job) ffmpegCopyOnly() error {
 	outputFile := job.OutputJoin(fmt.Sprintf("hevc.%s", config.TheConfig.VideoExt))
 	discord.Infof("Converting video: %s -> %s", job.Input, outputFile)
 	args := []string{
-		"-i", job.InputJoin(job.InputAfterRename()),
+		"-i", job.InputJoin(job.Input),
 		"-map", "0:v",
 		"-c:v", "copy",
 		"-map", "0:a",
@@ -131,7 +131,7 @@ func (job *Job) handbrakeTranscode() error {
 		outputFile := job.OutputJoin(fmt.Sprintf("%s.%s", encoder, config.TheConfig.VideoExt))
 		discord.Infof("Converting video: %s -> %s", job.Input, outputFile)
 		args := []string{
-			"-i", job.InputJoin(job.InputAfterRename()),
+			"-i", job.InputJoin(job.Input),
 			"-o", outputFile,
 			"--encoder", encoderCmd,
 			"--vfr",
@@ -181,13 +181,7 @@ func (job *Job) handbrakeTranscode() error {
 
 func (job *Job) Pipeline() error {
 	var err error
-	if config.TheConfig.EnableRename {
-		err = os.Rename(job.InputJoin(job.Input), job.InputJoin(job.InputAfterRename()))
-		if err != nil {
-			return err
-		}
-	}
-	job.SHA256, err = utils.CalculateFileSHA256(job.InputJoin(job.InputAfterRename()))
+	job.SHA256, err = utils.CalculateFileSHA256(job.InputJoin(job.Input))
 	if err != nil {
 		return err
 	}
@@ -210,11 +204,11 @@ func (job *Job) Pipeline() error {
 	if err != nil {
 		return err
 	}
-	err = job.extractStreams(job.InputJoin(job.InputAfterRename()), SubtitlesType)
+	err = job.extractStreams(job.InputJoin(job.Input), SubtitlesType)
 	if err != nil {
 		return err
 	}
-	err = job.extractStreams(job.InputJoin(job.InputAfterRename()), AttachmentType)
+	err = job.extractStreams(job.InputJoin(job.Input), AttachmentType)
 	if err != nil {
 		return err
 	}
