@@ -104,7 +104,7 @@ func pipeline(j job.Job) error {
 		return err
 	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
-	j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
+	_ = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
 	err = translate(j.Input, j.OutputJoin())
 	if err != nil {
 		discord.Errorf("Error translating: %v", err)
@@ -116,6 +116,7 @@ func pipeline(j job.Job) error {
 	_, err = utils.CopyFile(source, dest)
 	if err != nil {
 		discord.Errorf("error copying file: %s->%s %v", source, dest, err)
+		return err
 	}
 
 	return nil
