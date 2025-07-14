@@ -33,7 +33,7 @@ func (job *Job) extractChapters() error {
 	return nil
 }
 
-func (job *Job) extractStreams(path, t string) error {
+func (job *Job) ExtractStreams(path, t string) error {
 	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
 	out, err := utils.RunCommand(cmd)
 	if err != nil {
@@ -204,11 +204,11 @@ func (job *Job) Pipeline() error {
 	if err != nil {
 		return err
 	}
-	err = job.extractStreams(job.InputJoin(job.Input), SubtitlesType)
+	err = job.ExtractStreams(job.InputJoin(job.Input), SubtitlesType)
 	if err != nil {
 		return err
 	}
-	err = job.extractStreams(job.InputJoin(job.Input), AttachmentType)
+	err = job.ExtractStreams(job.InputJoin(job.Input), AttachmentType)
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func (job *Job) Pipeline() error {
 			}
 		}
 		if len(job.EncodedCodecs) > 0 {
-			err = job.extractStreams(job.GetCodecVideo(job.EncodedCodecs[0]), AudioType)
+			err = job.ExtractStreams(job.GetCodecVideo(job.EncodedCodecs[0]), AudioType)
 			if err != nil {
 				return err
 			}

@@ -46,6 +46,7 @@ type Config struct {
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
 	PurgeCacheUrl string `env:"PURGE_CACHE_URL" envDefault:""`
+	OpenAI        string `env:"OPENAI" envDefault:""`
 }
 
 var TheConfig = &Config{}
