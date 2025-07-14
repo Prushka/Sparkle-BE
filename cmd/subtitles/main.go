@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const outputVTT = "output.zh-CHS.vtt"
+
 func process() {
 	err := os.RemoveAll(config.TheConfig.Output)
 	if err != nil {
@@ -93,7 +95,7 @@ func translate(media, inputDir string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(inputDir, "output.vtt"), []byte(translated), 0755)
+	return os.WriteFile(filepath.Join(inputDir, outputVTT), []byte(translated), 0755)
 }
 
 func pipeline(j job.Job) error {
@@ -103,7 +105,20 @@ func pipeline(j job.Job) error {
 	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
 	j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
-	return translate(j.Input, j.OutputJoin())
+	err = translate(j.Input, j.OutputJoin())
+	if err != nil {
+		discord.Errorf("Error translating: %v", err)
+		return err
+	}
+
+	source := j.OutputJoin(outputVTT)
+	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", ".zh-CHS.vtt"))
+	_, err = utils.CopyFile(source, dest)
+	if err != nil {
+		discord.Errorf("error copying file: %s->%s %v", source, dest, err)
+	}
+
+	return nil
 }
 
 func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
