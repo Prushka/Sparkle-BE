@@ -1,73 +1,25 @@
-package main
+package job
 
 import (
-	"Sparkle/cleanup"
 	"Sparkle/config"
 	"Sparkle/discord"
-	"bytes"
+	"Sparkle/utils"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/cenkalti/dominantcolor"
-	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 	"image"
 	"math"
-	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
-
-func Run(c *exec.Cmd) error {
-	if err := c.Start(); err != nil {
-		return err
-	}
-	if config.TheConfig.EnableLowPriority {
-		err := lowPriority(c.Process.Pid)
-		if err != nil {
-			discord.Errorf("error setting priority: %v", err)
-		}
-	}
-	return c.Wait()
-}
-
-func CombinedOutput(c *exec.Cmd) ([]byte, error) {
-	if c.Stdout != nil {
-		return nil, errors.New("exec: Stdout already set")
-	}
-	if c.Stderr != nil {
-		return nil, errors.New("exec: Stderr already set")
-	}
-	var b bytes.Buffer
-	c.Stdout = &b
-	c.Stderr = &b
-	err := Run(c)
-	return b.Bytes(), err
-}
-
-func runCommand(cmd *exec.Cmd) ([]byte, error) {
-	out, err := CombinedOutput(cmd)
-	if err != nil {
-		discord.Errorf(cmd.String())
-		fmt.Println(string(out))
-		return out, err
-	} else {
-		log.Debugf("output: %s", out)
-	}
-	return out, err
-}
 
 func (job *Job) extractChapters() error {
 	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_chapters", job.InputJoin(job.InputAfterRename()))
-	out, err := runCommand(cmd)
+	out, err := utils.RunCommand(cmd)
 	if err != nil {
 		return err
 	}
@@ -83,7 +35,7 @@ func (job *Job) extractChapters() error {
 
 func (job *Job) extractStreams(path, t string) error {
 	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
-	out, err := runCommand(cmd)
+	out, err := utils.RunCommand(cmd)
 	if err != nil {
 		return err
 	}
@@ -116,7 +68,7 @@ func (job *Job) extractStreams(path, t string) error {
 				} else {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
 				}
-				_, err = runCommand(cmd)
+				_, err = utils.RunCommand(cmd)
 				if err == nil {
 					job.Streams = append(job.Streams, s)
 				} else {
@@ -164,7 +116,7 @@ func (job *Job) ffmpegCopyOnly() error {
 	}
 	cmd := exec.Command(
 		config.TheConfig.Ffmpeg, args...)
-	_, err := runCommand(cmd)
+	_, err := utils.RunCommand(cmd)
 	if err == nil {
 		job.EncodedCodecs = append(job.EncodedCodecs, "hevc")
 	}
@@ -202,7 +154,7 @@ func (job *Job) handbrakeTranscode() error {
 		log.Infof("Command: %s", cmd.String())
 		wg.Add(1)
 		go func() {
-			_, err := runCommand(cmd)
+			_, err := utils.RunCommand(cmd)
 			if err == nil {
 				job.EncodedCodecs = append(job.EncodedCodecs, encoder)
 			}
@@ -227,7 +179,7 @@ func (job *Job) handbrakeTranscode() error {
 	return nil
 }
 
-func (job *Job) pipeline() error {
+func (job *Job) Pipeline() error {
 	var err error
 	if config.TheConfig.EnableRename {
 		err = os.Rename(job.InputJoin(job.Input), job.InputJoin(job.InputAfterRename()))
@@ -235,7 +187,7 @@ func (job *Job) pipeline() error {
 			return err
 		}
 	}
-	job.SHA256, err = calculateFileSHA256(job.InputJoin(job.InputAfterRename()))
+	job.SHA256, err = utils.CalculateFileSHA256(job.InputJoin(job.InputAfterRename()))
 	if err != nil {
 		return err
 	}
@@ -325,7 +277,7 @@ func (job *Job) mapAudioTracks() {
 			cmd := exec.Command(config.TheConfig.Ffmpeg, "-i", job.GetCodecVideo(codec), "-i", job.OutputJoin(audio.Location),
 				"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "copy", "-shortest", job.OutputJoin(fmt.Sprintf("%s.%s", id, config.TheConfig.VideoExt)))
 			discord.Infof("Command: %s", cmd.String())
-			_, err := runCommand(cmd)
+			_, err := utils.RunCommand(cmd)
 			if err != nil {
 				discord.Errorf("error mapping audio tracks: %v", err)
 			} else {
@@ -350,7 +302,7 @@ func (job *Job) renameAndMove(source string, dest string) {
 				discord.Errorf("error moving file: %s->%s %v", source, dest, err)
 			}
 		} else {
-			_, err = copyFile(source, dest)
+			_, err = utils.CopyFile(source, dest)
 			if err != nil {
 				discord.Errorf("error copying file: %s->%s %v", source, dest, err)
 			}
@@ -394,7 +346,7 @@ func (job *Job) extractDominantColor() (err error) {
 }
 
 func (job *Job) updateDuration(videoFile string) error {
-	out, err := runCommand(exec.Command(config.TheConfig.Ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile))
+	out, err := utils.RunCommand(exec.Command(config.TheConfig.Ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoFile))
 	if err != nil {
 		discord.Errorf("Error getting video duration: %v\n", err)
 	} else {
@@ -402,7 +354,7 @@ func (job *Job) updateDuration(videoFile string) error {
 		discord.Infof("Container duration: %.2f", job.Duration)
 	}
 
-	actual, err := runCommand(exec.Command(
+	actual, err := utils.RunCommand(exec.Command(
 		config.TheConfig.Ffprobe,
 		"-select_streams", "v:0",
 		"-show_entries", "packet=pts_time",
@@ -466,7 +418,7 @@ func (job *Job) probe() (err error) {
 		cmd := exec.Command(config.TheConfig.Ffmpeg, "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
 			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
 		discord.Infof("Command: %s", cmd.String())
-		_, err = runCommand(cmd)
+		_, err = utils.RunCommand(cmd)
 		if err != nil {
 			discord.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
 			return
@@ -515,421 +467,4 @@ func (job *Job) updateState(newState string) error {
 		return err
 	}
 	return nil
-}
-
-func processFile(file os.DirEntry, parent string) bool {
-	ext := filepath.Ext(file.Name())
-	if slices.Contains(ValidExtensions, ext[1:]) {
-		jobs, err := jobsCache.Get(false)
-		if err != nil {
-			discord.Errorf("error getting all jobs: %v", err)
-			return false
-		}
-		stats, err := file.Info()
-		if err != nil {
-			discord.Errorf("error getting file info: %v", err)
-			return false
-		}
-		currId := getTitleId(file.Name())
-		log.Debugf("Current ID: %s", currId)
-		for _, job := range jobs {
-			prevId := getTitleId(job.Input)
-			if currId == prevId {
-				log.Debugf("File exists: %s", file.Name())
-				if job.State == Complete && len(job.EncodedCodecs) > 0 &&
-					(job.OriSize == 0 || job.OriSize == stats.Size()) &&
-					(!job.Fast || config.TheConfig.Fast) {
-					return false
-				} else {
-					discord.Infof("File modified or prev encoding incomplete: %s, remove old", file.Name())
-					err := os.RemoveAll(OutputJoin(job.Id))
-					if err != nil {
-						discord.Errorf("error removing file: %v", err)
-					}
-				}
-			}
-		}
-		job := Job{
-			Id:          newRandomString(5),
-			InputParent: parent,
-			Input:       file.Name(),
-			OriSize:     stats.Size(),
-			OriModTime:  stats.ModTime().Unix(),
-			Fast:        config.TheConfig.Fast,
-		}
-		startTime := time.Now()
-		discord.Infof("Processing file: %s", file.Name())
-		err = job.pipeline()
-		if err != nil {
-			discord.Errorf("error processing file: %v", err)
-		} else {
-			totalProcessed++
-		}
-		discord.Infof("Processed %s, time cost: %s", file.Name(), time.Since(startTime))
-		if job.State == Complete && config.TheConfig.RemoveOnSuccess {
-			err = os.Remove(job.InputJoin(job.InputAfterRename()))
-			if err != nil {
-				discord.Errorf("error removing file: %v", err)
-			}
-			return true
-		} else if config.TheConfig.EnableRename {
-			err = os.Rename(job.InputJoin(job.InputAfterRename()), job.InputJoin(job.Input))
-			if err != nil {
-				discord.Errorf("error renaming file: %v", err)
-			}
-			return false
-		}
-	}
-	return false
-}
-
-func encode(matches func(s string) bool) error {
-	files, err := os.ReadDir(config.TheConfig.Input)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			fs, err := os.ReadDir(InputJoin(file.Name()))
-			if err != nil {
-				return err
-			}
-			for _, f := range fs {
-				if matches == nil || matches(f.Name()) {
-					if processFile(f, file.Name()) && config.TheConfig.RemoveOnSuccess {
-						err = os.RemoveAll(InputJoin(file.Name()))
-					}
-				}
-			}
-		} else {
-			if matches == nil || matches(file.Name()) {
-				processFile(file, "")
-			}
-		}
-	}
-	return nil
-}
-
-func newRandomString(n int) string {
-	for {
-		s := RandomString(n)
-		if !sessionIds.Contains(s) {
-			sessionIds.Add(s)
-			return s
-		}
-	}
-}
-
-func stringToShow(keyword string) Show {
-	s := strings.Split(keyword, ",")
-	showName := s[0]
-	seasons := make(map[string]Season)
-	if len(s) > 1 {
-		for i := 1; i < len(s); i++ {
-			ss := strings.Split(s[i], "|")
-			var startEpisode *int
-			seasonName := s[i]
-			if len(ss) > 1 {
-				se, _ := strconv.Atoi(ss[1])
-				startEpisode = &se
-				seasonName = ss[0]
-			}
-			if strings.ToLower(s[i]) == "specials" {
-				seasons["Specials"] = Season{Name: "Specials", StartEpisode: startEpisode}
-			} else {
-				name := fmt.Sprintf("Season %s", seasonName)
-				seasons[name] = Season{Name: name, StartEpisode: startEpisode}
-			}
-		}
-	}
-	return Show{Name: showName, Seasons: seasons}
-}
-
-func encodeShows(root string, shows []Show) {
-	files, err := os.ReadDir(root)
-	if err != nil {
-		discord.Errorf("error reading directory: %v", err)
-		return
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			for _, show := range shows {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
-					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
-					if err != nil {
-						discord.Errorf("error reading directory: %v", err)
-						return
-					}
-					for _, f := range fs {
-						p := func(matches func(s string) bool) {
-							root := filepath.Join(root, file.Name(), f.Name())
-							discord.Infof("Scanning %s", root)
-							config.TheConfig.Input = root
-							updateConfig(show.ToEncode)
-							err := encode(matches)
-							if err != nil {
-								discord.Errorf("error: %v", err)
-							}
-						}
-						if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
-							if len(show.Seasons) > 0 {
-								if season, ok := show.Seasons[f.Name()]; ok {
-									if season.StartEpisode == nil {
-										p(nil)
-									} else {
-										p(func(s string) bool {
-											match := episodeRe.FindStringSubmatch(s)
-											if match != nil && len(match) > 1 {
-												currentEpisode, err := strconv.Atoi(match[1])
-												if err != nil {
-													return false
-												}
-												if currentEpisode >= *season.StartEpisode {
-													return true
-												}
-											} else {
-												discord.Infof("No episode number found")
-											}
-											return false
-										})
-									}
-								}
-							} else {
-								p(nil)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-func encodeMovies(root string, movies []Movie) {
-	files, err := os.ReadDir(root)
-	if err != nil {
-		discord.Errorf("error reading directory: %v", err)
-		return
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			for _, movie := range movies {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) {
-					root := filepath.Join(root, file.Name())
-					discord.Infof("Processing %s", root)
-					config.TheConfig.Input = root
-					updateConfig(movie.ToEncode)
-					err = encode(nil)
-					if err != nil {
-						discord.Errorf("error: %v", err)
-					}
-				}
-			}
-		}
-	}
-}
-
-func updateConfig(te ToEncode) {
-	config.TheConfig.Fast = te.Fast
-}
-
-type EncodeList struct {
-	Shows  []string `json:"shows"`
-	Movies []string `json:"movies"`
-}
-
-var showSet = mapset.NewSet[string]()
-var movieSet = mapset.NewSet[string]()
-var smMutex sync.Mutex
-
-var re = regexp.MustCompile(`Season\s+\d+`)
-var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
-
-type ToEncode struct {
-	Fast bool
-}
-
-type Movie struct {
-	Name string
-	ToEncode
-}
-
-type Show struct {
-	Name    string
-	Seasons map[string]Season
-	ToEncode
-}
-
-type Season struct {
-	Name         string
-	StartEpisode *int
-}
-
-var sessionIds = mapset.NewSet[string]()
-
-func isFast(keyword string) (bool, string) {
-	if strings.HasPrefix(keyword, "f:") {
-		return true, keyword[2:]
-	}
-	return false, keyword
-}
-
-var totalProcessed = 0
-
-func process() {
-	totalProcessed = 0
-	smMutex.Lock()
-	defer smMutex.Unlock()
-	if showSet.Cardinality() == 0 && movieSet.Cardinality() == 0 {
-		return
-	}
-	shows := make([]Show, 0)
-	movies := make([]Movie, 0)
-	sessionIds.Clear()
-	jobs, err := jobsCache.Get(true)
-	if err != nil {
-		discord.Errorf("error getting all jobs: %v", err)
-		return
-	}
-	for _, job := range jobs {
-		sessionIds.Add(job.Id)
-	}
-	for _, keyword := range showSet.ToSlice() {
-		isFast, keyword := isFast(keyword)
-		show := stringToShow(keyword)
-		show.Fast = isFast
-		discord.Infof(AsJson(show))
-		shows = append(shows, show)
-	}
-	for _, keyword := range movieSet.ToSlice() {
-		isFast, keyword := isFast(keyword)
-		movie := Movie{Name: keyword}
-		movie.Fast = isFast
-		discord.Infof(AsJson(movie))
-		movies = append(movies, movie)
-	}
-	for _, root := range config.TheConfig.ShowDirs {
-		encodeShows(root, shows)
-	}
-	for _, root := range config.TheConfig.MovieDirs {
-		encodeMovies(root, movies)
-	}
-	discord.Infof("Total processed: %d", totalProcessed)
-	totalDeleted := 0
-	if config.TheConfig.EnableCleanup {
-		discord.Infof("Cleaning up old files")
-		jobs, err := jobsCache.Get(false)
-		if err != nil {
-			discord.Errorf("error getting all jobs: %v", err)
-			return
-		}
-		for _, job := range jobs {
-			markedForRemoval := true
-			for _, show := range shows {
-				if strings.Contains(strings.ToLower(job.Input), strings.ToLower(show.Name)) {
-					markedForRemoval = false
-				}
-			}
-			for _, movie := range movies {
-				if strings.Contains(strings.ToLower(job.Input), strings.ToLower(movie.Name)) {
-					markedForRemoval = false
-				}
-			}
-			if markedForRemoval {
-				discord.Infof("File: %s, remove old, %s", OutputJoin(job.Id), job.Input)
-				err := os.RemoveAll(OutputJoin(job.Id))
-				if err != nil {
-					discord.Errorf("error removing file: %v", err)
-				} else {
-					totalDeleted++
-				}
-			}
-		}
-		discord.Infof("Total deleted: %d", totalDeleted)
-	}
-
-	if (totalProcessed > 0 || totalDeleted > 0) && len(config.TheConfig.PurgeCacheUrl) > 0 {
-		_, err := http.Get(config.TheConfig.PurgeCacheUrl)
-		if err != nil {
-			discord.Errorf("error purging cache: %v", err)
-		}
-	}
-}
-
-func main() {
-	log.SetLevel(log.InfoLevel)
-	config.Configure()
-	discord.Init()
-	blocking := make(chan bool, 1)
-	cleanup.InitSignalCallback(blocking)
-	discord.Infof("Starting in %s mode", config.TheConfig.Mode)
-	switch config.TheConfig.Mode {
-	case config.EncodingMode:
-		scheduler := gocron.NewScheduler(time.Now().Location())
-		cleanup.AddOnStopFunc(func(_ os.Signal) {
-			scheduler.Stop()
-		})
-		panicOnSec(scheduler.SingletonMode().Every(5).Minute().Do(func() {
-			encodeList := EncodeList{}
-			encodeListFile := config.TheConfig.EncodeListFile
-			if _, err := os.Stat(encodeListFile); err == nil {
-				content, err := os.ReadFile(encodeListFile)
-				if err != nil {
-					discord.Errorf("error reading file: %v", err)
-				}
-				err = json.Unmarshal(content, &encodeList)
-				if err != nil {
-					discord.Errorf("error unmarshalling file: %v", err)
-				}
-			}
-			smMutex.Lock()
-			currShows := mapset.NewSet[string](encodeList.Shows...)
-			currMovies := mapset.NewSet[string](encodeList.Movies...)
-			changed := false
-			if !showSet.Equal(currShows) {
-				showSet = currShows
-				changed = true
-			}
-			if !movieSet.Equal(currMovies) {
-				movieSet = currMovies
-				changed = true
-			}
-			smMutex.Unlock()
-			if changed {
-				discord.Infof("List updated: %v", encodeList)
-				process()
-			}
-		}))
-
-		panicOnSec(scheduler.SingletonMode().Every(2).Hours().Do(func() {
-			process()
-		}))
-		scheduler.StartAsync()
-		<-blocking
-	case config.RESTMode:
-		REST()
-	case config.CLEARMode:
-		titleId := "harem"
-		jobs, err := jobsCache.Get(true)
-		if err != nil {
-			discord.Errorf("error getting all jobs: %v", err)
-			return
-		}
-		for _, job := range jobs {
-			id := getTitleId(job.Input)
-			if strings.Contains(id, titleId) {
-				discord.Infof("File: %s, remove old, %s", OutputJoin(job.Id), job.Input)
-				err := os.RemoveAll(OutputJoin(job.Id))
-				if err != nil {
-					discord.Errorf("error removing file: %v", err)
-				}
-			}
-		}
-	}
-}
-
-func panicOnSec(a interface{}, err error) {
-	if err != nil {
-		panic(err)
-	}
 }

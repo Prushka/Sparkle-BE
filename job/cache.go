@@ -1,18 +1,17 @@
-package main
+package job
 
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"encoding/json"
 	"os"
-	"regexp"
-	"strings"
 	"sync"
 	"time"
 )
 
 func populate(path string) *JobStripped {
-	content, err := os.ReadFile(OutputJoin(path, JobFile))
+	content, err := os.ReadFile(utils.OutputJoin(path, JobFile))
 	if err != nil {
 		return nil
 	}
@@ -22,12 +21,12 @@ func populate(path string) *JobStripped {
 		return nil
 	}
 	fileSizes := make(map[string]int64)
-	files, err := os.ReadDir(OutputJoin(path))
+	files, err := os.ReadDir(utils.OutputJoin(path))
 	if err != nil {
 		return nil
 	}
 	for _, file := range files {
-		stat, err := os.Stat(OutputJoin(path, file.Name()))
+		stat, err := os.Stat(utils.OutputJoin(path, file.Name()))
 		if err == nil {
 			fileSizes[file.Name()] = stat.Size()
 			if time.Unix(job.JobModTime, 0).Before(stat.ModTime()) {
@@ -39,7 +38,7 @@ func populate(path string) *JobStripped {
 	return job
 }
 
-var jobsCache = CreateCache[[]*JobStripped](15*time.Minute, true,
+var JobsCache = CreateCache[[]*JobStripped](15*time.Minute, true,
 	func() ([]*JobStripped, error) {
 		jobs := make([]*JobStripped, 0)
 		files, err := os.ReadDir(config.TheConfig.Output)
@@ -55,24 +54,6 @@ var jobsCache = CreateCache[[]*JobStripped](15*time.Minute, true,
 		return jobs, nil
 	},
 )
-
-func getTitleId(title string) string {
-	parts := strings.Split(title, " - ")
-	se := ""
-
-	for i, part := range parts {
-		matched, _ := regexp.MatchString(`S\d{2}E\d{2}`, part)
-		if matched {
-			se = part
-			// seTitle = strings.Join(parts[i+1:], " - ")
-			title = strings.Join(parts[:i], " - ")
-			break
-		}
-	}
-
-	titleId := regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(strings.ToLower(title), "")
-	return titleId + se
-}
 
 type Cache[T any] struct {
 	Data            T

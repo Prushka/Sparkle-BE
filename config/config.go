@@ -5,14 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	EncodingMode = "encoding"
-	RESTMode     = "rest"
-	CLEARMode    = "clear"
-)
-
 type Config struct {
-	Mode                   string `env:"MODE" envDefault:"rest"`
 	Redis                  string `env:"REDIS" envDefault:"localhost:6379"`
 	RedisPassword          string `env:"REDIS_PASSWORD" envDefault:""`
 	Output                 string `env:"OUTPUT" envDefault:"./output"`

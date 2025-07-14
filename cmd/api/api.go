@@ -4,6 +4,8 @@ import (
 	"Sparkle/cleanup"
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/job"
+	"Sparkle/utils"
 	"encoding/json"
 	"github.com/go-co-op/gocron"
 	"github.com/labstack/echo/v4"
@@ -30,7 +32,6 @@ const (
 	TimeSync          = "time"
 	PauseSync         = "pause"
 	ChatSync          = "chat"
-	FullSync          = "full"
 	PlayersStatusSync = "players"
 	PfpSync           = "pfp"
 	StateSync         = "state"
@@ -45,8 +46,8 @@ type Room struct {
 	Players  map[string]*Player
 	mutex    sync.RWMutex
 	id       string
-	Chats    []*Chat   `json:"chats"`
-	LastSeek time.Time `json:"lastSeek"`
+	Chats    []*discord.Chat `json:"chats"`
+	LastSeek time.Time       `json:"lastSeek"`
 	VideoState
 }
 
@@ -101,7 +102,7 @@ type SendPayload struct {
 	Time      *float64               `json:"time,omitempty"`
 	Paused    *bool                  `json:"paused,omitempty"`
 	FiredBy   *Player                `json:"firedBy,omitempty"`
-	Chats     []*Chat                `json:"chats,omitempty"`
+	Chats     []*discord.Chat        `json:"chats,omitempty"`
 	Players   []Player               `json:"players"`
 	Timestamp int64                  `json:"timestamp"`
 	Broadcast map[string]interface{} `json:"broadcast,omitempty"`
@@ -188,7 +189,7 @@ func syncPlayerStates() {
 }
 
 func REST() {
-	_, err := jobsCache.Get(true)
+	_, err := job.JobsCache.Get(true)
 	if err != nil {
 		discord.Errorf("error initializing jobs: %v", err)
 	}
@@ -225,7 +226,6 @@ func Exit(room *Room, player *Player) {
 	delete(room.Players, player.Id)
 	if len(room.Players) == 0 {
 		room.VideoState = defaultVideoState()
-		//room.Chats = make([]*Chat, 0)
 	}
 	log.Infof("[%v] disconnected", player.Id)
 	player.exited = true
@@ -234,14 +234,14 @@ func Exit(room *Room, player *Player) {
 func routes() {
 	e.Static("/static", config.TheConfig.Output)
 	e.GET("/all", func(c echo.Context) error {
-		return c.String(http.StatusOK, jobsCache.GetMarshalled())
+		return c.String(http.StatusOK, job.JobsCache.GetMarshalled())
 	})
 	e.GET("/purge", func(c echo.Context) error {
-		_, err := jobsCache.Get(true)
+		_, err := job.JobsCache.Get(true)
 		if err != nil {
 			return err
 		}
-		return c.String(http.StatusOK, jobsCache.GetMarshalled())
+		return c.String(http.StatusOK, job.JobsCache.GetMarshalled())
 	})
 	//e.GET("/job/:id", func(c echo.Context) error {
 	//	id := c.Param("id")
@@ -331,7 +331,7 @@ func routes() {
 			}
 			if _, ok := wss.Load(roomId); !ok {
 				wss.Store(roomId, &Room{Players: make(map[string]*Player), id: id,
-					VideoState: defaultVideoState(), Chats: make([]*Chat, 0)})
+					VideoState: defaultVideoState(), Chats: make([]*discord.Chat, 0)})
 			}
 			roomI, _ := wss.Load(roomId)
 			room := roomI.(*Room)
@@ -394,14 +394,14 @@ func routes() {
 						if strings.TrimSpace(payload.Chat) == "" {
 							return
 						}
-						room.Chats = append(room.Chats, &Chat{Message: payload.Chat,
+						room.Chats = append(room.Chats, &discord.Chat{Message: payload.Chat,
 							Uid:       currentPlayer.Id,
 							Timestamp: time.Now().UnixMilli(), MediaSec: currentPlayer.Time})
 						for _, player := range room.Players {
 							room.syncChatsToPlayerUnsafe(player)
 						}
 						go func() {
-							DiscordWebhook(FormatSecondsToTime(currentPlayer.Time)+": "+payload.Chat, currentPlayer.Name, currentPlayer.Id)
+							discord.Webhook(utils.FormatSecondsToTime(currentPlayer.Time)+": "+payload.Chat, currentPlayer.Name, currentPlayer.Id)
 						}()
 					case TimeSync:
 						currentPlayer.Time = *payload.Time

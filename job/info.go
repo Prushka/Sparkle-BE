@@ -1,7 +1,8 @@
-package main
+package job
 
 import (
 	"Sparkle/config"
+	"Sparkle/utils"
 	"fmt"
 	"os"
 	"strings"
@@ -142,11 +143,11 @@ func (job *Job) InputAfterRename() string {
 }
 
 func (job *Job) OutputJoin(args ...string) string {
-	return OutputJoin(append([]string{job.Id}, args...)...)
+	return utils.OutputJoin(append([]string{job.Id}, args...)...)
 }
 
 func (job *Job) InputJoin(args ...string) string {
-	return InputJoin(append([]string{job.InputParent}, args...)...)
+	return utils.InputJoin(append([]string{job.InputParent}, args...)...)
 }
 
 func (job *Job) GetCodecVideo(codec string) string {

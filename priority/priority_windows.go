@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package priority
 
 import (
 	"Sparkle/discord"
@@ -24,6 +24,6 @@ func setPriorityWindows(pid int, priority uint32) error {
 	return windows.SetPriorityClass(handle, priority)
 }
 
-func lowPriority(pid int) error {
+func LowPriority(pid int) error {
 	return setPriorityWindows(pid, windows.BELOW_NORMAL_PRIORITY_CLASS)
 }

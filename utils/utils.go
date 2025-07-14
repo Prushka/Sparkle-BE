@@ -1,17 +1,86 @@
-package main
+package utils
 
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/priority"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
+
+func PanicOnSec(a interface{}, err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func GetTitleId(title string) string {
+	parts := strings.Split(title, " - ")
+	se := ""
+
+	for i, part := range parts {
+		matched, _ := regexp.MatchString(`S\d{2}E\d{2}`, part)
+		if matched {
+			se = part
+			// seTitle = strings.Join(parts[i+1:], " - ")
+			title = strings.Join(parts[:i], " - ")
+			break
+		}
+	}
+
+	titleId := regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(strings.ToLower(title), "")
+	return titleId + se
+}
+
+func Run(c *exec.Cmd) error {
+	if err := c.Start(); err != nil {
+		return err
+	}
+	if config.TheConfig.EnableLowPriority {
+		err := priority.LowPriority(c.Process.Pid)
+		if err != nil {
+			discord.Errorf("error setting priority: %v", err)
+		}
+	}
+	return c.Wait()
+}
+
+func CombinedOutput(c *exec.Cmd) ([]byte, error) {
+	if c.Stdout != nil {
+		return nil, fmt.Errorf("exec: Stdout already set")
+	}
+	if c.Stderr != nil {
+		return nil, fmt.Errorf("exec: Stderr already set")
+	}
+	var b bytes.Buffer
+	c.Stdout = &b
+	c.Stderr = &b
+	err := Run(c)
+	return b.Bytes(), err
+}
+
+func RunCommand(cmd *exec.Cmd) ([]byte, error) {
+	out, err := CombinedOutput(cmd)
+	if err != nil {
+		discord.Errorf(cmd.String())
+		fmt.Println(string(out))
+		return out, err
+	} else {
+		log.Debugf("output: %s", out)
+	}
+	return out, err
+}
 
 func RandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -22,7 +91,7 @@ func RandomString(length int) string {
 	return string(b)
 }
 
-func copyFile(src, dst string) (int64, error) {
+func CopyFile(src, dst string) (int64, error) {
 	sourceFileStat, err := os.Stat(src)
 	if err != nil {
 		return 0, err
@@ -65,7 +134,7 @@ func AsJson(v interface{}) string {
 	return string(b)
 }
 
-func calculateFileSHA256(filePath string) (string, error) {
+func CalculateFileSHA256(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
