@@ -5,24 +5,20 @@ import (
 	"Sparkle/config"
 	"Sparkle/discord"
 	"Sparkle/job"
+	"Sparkle/target"
 	"Sparkle/utils"
-	"encoding/json"
-	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
-func processFile(file os.DirEntry, parent string, te ToEncode) bool {
+func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 	ext := filepath.Ext(file.Name())
 	if slices.Contains(job.ValidExtensions, ext[1:]) {
 		jobs, err := job.JobsCache.Get(false)
@@ -55,7 +51,7 @@ func processFile(file os.DirEntry, parent string, te ToEncode) bool {
 			}
 		}
 		j := job.Job{
-			Id:          newRandomString(5),
+			Id:          target.NewRandomString(5),
 			InputParent: parent,
 			Input:       file.Name(),
 			OriSize:     stats.Size(),
@@ -88,7 +84,7 @@ func processFile(file os.DirEntry, parent string, te ToEncode) bool {
 	return false
 }
 
-func encode(matches func(s string) bool, te ToEncode) error {
+func encode(matches func(s string) bool, te target.ToEncode) error {
 	files, err := os.ReadDir(config.TheConfig.Input)
 	if err != nil {
 		return err
@@ -115,42 +111,7 @@ func encode(matches func(s string) bool, te ToEncode) error {
 	return nil
 }
 
-func newRandomString(n int) string {
-	for {
-		s := utils.RandomString(n)
-		if !sessionIds.Contains(s) {
-			sessionIds.Add(s)
-			return s
-		}
-	}
-}
-
-func stringToShow(keyword string) Show {
-	s := strings.Split(keyword, ",")
-	showName := s[0]
-	seasons := make(map[string]Season)
-	if len(s) > 1 {
-		for i := 1; i < len(s); i++ {
-			ss := strings.Split(s[i], "|")
-			var startEpisode *int
-			seasonName := s[i]
-			if len(ss) > 1 {
-				se, _ := strconv.Atoi(ss[1])
-				startEpisode = &se
-				seasonName = ss[0]
-			}
-			if strings.ToLower(s[i]) == "specials" {
-				seasons["Specials"] = Season{Name: "Specials", StartEpisode: startEpisode}
-			} else {
-				name := fmt.Sprintf("Season %s", seasonName)
-				seasons[name] = Season{Name: name, StartEpisode: startEpisode}
-			}
-		}
-	}
-	return Show{Name: showName, Seasons: seasons}
-}
-
-func encodeShows(root string, shows []Show) {
+func encodeShows(root string, shows []target.Show) {
 	files, err := os.ReadDir(root)
 	if err != nil {
 		discord.Errorf("error reading directory: %v", err)
@@ -175,14 +136,14 @@ func encodeShows(root string, shows []Show) {
 								discord.Errorf("error: %v", err)
 							}
 						}
-						if f.IsDir() && (re.MatchString(f.Name()) || f.Name() == "Specials") {
+						if f.IsDir() && (target.SeasonRe.MatchString(f.Name()) || f.Name() == "Specials") {
 							if len(show.Seasons) > 0 {
 								if season, ok := show.Seasons[f.Name()]; ok {
 									if season.StartEpisode == nil {
 										p(nil)
 									} else {
 										p(func(s string) bool {
-											match := episodeRe.FindStringSubmatch(s)
+											match := target.SeasonEpisodeRe.FindStringSubmatch(s)
 											if match != nil && len(match) > 1 {
 												currentEpisode, err := strconv.Atoi(match[1])
 												if err != nil {
@@ -209,7 +170,7 @@ func encodeShows(root string, shows []Show) {
 	}
 }
 
-func encodeMovies(root string, movies []Movie) {
+func encodeMovies(root string, movies []target.Movie) {
 	files, err := os.ReadDir(root)
 	if err != nil {
 		discord.Errorf("error reading directory: %v", err)
@@ -232,40 +193,6 @@ func encodeMovies(root string, movies []Movie) {
 	}
 }
 
-type EncodeList struct {
-	Shows  []string `json:"shows"`
-	Movies []string `json:"movies"`
-}
-
-var showSet = mapset.NewSet[string]()
-var movieSet = mapset.NewSet[string]()
-var smMutex sync.Mutex
-
-var re = regexp.MustCompile(`Season\s+\d+`)
-var episodeRe = regexp.MustCompile(`S\d+E(\d+)`)
-
-type ToEncode struct {
-	Fast bool
-}
-
-type Movie struct {
-	Name string
-	ToEncode
-}
-
-type Show struct {
-	Name    string
-	Seasons map[string]Season
-	ToEncode
-}
-
-type Season struct {
-	Name         string
-	StartEpisode *int
-}
-
-var sessionIds = mapset.NewSet[string]()
-
 func isFast(keyword string) (bool, string) {
 	if strings.HasPrefix(keyword, "f:") {
 		return true, keyword[2:]
@@ -277,32 +204,32 @@ var totalProcessed = 0
 
 func process() {
 	totalProcessed = 0
-	smMutex.Lock()
-	defer smMutex.Unlock()
-	if showSet.Cardinality() == 0 && movieSet.Cardinality() == 0 {
+	target.SMMutex.Lock()
+	defer target.SMMutex.Unlock()
+	if target.ShowSet.Cardinality() == 0 && target.MovieSet.Cardinality() == 0 {
 		return
 	}
-	shows := make([]Show, 0)
-	movies := make([]Movie, 0)
-	sessionIds.Clear()
+	shows := make([]target.Show, 0)
+	movies := make([]target.Movie, 0)
+	target.SessionIds.Clear()
 	jobs, err := job.JobsCache.Get(true)
 	if err != nil {
 		discord.Errorf("error getting all jobs: %v", err)
 		return
 	}
 	for _, j := range jobs {
-		sessionIds.Add(j.Id)
+		target.SessionIds.Add(j.Id)
 	}
-	for _, keyword := range showSet.ToSlice() {
+	for _, keyword := range target.ShowSet.ToSlice() {
 		isFast, keyword := isFast(keyword)
-		show := stringToShow(keyword)
+		show := target.StringToShow(keyword)
 		show.Fast = isFast
 		discord.Infof(utils.AsJson(show))
 		shows = append(shows, show)
 	}
-	for _, keyword := range movieSet.ToSlice() {
+	for _, keyword := range target.MovieSet.ToSlice() {
 		isFast, keyword := isFast(keyword)
-		movie := Movie{Name: keyword}
+		movie := target.Movie{Name: keyword}
 		movie.Fast = isFast
 		discord.Infof(utils.AsJson(movie))
 		movies = append(movies, movie)
@@ -366,33 +293,8 @@ func main() {
 		scheduler.Stop()
 	})
 	utils.PanicOnSec(scheduler.SingletonMode().Every(5).Minute().Do(func() {
-		encodeList := EncodeList{}
-		encodeListFile := config.TheConfig.EncodeListFile
-		if _, err := os.Stat(encodeListFile); err == nil {
-			content, err := os.ReadFile(encodeListFile)
-			if err != nil {
-				discord.Errorf("error reading file: %v", err)
-			}
-			err = json.Unmarshal(content, &encodeList)
-			if err != nil {
-				discord.Errorf("error unmarshalling file: %v", err)
-			}
-		}
-		smMutex.Lock()
-		currShows := mapset.NewSet[string](encodeList.Shows...)
-		currMovies := mapset.NewSet[string](encodeList.Movies...)
-		changed := false
-		if !showSet.Equal(currShows) {
-			showSet = currShows
-			changed = true
-		}
-		if !movieSet.Equal(currMovies) {
-			movieSet = currMovies
-			changed = true
-		}
-		smMutex.Unlock()
+		changed := target.UpdateEncoderList()
 		if changed {
-			discord.Infof("List updated: %v", encodeList)
 			process()
 		}
 	}))
