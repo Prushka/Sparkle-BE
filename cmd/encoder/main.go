@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-func processFile(file os.DirEntry, parent string) bool {
+func processFile(file os.DirEntry, parent string, te ToEncode) bool {
 	ext := filepath.Ext(file.Name())
 	if slices.Contains(job.ValidExtensions, ext[1:]) {
 		jobs, err := job.JobsCache.Get(false)
@@ -43,7 +43,7 @@ func processFile(file os.DirEntry, parent string) bool {
 				log.Debugf("File exists: %s", file.Name())
 				if j.State == job.Complete && len(j.EncodedCodecs) > 0 &&
 					(j.OriSize == 0 || j.OriSize == stats.Size()) &&
-					(!j.Fast || config.TheConfig.Fast) {
+					(j.Fast == te.Fast) {
 					return false
 				} else {
 					discord.Infof("File modified or prev encoding incomplete: %s, remove old", file.Name())
@@ -60,7 +60,7 @@ func processFile(file os.DirEntry, parent string) bool {
 			Input:       file.Name(),
 			OriSize:     stats.Size(),
 			OriModTime:  stats.ModTime().Unix(),
-			Fast:        config.TheConfig.Fast,
+			Fast:        te.Fast,
 		}
 		startTime := time.Now()
 		discord.Infof("Processing file: %s", file.Name())
@@ -88,7 +88,7 @@ func processFile(file os.DirEntry, parent string) bool {
 	return false
 }
 
-func encode(matches func(s string) bool) error {
+func encode(matches func(s string) bool, te ToEncode) error {
 	files, err := os.ReadDir(config.TheConfig.Input)
 	if err != nil {
 		return err
@@ -101,14 +101,14 @@ func encode(matches func(s string) bool) error {
 			}
 			for _, f := range fs {
 				if matches == nil || matches(f.Name()) {
-					if processFile(f, file.Name()) && config.TheConfig.RemoveOnSuccess {
+					if processFile(f, file.Name(), te) && config.TheConfig.RemoveOnSuccess {
 						err = os.RemoveAll(utils.InputJoin(file.Name()))
 					}
 				}
 			}
 		} else {
 			if matches == nil || matches(file.Name()) {
-				processFile(file, "")
+				processFile(file, "", te)
 			}
 		}
 	}
@@ -170,8 +170,7 @@ func encodeShows(root string, shows []Show) {
 							root := filepath.Join(root, file.Name(), f.Name())
 							discord.Infof("Scanning %s", root)
 							config.TheConfig.Input = root
-							updateConfig(show.ToEncode)
-							err := encode(matches)
+							err := encode(matches, show.ToEncode)
 							if err != nil {
 								discord.Errorf("error: %v", err)
 							}
@@ -223,8 +222,7 @@ func encodeMovies(root string, movies []Movie) {
 					root := filepath.Join(root, file.Name())
 					discord.Infof("Processing %s", root)
 					config.TheConfig.Input = root
-					updateConfig(movie.ToEncode)
-					err = encode(nil)
+					err = encode(nil, movie.ToEncode)
 					if err != nil {
 						discord.Errorf("error: %v", err)
 					}
@@ -232,10 +230,6 @@ func encodeMovies(root string, movies []Movie) {
 			}
 		}
 	}
-}
-
-func updateConfig(te ToEncode) {
-	config.TheConfig.Fast = te.Fast
 }
 
 type EncodeList struct {

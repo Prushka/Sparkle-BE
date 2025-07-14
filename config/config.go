@@ -6,8 +6,6 @@ import (
 )
 
 type Config struct {
-	Redis                  string `env:"REDIS" envDefault:"localhost:6379"`
-	RedisPassword          string `env:"REDIS_PASSWORD" envDefault:""`
 	Output                 string `env:"OUTPUT" envDefault:"./output"`
 	OriginalOutput         string
 	Input                  string `env:"INPUT" envDefault:"./input"`
@@ -45,14 +43,11 @@ type Config struct {
 	DiscordWebhookError string   `env:"DISCORD_WEBHOOK_ERROR" envDefault:""`
 	DiscordWebhookInfo  string   `env:"DISCORD_WEBHOOK_INFO" envDefault:""`
 	DiscordWebhookChat  string   `env:"DISCORD_WEBHOOK_CHAT" envDefault:""`
-	PGUrl               string   `env:"PG_URL" envDefault:""`
 	EncodeListFile      string   `env:"ENCODE_LIST_FILE" envDefault:"encode_list.json"`
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
 	PurgeCacheUrl string `env:"PURGE_CACHE_URL" envDefault:""`
-
-	Fast bool `env:"FAST" envDefault:"false"`
 }
 
 var TheConfig = &Config{}

@@ -223,7 +223,7 @@ func (job *Job) Pipeline() error {
 		return err
 	}
 	if config.TheConfig.EnableEncode {
-		if config.TheConfig.Fast {
+		if job.Fast {
 			err = job.ffmpegCopyOnly()
 			if err != nil {
 				return err
@@ -402,7 +402,7 @@ func (job *Job) probe() (err error) {
 	aspectRatio := float64(job.Width) / float64(job.Height)
 	discord.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
 
-	if !config.TheConfig.EnableSprite || config.TheConfig.Fast {
+	if !config.TheConfig.EnableSprite || job.Fast {
 		return
 	}
 
