@@ -34,7 +34,6 @@ type Config struct {
 	EnableSprite               bool `env:"ENABLE_SPRITE" envDefault:"true"`
 	EnableAudioExtraction      bool `env:"ENABLE_AUDIO_EXTRACTION" envDefault:"true"`
 	EnableAttachmentExtraction bool `env:"ENABLE_ATTACHMENT_EXTRACTION" envDefault:"true"`
-	RemoveOnSuccess            bool `env:"REMOVE_ON_SUCCESS" envDefault:"false"`
 	EnableRename               bool `env:"DISABLED_RENAME" envDefault:"false"`
 	EnableLowPriority          bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
 	EnableCleanup              bool `env:"ENABLE_CLEANUP" envDefault:"true"`

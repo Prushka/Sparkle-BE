@@ -296,16 +296,9 @@ func (job *Job) renameAndMove(source string, dest string) {
 	dest = job.OutputJoin(dest)
 	_, err := os.Stat(source)
 	if err == nil {
-		if config.TheConfig.RemoveOnSuccess {
-			err = os.Rename(source, dest)
-			if err != nil {
-				discord.Errorf("error moving file: %s->%s %v", source, dest, err)
-			}
-		} else {
-			_, err = utils.CopyFile(source, dest)
-			if err != nil {
-				discord.Errorf("error copying file: %s->%s %v", source, dest, err)
-			}
+		_, err = utils.CopyFile(source, dest)
+		if err != nil {
+			discord.Errorf("error copying file: %s->%s %v", source, dest, err)
 		}
 		discord.Infof("Moved %s to %s", source, dest)
 	}

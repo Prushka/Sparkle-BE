@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -84,115 +83,6 @@ func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 	return false
 }
 
-func encode(matches func(s string) bool, te target.ToEncode) error {
-	files, err := os.ReadDir(config.TheConfig.Input)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			fs, err := os.ReadDir(utils.InputJoin(file.Name()))
-			if err != nil {
-				return err
-			}
-			for _, f := range fs {
-				if matches == nil || matches(f.Name()) {
-					if processFile(f, file.Name(), te) && config.TheConfig.RemoveOnSuccess {
-						err = os.RemoveAll(utils.InputJoin(file.Name()))
-					}
-				}
-			}
-		} else {
-			if matches == nil || matches(file.Name()) {
-				processFile(file, "", te)
-			}
-		}
-	}
-	return nil
-}
-
-func encodeShows(root string, shows []target.Show) {
-	files, err := os.ReadDir(root)
-	if err != nil {
-		discord.Errorf("error reading directory: %v", err)
-		return
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			for _, show := range shows {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
-					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
-					if err != nil {
-						discord.Errorf("error reading directory: %v", err)
-						return
-					}
-					for _, f := range fs {
-						p := func(matches func(s string) bool) {
-							root := filepath.Join(root, file.Name(), f.Name())
-							discord.Infof("Scanning %s", root)
-							config.TheConfig.Input = root
-							err := encode(matches, show.ToEncode)
-							if err != nil {
-								discord.Errorf("error: %v", err)
-							}
-						}
-						if f.IsDir() && (target.SeasonRe.MatchString(f.Name()) || f.Name() == "Specials") {
-							if len(show.Seasons) > 0 {
-								if season, ok := show.Seasons[f.Name()]; ok {
-									if season.StartEpisode == nil {
-										p(nil)
-									} else {
-										p(func(s string) bool {
-											match := target.SeasonEpisodeRe.FindStringSubmatch(s)
-											if match != nil && len(match) > 1 {
-												currentEpisode, err := strconv.Atoi(match[1])
-												if err != nil {
-													return false
-												}
-												if currentEpisode >= *season.StartEpisode {
-													return true
-												}
-											} else {
-												discord.Infof("No episode number found")
-											}
-											return false
-										})
-									}
-								}
-							} else {
-								p(nil)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-func encodeMovies(root string, movies []target.Movie) {
-	files, err := os.ReadDir(root)
-	if err != nil {
-		discord.Errorf("error reading directory: %v", err)
-		return
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			for _, movie := range movies {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) {
-					root := filepath.Join(root, file.Name())
-					discord.Infof("Processing %s", root)
-					config.TheConfig.Input = root
-					err = encode(nil, movie.ToEncode)
-					if err != nil {
-						discord.Errorf("error: %v", err)
-					}
-				}
-			}
-		}
-	}
-}
-
 func isFast(keyword string) (bool, string) {
 	if strings.HasPrefix(keyword, "f:") {
 		return true, keyword[2:]
@@ -235,10 +125,10 @@ func process() {
 		movies = append(movies, movie)
 	}
 	for _, root := range config.TheConfig.ShowDirs {
-		encodeShows(root, shows)
+		target.LoopShows(root, shows, processFile)
 	}
 	for _, root := range config.TheConfig.MovieDirs {
-		encodeMovies(root, movies)
+		target.LoopMovies(root, movies, processFile)
 	}
 	discord.Infof("Total processed: %d", totalProcessed)
 	totalDeleted := 0

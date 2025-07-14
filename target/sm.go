@@ -8,11 +8,119 @@ import (
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 )
+
+func loop(matches func(s string) bool, te ToEncode, runner func(file os.DirEntry, parent string, te ToEncode) bool) error {
+	files, err := os.ReadDir(config.TheConfig.Input)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			fs, err := os.ReadDir(utils.InputJoin(file.Name()))
+			if err != nil {
+				return err
+			}
+			for _, f := range fs {
+				if matches == nil || matches(f.Name()) {
+					runner(f, file.Name(), te)
+				}
+			}
+		} else {
+			if matches == nil || matches(file.Name()) {
+				runner(file, "", te)
+			}
+		}
+	}
+	return nil
+}
+
+func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent string, te ToEncode) bool) {
+	files, err := os.ReadDir(root)
+	if err != nil {
+		discord.Errorf("error reading directory: %v", err)
+		return
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			for _, show := range shows {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
+					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
+					if err != nil {
+						discord.Errorf("error reading directory: %v", err)
+						return
+					}
+					for _, f := range fs {
+						p := func(matches func(s string) bool) {
+							root := filepath.Join(root, file.Name(), f.Name())
+							discord.Infof("Scanning %s", root)
+							config.TheConfig.Input = root
+							err := loop(matches, show.ToEncode, runner)
+							if err != nil {
+								discord.Errorf("error: %v", err)
+							}
+						}
+						if f.IsDir() && (SeasonRe.MatchString(f.Name()) || f.Name() == "Specials") {
+							if len(show.Seasons) > 0 {
+								if season, ok := show.Seasons[f.Name()]; ok {
+									if season.StartEpisode == nil {
+										p(nil)
+									} else {
+										p(func(s string) bool {
+											match := SeasonEpisodeRe.FindStringSubmatch(s)
+											if match != nil && len(match) > 1 {
+												currentEpisode, err := strconv.Atoi(match[1])
+												if err != nil {
+													return false
+												}
+												if currentEpisode >= *season.StartEpisode {
+													return true
+												}
+											} else {
+												discord.Infof("No episode number found")
+											}
+											return false
+										})
+									}
+								}
+							} else {
+								p(nil)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, parent string, te ToEncode) bool) {
+	files, err := os.ReadDir(root)
+	if err != nil {
+		discord.Errorf("error reading directory: %v", err)
+		return
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			for _, movie := range movies {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) {
+					root := filepath.Join(root, file.Name())
+					discord.Infof("Processing %s", root)
+					config.TheConfig.Input = root
+					err = loop(nil, movie.ToEncode, runner)
+					if err != nil {
+						discord.Errorf("error: %v", err)
+					}
+				}
+			}
+		}
+	}
+}
 
 func StringToShow(keyword string) Show {
 	s := strings.Split(keyword, ",")
