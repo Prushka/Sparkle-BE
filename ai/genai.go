@@ -21,7 +21,6 @@ Task:
 1. Preserve every original timing cue exactly.
 2. Replace each subtitle line with a context‑aware and natural Simplified Chinese translation, except for lines or phrases with intentionally untranslated content.
 3. Do NOT omit any lines. Translate every single line from start to end.
-4. Do NOT add any additional 句号 at the end of each line.
 Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in Simplified Chinese.`
 
 func Init() {
@@ -92,6 +91,12 @@ func countVTTTimeLines(input string) int {
 	}
 	return count
 }
+
+// TODO: sanitize output, if end of sentence contains only one 句号，remove it
+// TODO: add retry (max 3 times) when time lines no match (2% cutoff)
+// TODO: add translator interface to support multiple ai providers
+// TODO: finish o4-mini
+// TODO: sanitize input webvtt, remove time with empty content, remove duplicate entries (same time and same content), (remove html tags <i></i> <b></b> ?? necessary?)
 
 func TranslateSubtitlesGemini(input []string) (string, error) {
 	err := limit(input)
