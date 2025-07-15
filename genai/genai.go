@@ -2,10 +2,10 @@ package genai
 
 import (
 	"Sparkle/config"
-	"Sparkle/discord"
 	"context"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	log "github.com/sirupsen/logrus"
 )
 
 var OpenAICli openai.Client
@@ -17,7 +17,7 @@ func InitOpenAI() {
 }
 
 func TranslateSubtitles(input string) (string, error) {
-	discord.Infof("Sending to ChatGPT: %s", input)
+	log.Debugf("Sending to ChatGPT: %s", input)
 	ctx := context.Background()
 	msgs := []openai.ChatCompletionMessageParamUnion{
 		openai.SystemMessage(`Role: You are an intelligent WEBVTT subtitle translator.

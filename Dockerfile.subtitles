@@ -28,6 +28,8 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 # Copy the pre-built binary file from the previous stage
 COPY --from=build /app/subtitles ./
+COPY --from=mwader/static-ffmpeg:7.1.1 /ffmpeg /usr/local/bin/
+COPY --from=mwader/static-ffmpeg:7.1.1 /ffprobe /usr/local/bin/
 ENV COMMIT_SHA=${COMMIT_SHA}
 ENV COMMIT_MESSAGE=${COMMIT_MESSAGE}
 ENV COMMIT_TIME=${COMMIT_TIME}
