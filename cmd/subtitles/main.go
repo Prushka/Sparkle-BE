@@ -127,6 +127,8 @@ func pipeline(j job.Job) error {
 		return err
 	}
 
+	discord.Infof("Done: %s", strings.ReplaceAll(j.Input, ".mkv", ".zh.vtt"))
+
 	return nil
 }
 
