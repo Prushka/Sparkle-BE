@@ -87,7 +87,7 @@ func translate(media, inputDir string) error {
 	assembled := fmt.Sprintf("Media: %s\n", media)
 	count := 0
 	if eng, ok := langs["eng"]; ok {
-		discord.Infof("eng")
+		discord.Infof("Using language: eng")
 		assembled += fmt.Sprintf("Language: %s\n%s\n", "eng", eng)
 		count++
 	}
@@ -95,7 +95,7 @@ func translate(media, inputDir string) error {
 		if count > 0 {
 			break
 		}
-		discord.Infof(key)
+		discord.Infof("Using language: %s", key)
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
 		count++
 	}
