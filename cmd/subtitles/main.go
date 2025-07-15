@@ -99,7 +99,11 @@ func translate(media, inputDir string) error {
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
 		count++
 	}
-	translated, err := ai.TranslateSubtitlesGemini(splitAssembled(assembled, 1000))
+	translator := ai.TranslateSubtitlesGemini
+	if config.TheConfig.AiProvider == "openai" {
+		//translator = ai.TranslateSubtitlesOpenAI
+	}
+	translated, err := translator(splitAssembled(assembled, 1000))
 	if err != nil {
 		return err
 	}

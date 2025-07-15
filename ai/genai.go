@@ -44,7 +44,7 @@ func Init() {
 	}
 }
 
-func SanitizeSegment(input string) string {
+func sanitizeSegment(input string) string {
 	lines := strings.Split(input, "\n")
 
 	var filtered []string
@@ -81,6 +81,17 @@ func limit(input []string) error {
 	return nil
 }
 
+func countVTTTimeLines(input string) int {
+	lines := strings.Split(input, "\n")
+	count := 0
+	for _, s := range lines {
+		if strings.Contains(s, "-->") {
+			count++
+		}
+	}
+	return count
+}
+
 func TranslateSubtitlesGemini(input []string) (string, error) {
 	err := limit(input)
 	if err != nil {
@@ -88,7 +99,7 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 	}
 
 	ctx := context.Background()
-	chat, err := GeminiCli.Chats.Create(ctx, "gemini-2.5-pro", &genai.GenerateContentConfig{
+	chat, err := GeminiCli.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(systemMessage, genai.RoleUser)},
 		[]*genai.Content{})
 	if err != nil {
@@ -98,7 +109,8 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 	var translated []string
 
 	for idx, i := range input {
-		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d", idx, len(input)-1, len(i), len(strings.Split(i, "\n")))
+		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
+			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), countVTTTimeLines(i))
 		result, err := chat.SendMessage(ctx, genai.Part{Text: i})
 		if err != nil {
 			return "", err
@@ -108,27 +120,32 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 			return "", fmt.Errorf("unable to find candidate in response")
 		}
 		t := result.Candidates[0].Content.Parts[0].Text
-		sanitized := SanitizeSegment(t)
+		sanitized := sanitizeSegment(t)
 		translated = append(translated, sanitized)
-		discord.Infof("Output length: %d, Output lines: %d, Sanitized length: %d, Sanitized lines: %d",
+		discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
 			len(t),
 			len(strings.Split(t, "\n")),
+			countVTTTimeLines(t),
 			len(sanitized),
-			len(strings.Split(sanitized, "\n")))
+			len(strings.Split(sanitized, "\n")),
+			countVTTTimeLines(sanitized))
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }
 
-//
 //func TranslateSubtitlesOpenAI(input []string) (string, error) {
-//	discord.Infof("Sending to ChatGPT")
+//	err := limit(input)
+//	if err != nil {
+//		return "", err
+//	}
+//
 //	ctx := context.Background()
 //	msgs := []openai.ChatCompletionMessageParamUnion{
 //		openai.SystemMessage(systemMessage),
 //		openai.UserMessage(input),
 //	}
 //	resp, err := OpenAICli.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-//		Model:    "o4-mini",
+//		Model:    config.TheConfig.OpenAIModel,
 //		Messages: msgs,
 //	})
 //	if err != nil {
