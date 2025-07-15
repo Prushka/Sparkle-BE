@@ -1,10 +1,10 @@
 package main
 
 import (
+	"Sparkle/ai"
 	"Sparkle/cleanup"
 	"Sparkle/config"
 	"Sparkle/discord"
-	"Sparkle/genai"
 	"Sparkle/job"
 	"Sparkle/target"
 	"Sparkle/utils"
@@ -99,7 +99,7 @@ func translate(media, inputDir string) error {
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
 		count++
 	}
-	translated, err := genai.TranslateSubtitles(assembled)
+	translated, err := ai.TranslateSubtitlesGemini(assembled)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 	config.Configure()
 	discord.Init()
-	genai.InitOpenAI()
+	ai.InitOpenAI()
 	blocking := make(chan bool, 1)
 	cleanup.InitSignalCallback(blocking)
 	target.UpdateEncoderList()

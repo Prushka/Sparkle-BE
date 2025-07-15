@@ -47,6 +47,7 @@ type Config struct {
 
 	PurgeCacheUrl string `env:"PURGE_CACHE_URL" envDefault:""`
 	OpenAI        string `env:"OPENAI" envDefault:""`
+	Gemini        string `env:"GEMINI" envDefault:""`
 }
 
 var TheConfig = &Config{}
