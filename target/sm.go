@@ -68,9 +68,7 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 						if f.IsDir() && (SeasonRe.MatchString(f.Name()) || f.Name() == "Specials") {
 							if len(show.Seasons) > 0 {
 								if season, ok := show.Seasons[f.Name()]; ok {
-									if season.StartEpisode == nil {
-										p(nil)
-									} else {
+									if season.StartEpisode != nil {
 										p(func(s string) bool {
 											match := SeasonEpisodeRe.FindStringSubmatch(s)
 											if match != nil && len(match) > 1 {
@@ -86,6 +84,24 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 											}
 											return false
 										})
+									} else if season.ExactEpisode != nil {
+										p(func(s string) bool {
+											match := SeasonEpisodeRe.FindStringSubmatch(s)
+											if match != nil && len(match) > 1 {
+												currentEpisode, err := strconv.Atoi(match[1])
+												if err != nil {
+													return false
+												}
+												if currentEpisode == *season.ExactEpisode {
+													return true
+												}
+											} else {
+												discord.Infof("No episode number found")
+											}
+											return false
+										})
+									} else {
+										p(nil)
 									}
 								}
 							} else {
@@ -122,25 +138,36 @@ func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, paren
 	}
 }
 
+// "DAN DA DAN,1|3" means starting from season 1, episode 3, it stops at season 1 and doesn't encode seasons > 1
+// "DAN DA DAN,1:3" means only process season 1 episode 3
+
 func StringToShow(keyword string) Show {
 	s := strings.Split(keyword, ",")
 	showName := s[0]
 	seasons := make(map[string]Season)
 	if len(s) > 1 {
 		for i := 1; i < len(s); i++ {
-			ss := strings.Split(s[i], "|")
 			var startEpisode *int
+			var exactEpisode *int
 			seasonName := s[i]
+			ss := strings.Split(seasonName, "|")
 			if len(ss) > 1 {
 				se, _ := strconv.Atoi(ss[1])
 				startEpisode = &se
 				seasonName = ss[0]
 			}
+
+			exact := strings.Split(seasonName, ":")
+			if len(exact) > 1 {
+				ee, _ := strconv.Atoi(exact[1])
+				exactEpisode = &ee
+				seasonName = exact[0]
+			}
 			if strings.ToLower(s[i]) == "specials" {
-				seasons["Specials"] = Season{Name: "Specials", StartEpisode: startEpisode}
+				seasons["Specials"] = Season{Name: "Specials", StartEpisode: startEpisode, ExactEpisode: exactEpisode}
 			} else {
 				name := fmt.Sprintf("Season %s", seasonName)
-				seasons[name] = Season{Name: name, StartEpisode: startEpisode}
+				seasons[name] = Season{Name: name, StartEpisode: startEpisode, ExactEpisode: exactEpisode}
 			}
 		}
 	}
@@ -177,6 +204,7 @@ type Show struct {
 type Season struct {
 	Name         string
 	StartEpisode *int
+	ExactEpisode *int
 }
 
 var SessionIds = mapset.NewSet[string]()
