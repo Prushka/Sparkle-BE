@@ -3,6 +3,7 @@ package ai
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"context"
 	"fmt"
 	"github.com/openai/openai-go"
@@ -120,6 +121,7 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 			return "", fmt.Errorf("unable to find candidate in response")
 		}
 		t := result.Candidates[0].Content.Parts[0].Text
+		fmt.Printf("%v\n", utils.AsJson(result.UsageMetadata))
 		sanitized := sanitizeSegment(t)
 		translated = append(translated, sanitized)
 		discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
