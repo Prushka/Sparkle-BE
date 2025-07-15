@@ -9,13 +9,11 @@ import (
 	"Sparkle/target"
 	"Sparkle/utils"
 	"fmt"
-	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 )
 
 const outputVTT = "output.zh.vtt"
@@ -152,21 +150,6 @@ func main() {
 	genai.InitOpenAI()
 	blocking := make(chan bool, 1)
 	cleanup.InitSignalCallback(blocking)
-	scheduler := gocron.NewScheduler(time.Now().Location())
-	cleanup.AddOnStopFunc(func(_ os.Signal) {
-		scheduler.Stop()
-	})
-
-	utils.PanicOnSec(scheduler.SingletonMode().Every(5).Minute().Do(func() {
-		changed := target.UpdateEncoderList()
-		if changed {
-			process()
-		}
-	}))
-
-	utils.PanicOnSec(scheduler.SingletonMode().Every(2).Hours().Do(func() {
-		process()
-	}))
-	scheduler.StartAsync()
-	<-blocking
+	target.UpdateEncoderList()
+	process()
 }
