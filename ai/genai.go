@@ -5,7 +5,6 @@ import (
 	"Sparkle/discord"
 	"context"
 	"fmt"
-	"github.com/labstack/gommon/log"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"google.golang.org/genai"
@@ -74,13 +73,21 @@ func SanitizeSegment(input string) string {
 	return strings.Join(filtered[start:end+1], "\n")
 }
 
-func TranslateSubtitlesGemini(input []string) (string, error) {
-	discord.Infof("Sending to Gemini: segments: %d, length: %d", len(input), len(strings.Join(input, "\n")))
+func limit(input []string) error {
+	discord.Infof("Sending to Gemini: Chat segments: %d, Total input length: %d", len(input), len(strings.Join(input, "\n")))
 	if len(input) > 10 {
-		return "", fmt.Errorf("too many splitted")
+		return fmt.Errorf("too many splitted")
 	}
-	ctx := context.Background()
+	return nil
+}
 
+func TranslateSubtitlesGemini(input []string) (string, error) {
+	err := limit(input)
+	if err != nil {
+		return "", err
+	}
+
+	ctx := context.Background()
 	chat, err := GeminiCli.Chats.Create(ctx, "gemini-2.5-pro", &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(systemMessage, genai.RoleUser)},
 		[]*genai.Content{})
@@ -91,7 +98,7 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 	var translated []string
 
 	for idx, i := range input {
-		log.Infof("Processing index: %d/%d, length: %d", idx, len(input), len(i))
+		discord.Infof("Processing index: %d/%d, Input length: %d", idx, len(input), len(i))
 		result, err := chat.SendMessage(ctx, genai.Part{Text: i})
 		if err != nil {
 			return "", err
