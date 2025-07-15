@@ -19,8 +19,8 @@ Input: WEBVTT(s) containing subtitles in one or two non‑Chinese languages.
 Task:
 1. Preserve every original timing cue exactly.
 2. Replace each subtitle line with a context‑aware and natural Simplified Chinese translation, except for lines or phrases with intentionally untranslated content.
-3. Do not omit any lines. Translate every single line from start to end.
-4. Do not add any additional 句号 at the end of each line.
+3. Do NOT omit any lines. Translate every single line from start to end.
+4. Do NOT add any additional 句号 at the end of each line.
 Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in Simplified Chinese.`
 
 func Init() {
@@ -98,7 +98,7 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 	var translated []string
 
 	for idx, i := range input {
-		discord.Infof("Processing index: %d/%d, Input length: %d", idx, len(input)-1, len(i))
+		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d", idx, len(input)-1, len(i), len(strings.Split(i, "\n")))
 		result, err := chat.SendMessage(ctx, genai.Part{Text: i})
 		if err != nil {
 			return "", err
@@ -107,8 +107,14 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 		if len(result.Candidates) < 0 {
 			return "", fmt.Errorf("unable to find candidate in response")
 		}
-		curr := SanitizeSegment(result.Candidates[0].Content.Parts[0].Text)
-		translated = append(translated, curr)
+		t := result.Candidates[0].Content.Parts[0].Text
+		sanitized := SanitizeSegment(t)
+		translated = append(translated, sanitized)
+		discord.Infof("Output length: %d, Output lines: %d, Sanitized length: %d, Sanitized lines: %d",
+			len(t),
+			len(strings.Split(t, "\n")),
+			len(sanitized),
+			len(strings.Split(sanitized, "\n")))
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }
