@@ -98,7 +98,7 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 	var translated []string
 
 	for idx, i := range input {
-		discord.Infof("Processing index: %d/%d, Input length: %d", idx, len(input), len(i))
+		discord.Infof("Processing index: %d/%d, Input length: %d", idx, len(input)-1, len(i))
 		result, err := chat.SendMessage(ctx, genai.Part{Text: i})
 		if err != nil {
 			return "", err
