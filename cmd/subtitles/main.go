@@ -21,7 +21,7 @@ const outputVTT = "output.zh.vtt"
 func process() {
 	err := os.RemoveAll(config.TheConfig.Output)
 	if err != nil {
-		discord.Errorf("error removing file: %v", err)
+		discord.Errorf("error removing: %v", err)
 	}
 
 	target.SMMutex.Lock()
@@ -48,6 +48,11 @@ func process() {
 	}
 	for _, root := range config.TheConfig.MovieDirs {
 		target.LoopMovies(root, movies, processFile)
+	}
+
+	err = os.RemoveAll(config.TheConfig.Output)
+	if err != nil {
+		discord.Errorf("error removing: %v", err)
 	}
 }
 
