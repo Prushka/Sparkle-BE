@@ -99,11 +99,39 @@ func translate(media, inputDir string) error {
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
 		count++
 	}
-	translated, err := ai.TranslateSubtitlesGemini(assembled)
+	translated, err := ai.TranslateSubtitlesGemini(splitAssembled(assembled, 2000))
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(filepath.Join(inputDir, outputVTT), []byte(translated), 0755)
+}
+
+func splitAssembled(assembled string, atLine int) []string {
+	lines := strings.Split(assembled, "\n")
+
+	var (
+		result       []string
+		currentLines []string
+		count        int
+	)
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" && count >= atLine {
+			result = append(result, strings.Join(currentLines, "\n"))
+			currentLines = nil
+			count = 0
+			continue
+		}
+
+		currentLines = append(currentLines, line)
+		count++
+	}
+
+	if len(currentLines) > 0 {
+		result = append(result, strings.Join(currentLines, "\n"))
+	}
+
+	return result
 }
 
 func pipeline(j job.Job) error {
@@ -154,7 +182,7 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 	config.Configure()
 	discord.Init()
-	ai.InitOpenAI()
+	ai.Init()
 	blocking := make(chan bool, 1)
 	cleanup.InitSignalCallback(blocking)
 	target.UpdateEncoderList()
