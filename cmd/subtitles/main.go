@@ -115,12 +115,14 @@ func splitAssembled(assembled string, atLine int) []string {
 		count        int
 	)
 
-	for _, line := range lines {
+	for i, line := range lines {
 		if strings.TrimSpace(line) == "" && count >= atLine {
-			result = append(result, strings.Join(currentLines, "\n"))
-			currentLines = nil
-			count = 0
-			continue
+			if i+1 >= len(lines) || strings.Contains(lines[i+1], "-->") {
+				result = append(result, strings.Join(currentLines, "\n"))
+				currentLines = nil
+				count = 0
+				continue
+			}
 		}
 
 		currentLines = append(currentLines, line)
