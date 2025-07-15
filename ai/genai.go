@@ -21,7 +21,7 @@ Task:
 2. Replace each subtitle line with a context‑aware and natural Simplified Chinese translation, except for lines or phrases with intentionally untranslated content.
 3. Do not omit any lines. Translate every single line from start to end.
 4. Do not add any additional 句号 at the end of each line.
-Output: A single, valid, sanitized WEBVTT and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in Simplified Chinese.`
+Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in Simplified Chinese.`
 
 func Init() {
 	discord.Infof("Initializing AI clients")
