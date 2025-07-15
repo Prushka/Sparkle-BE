@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const outputVTT = "output.zh-CHS.vtt"
+const outputVTT = "output.zh.vtt"
 
 func process() {
 	err := os.RemoveAll(config.TheConfig.Output)
@@ -83,13 +83,18 @@ func translate(media, inputDir string) error {
 	}
 	assembled := fmt.Sprintf("Media: %s\n", media)
 	count := 0
+	if eng, ok := langs["eng"]; ok {
+		discord.Infof("eng")
+		assembled += fmt.Sprintf("Language: %s\n%s\n", "eng", eng)
+		count++
+	}
 	for key, value := range langs {
+		if count > 0 {
+			break
+		}
 		discord.Infof(key)
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
 		count++
-		if count > 1 {
-			break
-		}
 	}
 	translated, err := genai.TranslateSubtitles(assembled)
 	if err != nil {
@@ -112,7 +117,7 @@ func pipeline(j job.Job) error {
 	}
 
 	source := j.OutputJoin(outputVTT)
-	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", ".zh-CHS.vtt"))
+	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", ".zh.vtt"))
 	_, err = utils.CopyFile(source, dest)
 	if err != nil {
 		discord.Errorf("error copying file: %s->%s %v", source, dest, err)
