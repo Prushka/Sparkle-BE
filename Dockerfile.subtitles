@@ -15,8 +15,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-s -w" -a -installsuffix cgo -o main .
-RUN upx --best --lzma main
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-s -w" -a -installsuffix cgo -o subtitles ./cmd/subtitles
+RUN upx --best --lzma subtitles
 
 FROM alpine:latest
 
@@ -27,8 +27,8 @@ ARG COMMIT_TIME
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 # Copy the pre-built binary file from the previous stage
-COPY --from=build /app/main ./
+COPY --from=build /app/subtitles ./
 ENV COMMIT_SHA=${COMMIT_SHA}
 ENV COMMIT_MESSAGE=${COMMIT_MESSAGE}
 ENV COMMIT_TIME=${COMMIT_TIME}
-CMD [ "./main" ]
+CMD [ "./subtitles" ]
