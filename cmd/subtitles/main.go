@@ -99,7 +99,7 @@ func translate(media, inputDir string) error {
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
 		count++
 	}
-	translator := &ai.Gemini{}
+	translator := ai.NewGemini()
 	if config.TheConfig.AiProvider == "openai" {
 	}
 	translated, err := ai.TranslateSubtitles(translator, splitAssembled(assembled, 1000))

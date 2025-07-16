@@ -19,29 +19,33 @@ type Result interface {
 	Text() string
 }
 
-type Gemini struct {
+type gemini struct {
 	Chat *genai.Chat
 }
 
-type GeminiResponse struct {
+type geminiResponse struct {
 	Response *genai.GenerateContentResponse
 }
 
-func (g *GeminiResponse) Usage() interface{} {
+func NewGemini() Translator {
+	return &gemini{}
+}
+
+func (g *geminiResponse) Usage() interface{} {
 	if g.Response == nil {
 		return nil
 	}
 	return g.Response.UsageMetadata
 }
 
-func (g *GeminiResponse) Text() string {
+func (g *geminiResponse) Text() string {
 	if g.Response == nil || len(g.Response.Candidates) == 0 || len(g.Response.Candidates[0].Content.Parts) == 0 {
 		return ""
 	}
 	return g.Response.Candidates[0].Content.Parts[0].Text
 }
 
-func (g Gemini) SendWithRetry(ctx context.Context, input string, pass func(result Result) bool, attempts int) (Result, error) {
+func (g gemini) SendWithRetry(ctx context.Context, input string, pass func(result Result) bool, attempts int) (Result, error) {
 	var err error
 	for i := 1; i < attempts+1; i++ {
 		discord.Infof("Attempt: %d", i)
@@ -56,7 +60,7 @@ func (g Gemini) SendWithRetry(ctx context.Context, input string, pass func(resul
 	return nil, fmt.Errorf("failed after %d attempts | %v", attempts, err)
 }
 
-func (g Gemini) Send(ctx context.Context, input string) (Result, error) {
+func (g gemini) Send(ctx context.Context, input string) (Result, error) {
 	if g.Chat == nil {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
@@ -64,10 +68,10 @@ func (g Gemini) Send(ctx context.Context, input string) (Result, error) {
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("no candidates found in response")
 	}
-	return &GeminiResponse{Response: resp}, err
+	return &geminiResponse{Response: resp}, err
 }
 
-func (g Gemini) StartChat(ctx context.Context, systemInstruction string) error {
+func (g gemini) StartChat(ctx context.Context, systemInstruction string) error {
 	chat, err := GeminiCli.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(systemInstruction, genai.RoleUser)},
 		[]*genai.Content{})
