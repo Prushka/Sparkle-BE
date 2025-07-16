@@ -34,7 +34,67 @@ func sanitizeSegment(input string) string {
 		return ""
 	}
 
-	return trimPeriods(strings.Join(filtered[start:end+1], "\n"))
+	return trimLinesPreserveTags(removeSingleFullStops(strings.Join(filtered[start:end+1], "\n")))
+}
+
+// removeSingleFullStops replace any lone '。' with space while preserving contiguous runs of '。'
+func removeSingleFullStops(input string) string {
+	var b strings.Builder
+	runes := []rune(input)
+
+	for i := 0; i < len(runes); {
+		if runes[i] == '。' {
+			// count how many consecutive '。' we have
+			j := i + 1
+			for j < len(runes) && runes[j] == '。' {
+				j++
+			}
+			count := j - i
+
+			// if it's a run of 2 or more, write them; otherwise write a space
+			if count > 1 {
+				b.WriteString(string(runes[i:j]))
+			} else {
+				b.WriteString(" ")
+			}
+			i = j
+		} else {
+			b.WriteRune(runes[i])
+			i++
+		}
+	}
+
+	return b.String()
+}
+
+var trimLineRE = regexp.MustCompile(
+	`^((?:<[^>]+>)*)` + // group1: zero or more opening tags at the start
+		`(.*?)` + // group2: minimal content in between
+		`((?:</[^>]+>)*)$`, // group3: zero or more closing tags at the end
+)
+
+// trimLinePreserveTags removes all leading and trailing spaces from the content
+// of a single line but ignores any outer HTML tags.
+func trimLinePreserveTags(line string) string {
+	if m := trimLineRE.FindStringSubmatch(line); m != nil {
+		leadingTags := m[1]
+		innerContent := m[2]
+		trailingTags := m[3]
+		trimmed := strings.TrimSpace(innerContent)
+		return leadingTags + trimmed + trailingTags
+	}
+	// fallback (regex always matches, but just in case):
+	return strings.TrimSpace(line)
+}
+
+// trimLinesPreserveTags applies TrimLinePreserveTags to every line in input,
+// preserving line breaks.
+func trimLinesPreserveTags(input string) string {
+	lines := strings.Split(input, "\n")
+	for i, ln := range lines {
+		lines[i] = trimLinePreserveTags(ln)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // trimPeriods scans the input text line by line.
