@@ -37,7 +37,6 @@ func Init() {
 }
 
 func limit(input []string) error {
-	discord.Infof("Sending to Gemini: Chat segments: %d, Total input length: %d", len(input), len(strings.Join(input, "\n")))
 	if len(input) > 10 {
 		return fmt.Errorf("too many splitted")
 	}

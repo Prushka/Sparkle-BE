@@ -2,10 +2,12 @@ package ai
 
 import (
 	"Sparkle/config"
+	"Sparkle/discord"
 	"Sparkle/utils"
 	"context"
 	"fmt"
 	"google.golang.org/genai"
+	"strings"
 )
 
 type gemini struct {
@@ -43,6 +45,8 @@ func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error 
 }
 
 func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
+	discord.Infof("Sending to Openai: Chat segments: %d, Total input length: %d", len(strings.Split(input, "\n")), len(input))
+
 	if g.Chat == nil {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
