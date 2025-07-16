@@ -1,2 +1,2 @@
-docker buildx build --platform linux/amd64 -f Dockerfile.api --tag meinya/sparkle:api --push .
-docker buildx build --platform linux/amd64 -f Dockerfile.subtitles --tag meinya/sparkle:subtitles --push .
+docker buildx build --platform linux/amd64 -f Dockerfile.api --tag meinya/sparkle-api:latest --push .
+docker buildx build --platform linux/amd64 -f Dockerfile.subtitles --tag meinya/sparkle-subtitles:latest --push .
