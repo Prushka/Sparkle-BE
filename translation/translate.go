@@ -1,4 +1,4 @@
-package main
+package translation
 
 import (
 	"Sparkle/ai"
@@ -41,7 +41,7 @@ func splitAssembled(assembled string, atLine int) []string {
 	return result
 }
 
-func translate(media, inputDir string) error {
+func Translate(media, inputDir string) error {
 	files, err := os.ReadDir(inputDir)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func translate(media, inputDir string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(inputDir, config.GetOutputVTT()), []byte(translated), 0755)
+	return os.WriteFile(filepath.Join(inputDir, config.GetOutputVTT("")), []byte(translated), 0755)
 }
 
 // sanitizeWebVTT removes contiguous duplicate blocks and empty blocks from text.

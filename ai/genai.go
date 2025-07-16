@@ -53,7 +53,7 @@ func TranslateSubtitles(translator Translator, input []string) (string, error) {
 	}
 
 	ctx := context.Background()
-	err = translator.StartChat(ctx, config.GetSystemMessage())
+	err = translator.StartChat(ctx, config.GetSystemMessage(""))
 	if err != nil {
 		return "", err
 	}

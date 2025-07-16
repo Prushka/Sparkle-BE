@@ -4,11 +4,8 @@ import (
 	"Sparkle/config"
 	"Sparkle/utils"
 	"fmt"
-	"os"
 	"strings"
 )
-
-var splitter = string(os.PathSeparator)
 
 const (
 	Complete         = "complete"

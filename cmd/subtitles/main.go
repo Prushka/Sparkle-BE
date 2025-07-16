@@ -7,6 +7,7 @@ import (
 	"Sparkle/discord"
 	"Sparkle/job"
 	"Sparkle/target"
+	"Sparkle/translation"
 	"Sparkle/utils"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -61,7 +62,7 @@ func pipeline(j job.Job) error {
 	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
 	_ = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
-	err = translate(j.Input, j.OutputJoin())
+	err = translation.Translate(j.Input, j.OutputJoin())
 	if err != nil {
 		discord.Errorf("Error translating: %v", err)
 		return err
@@ -69,7 +70,7 @@ func pipeline(j job.Job) error {
 
 	destExt := fmt.Sprintf(".%s.vtt", config.TheConfig.TranslationLanguageCode)
 
-	source := j.OutputJoin(config.GetOutputVTT())
+	source := j.OutputJoin(config.GetOutputVTT(""))
 	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", destExt))
 	_, err = utils.CopyFile(source, dest)
 	if err != nil {
