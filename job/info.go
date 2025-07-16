@@ -61,6 +61,7 @@ type JobStripped struct {
 	OriModTime     int64 `json:",omitempty"`
 	JobModTime     int64 `json:",omitempty"`
 	Fast           bool  `json:",omitempty"`
+	Translate      bool  `json:",omitempty"`
 }
 
 type StreamStripped struct {

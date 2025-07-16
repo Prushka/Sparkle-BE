@@ -39,7 +39,7 @@ func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 				log.Debugf("File exists: %s", file.Name())
 				if j.State == job.Complete && len(j.EncodedCodecs) > 0 &&
 					(j.OriSize == 0 || j.OriSize == stats.Size()) &&
-					(j.Fast == te.Fast) {
+					(j.Fast == te.Fast) && (j.Translate == te.Translate) {
 					return false
 				} else {
 					discord.Infof("File modified or prev encoding incomplete: %s, remove old", file.Name())
