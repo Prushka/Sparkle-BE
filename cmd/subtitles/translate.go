@@ -87,6 +87,7 @@ func translate(media, inputDir string) error {
 	}
 	translator := ai.NewGemini()
 	if config.TheConfig.AiProvider == "openai" {
+		translator = ai.NewOpenAI()
 	}
 	translated, err := ai.TranslateSubtitles(translator, splitAssembled(assembled, 1000))
 	if err != nil {
