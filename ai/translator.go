@@ -3,6 +3,7 @@ package ai
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"context"
 	"fmt"
 	"google.golang.org/genai"
@@ -68,7 +69,9 @@ func (g gemini) Send(ctx context.Context, input string) (Result, error) {
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("no candidates found in response")
 	}
-	return &geminiResponse{Response: resp}, err
+	res := &geminiResponse{Response: resp}
+	fmt.Printf("%v\n", utils.AsJson(res.Usage()))
+	return res, err
 }
 
 func (g gemini) StartChat(ctx context.Context, systemInstruction string) error {

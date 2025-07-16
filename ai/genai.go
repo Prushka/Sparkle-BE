@@ -3,7 +3,6 @@ package ai
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
-	"Sparkle/utils"
 	"context"
 	"fmt"
 	"github.com/openai/openai-go"
@@ -85,24 +84,24 @@ func TranslateSubtitles(translator Translator, input []string) (string, error) {
 		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
 			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
 		result, err := translator.SendWithRetry(ctx, i, func(result Result) bool {
-			sanitized := sanitizeSegment(result.Text())
+			t := result.Text()
+			sanitized := sanitizeSegment(t)
 			sanitizedTimeLines := countVTTTimeLines(sanitized)
+
+			discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
+				len(t),
+				len(strings.Split(t, "\n")),
+				countVTTTimeLines(t),
+				len(sanitized),
+				len(strings.Split(sanitized, "\n")),
+				sanitizedTimeLines)
 			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= 0.98
 		}, 3)
 		if err != nil {
 			return "", err
 		}
-		t := result.Text()
-		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
-		sanitized := sanitizeSegment(t)
+		sanitized := sanitizeSegment(result.Text())
 		translated = append(translated, sanitized)
-		discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
-			len(t),
-			len(strings.Split(t, "\n")),
-			countVTTTimeLines(t),
-			len(sanitized),
-			len(strings.Split(sanitized, "\n")),
-			countVTTTimeLines(sanitized))
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }
