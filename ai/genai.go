@@ -44,35 +44,6 @@ func Init() {
 	}
 }
 
-func sanitizeSegment(input string) string {
-	lines := strings.Split(input, "\n")
-
-	var filtered []string
-	for _, line := range lines {
-		curr := strings.ToLower(strings.TrimSpace(line))
-		if strings.Contains(curr, "webvtt") || strings.Contains(curr, "```") {
-			continue
-		}
-		filtered = append(filtered, line)
-	}
-
-	start := 0
-	for start < len(filtered) && strings.TrimSpace(filtered[start]) == "" {
-		start++
-	}
-
-	end := len(filtered) - 1
-	for end >= start && strings.TrimSpace(filtered[end]) == "" {
-		end--
-	}
-
-	if start > end {
-		return ""
-	}
-
-	return strings.Join(filtered[start:end+1], "\n")
-}
-
 func limit(input []string) error {
 	discord.Infof("Sending to Gemini: Chat segments: %d, Total input length: %d", len(input), len(strings.Join(input, "\n")))
 	if len(input) > 10 {
@@ -92,7 +63,6 @@ func countVTTTimeLines(input string) int {
 	return count
 }
 
-// TODO: sanitize output, if end of sentence contains only one 句号，remove it
 // TODO: add retry (max 3 times) when time lines no match (2% cutoff)
 // TODO: add translator interface to support multiple ai providers
 // TODO: finish o4-mini
