@@ -16,12 +16,16 @@ var OpenAICli openai.Client
 var GeminiCli *genai.Client
 
 const systemMessage = `You are an intelligent WEBVTT subtitle translator.
-Input: WEBVTT(s) containing subtitles in one or two non‑Chinese languages.
+Input: WEBVTT(s) containing subtitles in one foreign language.
 Task:
 1. Preserve every original timing cue exactly.
-2. Replace each subtitle line with a context‑aware and natural Simplified Chinese translation, except for lines or phrases with intentionally untranslated content.
+2. Replace each subtitle line with a context‑aware and natural %s translation, except for lines or phrases with intentionally untranslated content.
 3. Do NOT omit any lines. Translate every single line from start to end.
-Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in Simplified Chinese.`
+Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in %s.`
+
+func getSystemMessage() string {
+	return fmt.Sprintf(systemMessage, config.TheConfig.TranslationLanguage, config.TheConfig.TranslationLanguage)
+}
 
 func Init() {
 	discord.Infof("Initializing AI clients")
@@ -53,7 +57,7 @@ func limit(input []string) error {
 }
 
 // TODO: finish o4-mini
-// TODO: sanitize input webvtt, remove time with empty content, remove duplicate entries (same time and same content), (remove html tags <i></i> <b></b> ?? necessary?)
+// TODO: remove html tags <i></i> <b></b> ?? necessary?
 
 func TranslateSubtitles(translator Translator, input []string) (string, error) {
 	err := limit(input)
@@ -62,7 +66,7 @@ func TranslateSubtitles(translator Translator, input []string) (string, error) {
 	}
 
 	ctx := context.Background()
-	err = translator.StartChat(ctx, systemMessage)
+	err = translator.StartChat(ctx, getSystemMessage())
 	if err != nil {
 		return "", err
 	}

@@ -8,6 +8,7 @@ import (
 	"Sparkle/job"
 	"Sparkle/target"
 	"Sparkle/utils"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
@@ -15,7 +16,11 @@ import (
 	"strings"
 )
 
-const outputVTT = "output.zh.vtt"
+const outputVTT = "output.%s.vtt"
+
+func getOutputVTT() string {
+	return fmt.Sprintf(outputVTT, config.TheConfig.TranslationLanguageCode)
+}
 
 func process() {
 	err := os.RemoveAll(config.TheConfig.Output)
@@ -68,15 +73,17 @@ func pipeline(j job.Job) error {
 		return err
 	}
 
-	source := j.OutputJoin(outputVTT)
-	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", ".zh.vtt"))
+	destExt := fmt.Sprintf(".%s.vtt", config.TheConfig.TranslationLanguageCode)
+
+	source := j.OutputJoin(getOutputVTT())
+	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", destExt))
 	_, err = utils.CopyFile(source, dest)
 	if err != nil {
 		discord.Errorf("error copying file: %s->%s %v", source, dest, err)
 		return err
 	}
 
-	discord.Infof("Done: %s", strings.ReplaceAll(j.Input, ".mkv", ".zh.vtt"))
+	discord.Infof("Done: %s", strings.ReplaceAll(j.Input, ".mkv", destExt))
 
 	return nil
 }
