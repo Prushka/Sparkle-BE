@@ -62,7 +62,7 @@ func pipeline(j job.Job) error {
 	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
 	_ = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
-	err = translation.Translate(j.Input, j.OutputJoin())
+	err = translation.Translate(j.Input, j.OutputJoin(), config.GetOutputVTT(""))
 	if err != nil {
 		discord.Errorf("Error translating: %v", err)
 		return err
