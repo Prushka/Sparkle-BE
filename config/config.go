@@ -51,7 +51,7 @@ type Config struct {
 	AiProvider           string   `env:"AI_PROVIDER" envDefault:"gemini"`
 	OpenAIModel          string   `env:"OPENAI_MODEL" envDefault:"o4-mini"`
 	GeminiModel          string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
-	TranslationLanguages []string `env:"TRANSLATION_LANGUAGES" envDefault:"Simplified Chinese;zh"` // Turkish;tr,Spanish;spa
+	TranslationLanguages []string `env:"TRANSLATION_LANGUAGES" envDefault:"Simplified Chinese;zh,Turkish;tr"` // Turkish;tr,Spanish;spa
 }
 
 var TheConfig = &Config{}
