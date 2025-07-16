@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Sparkle/ai"
 	"Sparkle/cleanup"
 	"Sparkle/config"
 	"Sparkle/discord"
@@ -175,6 +176,7 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 	config.Configure()
 	discord.Init()
+	ai.Init()
 	blocking := make(chan bool, 1)
 	cleanup.InitSignalCallback(blocking)
 	scheduler := gocron.NewScheduler(time.Now().Location())
