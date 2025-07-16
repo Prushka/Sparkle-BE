@@ -14,7 +14,7 @@ type gemini struct {
 }
 
 type geminiResponse struct {
-	Response *genai.GenerateContentResponse
+	response *genai.GenerateContentResponse
 }
 
 func NewGemini() Translator {
@@ -22,17 +22,21 @@ func NewGemini() Translator {
 }
 
 func (g *geminiResponse) Usage() interface{} {
-	if g.Response == nil {
+	if g.response == nil {
 		return nil
 	}
-	return g.Response.UsageMetadata
+	return g.response.UsageMetadata
 }
 
 func (g *geminiResponse) Text() string {
-	if g.Response == nil || len(g.Response.Candidates) == 0 || len(g.Response.Candidates[0].Content.Parts) == 0 {
+	if g.response == nil || len(g.response.Candidates) == 0 || len(g.response.Candidates[0].Content.Parts) == 0 {
 		return ""
 	}
-	return g.Response.Candidates[0].Content.Parts[0].Text
+	return g.response.Candidates[0].Content.Parts[0].Text
+}
+
+func (g *geminiResponse) Response() interface{} {
+	return g.response
 }
 
 func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error {
@@ -53,7 +57,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("no candidates found in response")
 	}
-	result := &geminiResponse{Response: resp}
+	result := &geminiResponse{response: resp}
 	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
 	return result, err
 }

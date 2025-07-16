@@ -14,7 +14,7 @@ type openaiTranslator struct {
 }
 
 type openaiResponse struct {
-	Response *openai.ChatCompletion
+	response *openai.ChatCompletion
 }
 
 func NewOpenAI() Translator {
@@ -24,14 +24,18 @@ func NewOpenAI() Translator {
 }
 
 func (r *openaiResponse) Usage() interface{} {
-	return r.Response.Usage
+	return r.response.Usage
 }
 
 func (r *openaiResponse) Text() string {
-	if len(r.Response.Choices) == 0 {
+	if len(r.response.Choices) == 0 {
 		return ""
 	}
-	return r.Response.Choices[0].Message.Content
+	return r.response.Choices[0].Message.Content
+}
+
+func (r *openaiResponse) Response() interface{} {
+	return r.response
 }
 
 func (o *openaiTranslator) StartChat(_ context.Context, systemInstruction string) error {
@@ -66,7 +70,7 @@ func (o *openaiTranslator) Send(ctx context.Context, input string) (Result, erro
 	// Add assistant response to conversation history
 	o.messages = append(o.messages, openai.AssistantMessage(resp.Choices[0].Message.Content))
 
-	result := &openaiResponse{Response: resp}
+	result := &openaiResponse{response: resp}
 	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
 	return result, nil
 }
