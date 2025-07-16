@@ -16,12 +16,6 @@ import (
 	"strings"
 )
 
-const outputVTT = "output.%s.vtt"
-
-func getOutputVTT() string {
-	return fmt.Sprintf(outputVTT, config.TheConfig.TranslationLanguageCode)
-}
-
 func process() {
 	err := os.RemoveAll(config.TheConfig.Output)
 	if err != nil {
@@ -75,7 +69,7 @@ func pipeline(j job.Job) error {
 
 	destExt := fmt.Sprintf(".%s.vtt", config.TheConfig.TranslationLanguageCode)
 
-	source := j.OutputJoin(getOutputVTT())
+	source := j.OutputJoin(config.GetOutputVTT())
 	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", destExt))
 	_, err = utils.CopyFile(source, dest)
 	if err != nil {
@@ -88,7 +82,7 @@ func pipeline(j job.Job) error {
 	return nil
 }
 
-func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
+func processFile(file os.DirEntry, parent string, _ target.ToEncode) bool {
 	ext := filepath.Ext(file.Name())
 	if slices.Contains(job.ValidExtensions, ext[1:]) {
 		j := job.Job{

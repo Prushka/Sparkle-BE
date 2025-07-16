@@ -92,7 +92,7 @@ func translate(media, inputDir string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(inputDir, getOutputVTT()), []byte(translated), 0755)
+	return os.WriteFile(filepath.Join(inputDir, config.GetOutputVTT()), []byte(translated), 0755)
 }
 
 // sanitizeWebVTT removes contiguous duplicate blocks and empty blocks from text.
