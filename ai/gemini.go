@@ -2,7 +2,6 @@ package ai
 
 import (
 	"Sparkle/config"
-	"Sparkle/discord"
 	"Sparkle/utils"
 	"context"
 	"fmt"
@@ -35,22 +34,15 @@ func (g *geminiResponse) Text() string {
 	return g.Response.Candidates[0].Content.Parts[0].Text
 }
 
-func (g gemini) SendWithRetry(ctx context.Context, input string, pass func(result Result) bool, attempts int) (Result, error) {
-	var err error
-	for i := 1; i < attempts+1; i++ {
-		discord.Infof("Attempt: %d", i)
-		result, err := g.Send(ctx, input)
-		if err != nil {
-			discord.Errorf("Error on attempt %d: %v", i, err)
-		}
-		if err == nil && pass(result) {
-			return result, nil
-		}
-	}
-	return nil, fmt.Errorf("failed after %d attempts | %v", attempts, err)
+func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error {
+	chat, err := GeminiCli.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
+		SystemInstruction: genai.NewContentFromText(systemInstruction, genai.RoleUser)},
+		[]*genai.Content{})
+	g.Chat = chat
+	return err
 }
 
-func (g gemini) Send(ctx context.Context, input string) (Result, error) {
+func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	if g.Chat == nil {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
@@ -58,15 +50,7 @@ func (g gemini) Send(ctx context.Context, input string) (Result, error) {
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("no candidates found in response")
 	}
-	res := &geminiResponse{Response: resp}
-	fmt.Printf("%v\n", utils.AsJson(res.Usage()))
-	return res, err
-}
-
-func (g gemini) StartChat(ctx context.Context, systemInstruction string) error {
-	chat, err := GeminiCli.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
-		SystemInstruction: genai.NewContentFromText(systemInstruction, genai.RoleUser)},
-		[]*genai.Content{})
-	g.Chat = chat
-	return err
+	result := &geminiResponse{Response: resp}
+	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
+	return result, err
 }

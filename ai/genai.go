@@ -65,7 +65,7 @@ func TranslateSubtitles(translator Translator, input []string) (string, error) {
 		inputTimeLines := utils.CountVTTTimeLines(i)
 		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
 			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
-		result, err := translator.SendWithRetry(ctx, i, func(result Result) bool {
+		result, err := SendWithRetry(ctx, translator, i, func(result Result) bool {
 			t := result.Text()
 			sanitized := sanitizeSegment(t)
 			sanitizedTimeLines := utils.CountVTTTimeLines(sanitized)
@@ -87,26 +87,3 @@ func TranslateSubtitles(translator Translator, input []string) (string, error) {
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }
-
-//func TranslateSubtitlesOpenAI(input []string) (string, error) {
-//	err := limit(input)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	ctx := context.Background()
-//	msgs := []openai.ChatCompletionMessageParamUnion{
-//		openai.SystemMessage(systemMessage),
-//		openai.UserMessage(input),
-//	}
-//	resp, err := OpenAICli.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-//		Model:    config.TheConfig.OpenAIModel,
-//		Messages: msgs,
-//	})
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	translated := resp.Choices[0].Message.Content
-//	return translated, nil
-//}
