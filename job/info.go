@@ -95,6 +95,7 @@ type Job struct {
 	OriSize        int64
 	OriModTime     int64
 	Fast           bool
+	Translate      bool
 }
 
 type Stream struct {

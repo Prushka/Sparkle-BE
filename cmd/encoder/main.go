@@ -57,6 +57,7 @@ func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 			OriSize:     stats.Size(),
 			OriModTime:  stats.ModTime().Unix(),
 			Fast:        te.Fast,
+			Translate:   te.Translate,
 		}
 		startTime := time.Now()
 		discord.Infof("Processing file: %s", file.Name())

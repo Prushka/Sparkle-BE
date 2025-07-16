@@ -181,7 +181,7 @@ func (job *Job) handbrakeTranscode() error {
 }
 
 func (job *Job) translateFlow() error {
-	if len(config.TheConfig.TranslationLanguages) == 0 {
+	if len(config.TheConfig.TranslationLanguages) == 0 || !job.Translate {
 		return nil
 	}
 
