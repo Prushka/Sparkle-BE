@@ -187,7 +187,8 @@ var SeasonRe = regexp.MustCompile(`Season\s+\d+`)
 var SeasonEpisodeRe = regexp.MustCompile(`S\d+E(\d+)`)
 
 type ToEncode struct {
-	Fast bool
+	Fast      bool
+	Translate bool
 }
 
 type Movie struct {

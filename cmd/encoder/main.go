@@ -73,11 +73,20 @@ func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 	return false
 }
 
-func isFast(keyword string) (bool, string) {
-	if strings.HasPrefix(keyword, "f:") {
-		return true, keyword[2:]
+func parseExtraParams(keyword string) (target.ToEncode, string) {
+	te := target.ToEncode{
+		Fast:      false,
+		Translate: false,
 	}
-	return false, keyword
+	if strings.HasPrefix(keyword, "f:") {
+		keyword = keyword[2:]
+		te.Fast = true
+	}
+	if strings.HasSuffix(keyword, ":t") {
+		keyword = keyword[:len(keyword)-2]
+		te.Translate = true
+	}
+	return te, keyword
 }
 
 var totalProcessed = 0
@@ -101,16 +110,16 @@ func process() {
 		target.SessionIds.Add(j.Id)
 	}
 	for _, keyword := range target.ShowSet.ToSlice() {
-		isFast, keyword := isFast(keyword)
+		te, keyword := parseExtraParams(keyword)
 		show := target.StringToShow(keyword)
-		show.Fast = isFast
+		show.ToEncode = te
 		discord.Infof(utils.AsJson(show))
 		shows = append(shows, show)
 	}
 	for _, keyword := range target.MovieSet.ToSlice() {
-		isFast, keyword := isFast(keyword)
+		te, keyword := parseExtraParams(keyword)
 		movie := target.Movie{Name: keyword}
-		movie.Fast = isFast
+		movie.ToEncode = te
 		discord.Infof(utils.AsJson(movie))
 		movies = append(movies, movie)
 	}

@@ -2,29 +2,23 @@ package main
 
 import (
 	"fmt"
+	"strings"
 )
 
 func main() {
-	test := `WEBVTT
+	fmt.Println(parseExtraParams("f:test"))
+}
 
-
-00:00:02.500 --> 00:00:04.300
-
-00:00:02.500 --> 00:00:04.300
-and the way we access it is changing。
-
-00:00:02.500 --> 00:00:04.300
-and the way we access it is changing。
-
-
-00:00:02.500 --> 00:00:04.300
-and the way we access it is changing。
-
-
-00:00:02.500 --> 00:00:04.300
-and the way we access it is changing。
-
-00:00:02.500 --> 00:00:04.300
-and the way we access it is changing!`
-	fmt.Println(test)
+func parseExtraParams(keyword string) (bool, bool, string) {
+	isFast := false
+	translate := false
+	if strings.HasPrefix(keyword, "f:") {
+		keyword = keyword[2:]
+		isFast = true
+	}
+	if strings.HasSuffix(keyword, ":t") {
+		keyword = keyword[:len(keyword)-2]
+		translate = true
+	}
+	return isFast, translate, keyword
 }
