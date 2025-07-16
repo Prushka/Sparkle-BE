@@ -6,14 +6,25 @@ import (
 
 func main() {
 	test := `WEBVTT
-00:00:00.500 --> 00:00:02.000
-The Web is always changing。
+
 
 00:00:02.500 --> 00:00:04.300
-and the way we access it is changing。`
-	fmt.Println(test)
 
-	for i := 1; i < 4; i++ {
-		fmt.Println(i)
-	}
+00:00:02.500 --> 00:00:04.300
+and the way we access it is changing。
+
+00:00:02.500 --> 00:00:04.300
+and the way we access it is changing。
+
+
+00:00:02.500 --> 00:00:04.300
+and the way we access it is changing。
+
+
+00:00:02.500 --> 00:00:04.300
+and the way we access it is changing。
+
+00:00:02.500 --> 00:00:04.300
+and the way we access it is changing!`
+	fmt.Println(test)
 }
