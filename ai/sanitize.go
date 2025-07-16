@@ -2,6 +2,7 @@ package ai
 
 import (
 	"Sparkle/utils"
+	"regexp"
 	"strings"
 )
 
@@ -36,45 +37,43 @@ func sanitizeSegment(input string) string {
 	return trimPeriods(strings.Join(filtered[start:end+1], "\n"))
 }
 
-// trimPeriods modifies a string by finding time range lines and removing
-// a single "。" from the end of the last non-empty line before it.
-// If the preceding line ends with multiple "。", it is left unchanged.
-func trimPeriods(input string) string {
-	input = input + "\n"
-	lines := strings.Split(input, "\n")
+// trimPeriods scans the input text line by line.
+// Whenever it finds a time range line, it looks back for the most recent non-empty line before it.
+// If that line ends with exactly one Chinese full stop "。"
+// (and not multiple), it removes that final "。"—respecting any trailing HTML tags
+// like </i></b>.
+func trimPeriods(text string) string {
+	lines := strings.Split(text+"\n", "\n")
 
-	for i := 0; i < len(lines); i++ {
-		if utils.IsWebVTTTimeRangeLine(lines[i]) || i == len(lines)-1 {
-			// Look for the last non-empty line before the current line
-			lastNonEmptyIdx := -1
+	// regex to capture any trailing HTML closing tags, e.g. </b></i>
+	tagRe := regexp.MustCompile(`(?i)(</[^>]+>)+\s*$`)
+
+	for i, line := range lines {
+		if utils.IsWebVTTTimeRangeLine(line) || i == len(lines)-1 {
+			// scan backwards for the last non-empty line
 			for j := i - 1; j >= 0; j-- {
-				if strings.TrimSpace(lines[j]) != "" {
-					lastNonEmptyIdx = j
+				if utils.IsWebVTTTimeRangeLine(lines[j]) {
 					break
 				}
-			}
-
-			// Skip if no non-empty line was found
-			if lastNonEmptyIdx == -1 {
-				continue
-			}
-
-			line := lines[lastNonEmptyIdx]
-
-			// Check if line ends with exactly one "。"
-			if strings.HasSuffix(line, "。") {
-				// Count how many "。" characters at the end
-				endingPart := line
-				for len(endingPart) > 0 && strings.HasSuffix(endingPart, "。") {
-					endingPart = endingPart[:len(endingPart)-len("。")]
+				if strings.TrimSpace(lines[j]) == "" {
+					continue
 				}
+				// separate content from trailing tags
+				tags := tagRe.FindString(lines[j])
+				content := strings.TrimSuffix(lines[j], tags)
 
-				periodsAtEnd := (len(line) - len(endingPart)) / len("。")
-
-				// If exactly one "。" is at the end, remove it
-				if periodsAtEnd == 1 {
-					lines[lastNonEmptyIdx] = line[:len(line)-len("。")]
+				// work rune-wise to handle multibyte characters correctly
+				runes := []rune(content)
+				n := len(runes)
+				if n > 0 && runes[n-1] == '。' {
+					// only remove if it's a single full stop (not preceded by another)
+					if n < 2 || runes[n-2] != '。' {
+						// drop the last rune ("。")
+						content = string(runes[:n-1])
+						lines[j] = content + tags
+					}
 				}
+				break // only modify the first non-empty line before the timecode
 			}
 		}
 	}
