@@ -2,6 +2,8 @@ package ai
 
 import "strings"
 
+// sanitizeSegment removes lines with WEBVTT or ```
+// and trims leading and trailing empty lines.
 func sanitizeSegment(input string) string {
 	lines := strings.Split(input, "\n")
 
@@ -28,17 +30,18 @@ func sanitizeSegment(input string) string {
 		return ""
 	}
 
-	return TrimPeriods(strings.Join(filtered[start:end+1], "\n"))
+	return trimPeriods(strings.Join(filtered[start:end+1], "\n"))
 }
 
-// TrimPeriods modifies a string by finding lines with "-->" and removing
+// trimPeriods modifies a string by finding lines with "-->" and removing
 // a single "。" from the end of the last non-empty line before it.
 // If the preceding line ends with multiple "。", it is left unchanged.
-func TrimPeriods(input string) string {
+func trimPeriods(input string) string {
+	input = input + "\n"
 	lines := strings.Split(input, "\n")
 
 	for i := 0; i < len(lines); i++ {
-		if strings.Contains(lines[i], "-->") {
+		if strings.Contains(lines[i], "-->") || i == len(lines)-1 {
 			// Look for the last non-empty line before the current line
 			lastNonEmptyIdx := -1
 			for j := i - 1; j >= 0; j-- {
@@ -73,5 +76,5 @@ func TrimPeriods(input string) string {
 		}
 	}
 
-	return strings.Join(lines, "\n")
+	return strings.Join(lines[:len(lines)-1], "\n")
 }

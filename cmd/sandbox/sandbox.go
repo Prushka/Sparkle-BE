@@ -1,39 +1,15 @@
 package main
 
 import (
-	"Sparkle/ai"
 	"fmt"
 )
 
 func main() {
-	test := `-->
-test
+	test := `WEBVTT
+00:00:00.500 --> 00:00:02.000
+The Web is always changing。
 
---->
-te。st123。
-
---->
-
-test123。
-test123。
---->
-
-test123
-test123。
---->
-
-test123test123。
---->
-
-哈。
-
---->
-哈。。
-
---->
-哈。
-
---->
-`
-	fmt.Println(ai.TrimPeriods(test))
+00:00:02.500 --> 00:00:04.300
+and the way we access it is changing。`
+	fmt.Println(test)
 }
