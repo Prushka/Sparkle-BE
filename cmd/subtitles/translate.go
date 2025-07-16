@@ -46,7 +46,7 @@ func translate(media, inputDir string) error {
 		return err
 	}
 	langLengths := make(map[string]int)
-	langs := make(map[string]string)
+	languages := make(map[string]string)
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".vtt") {
 			discord.Infof(file.Name())
@@ -60,22 +60,22 @@ func translate(media, inputDir string) error {
 			fLines := strings.Split(string(fBytes), "\n")
 			if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
 				langLengths[lang] = len(fLines)
-				langs[lang] = string(fBytes)
+				languages[lang] = string(fBytes)
 			}
 		}
 	}
 	discord.Infof("%v", langLengths)
-	if len(langs) == 0 {
+	if len(languages) == 0 {
 		return fmt.Errorf("unable to find any webvtt")
 	}
 	assembled := fmt.Sprintf("Media: %s\n", media)
 	count := 0
-	if eng, ok := langs["eng"]; ok {
+	if eng, ok := languages["eng"]; ok {
 		discord.Infof("Using language: eng")
 		assembled += fmt.Sprintf("Language: %s\n%s\n", "eng", eng)
 		count++
 	}
-	for key, value := range langs {
+	for key, value := range languages {
 		if count > 0 {
 			break
 		}
