@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/openai/openai-go"
-	"strings"
 )
 
 type openaiTranslator struct {
@@ -43,13 +42,13 @@ func (o *openaiTranslator) StartChat(_ context.Context, systemInstruction string
 }
 
 func (o *openaiTranslator) Send(ctx context.Context, input string) (Result, error) {
-	discord.Infof("Sending to Openai: Chat segments: %d, Total input length: %d", len(strings.Split(input, "\n")), len(input))
+	discord.Infof("Sending to OpenAI %s", config.TheConfig.OpenAIModel)
 
 	if len(o.messages) == 0 {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
 
-	// Add user message to conversation history
+	// Add a user message to the conversation history
 	o.messages = append(o.messages, openai.UserMessage(input))
 
 	resp, err := OpenAICli.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
