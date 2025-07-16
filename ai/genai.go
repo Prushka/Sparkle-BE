@@ -52,6 +52,8 @@ func TranslateSubtitles(translator Translator, input []string, language string) 
 		return "", err
 	}
 
+	discord.Infof("Translating to language: %s", language)
+
 	ctx := context.Background()
 	err = translator.StartChat(ctx, config.GetSystemMessage(language))
 	if err != nil {
