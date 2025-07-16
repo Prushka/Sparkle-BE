@@ -34,7 +34,7 @@ func sanitizeSegment(input string) string {
 		return ""
 	}
 
-	return trimLinesPreserveTags(removeSingleFullStops(strings.Join(filtered[start:end+1], "\n")))
+	return trimCommas(trimLinesPreserveTags(removeSingleFullStops(strings.Join(filtered[start:end+1], "\n"))))
 }
 
 // removeSingleFullStops replace any lone '。' with space while preserving contiguous runs of '。'
@@ -97,12 +97,12 @@ func trimLinesPreserveTags(input string) string {
 	return strings.Join(lines, "\n")
 }
 
-// trimPeriods scans the input text line by line.
+// trimCommas scans the input text line by line.
 // Whenever it finds a time range line, it looks back for the most recent non-empty line before it.
-// If that line ends with exactly one Chinese full stop "。"
-// (and not multiple), it removes that final "。"—respecting any trailing HTML tags
+// If that line ends with exactly one Chinese full stop "，"
+// (and not multiple), it removes that final "，"—respecting any trailing HTML tags
 // like </i></b>.
-func trimPeriods(text string) string {
+func trimCommas(text string) string {
 	lines := strings.Split(text+"\n", "\n")
 
 	// regex to capture any trailing HTML closing tags, e.g. </b></i>
@@ -125,10 +125,10 @@ func trimPeriods(text string) string {
 				// work rune-wise to handle multibyte characters correctly
 				runes := []rune(content)
 				n := len(runes)
-				if n > 0 && runes[n-1] == '。' {
+				if n > 0 && runes[n-1] == '，' {
 					// only remove if it's a single full stop (not preceded by another)
-					if n < 2 || runes[n-2] != '。' {
-						// drop the last rune ("。")
+					if n < 2 || runes[n-2] != '，' {
+						// drop the last rune ("，")
 						content = string(runes[:n-1])
 						lines[j] = content + tags
 					}
