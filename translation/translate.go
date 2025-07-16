@@ -49,20 +49,20 @@ func Translate(media, inputDir, dest, language string) error {
 	langLengths := make(map[string]int)
 	languages := make(map[string]string)
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".vtt") {
+		if strings.HasSuffix(file.Name(), ".vtt") && !strings.HasPrefix(file.Name(), "ai") {
 			discord.Infof(file.Name())
-		}
-		if len(file.Name()) >= 7 {
-			lang := file.Name()[len(file.Name())-7 : len(file.Name())-4]
-			fBytes, err := os.ReadFile(filepath.Join(inputDir, file.Name()))
-			if err != nil {
-				discord.Errorf("Error reading file: %v", err)
-			}
-			webvtt := sanitizeWebVTT(string(fBytes))
-			fLines := strings.Split(webvtt, "\n")
-			if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
-				langLengths[lang] = len(fLines)
-				languages[lang] = webvtt
+			if len(file.Name()) >= 7 {
+				lang := file.Name()[len(file.Name())-7 : len(file.Name())-4]
+				fBytes, err := os.ReadFile(filepath.Join(inputDir, file.Name()))
+				if err != nil {
+					discord.Errorf("Error reading file: %v", err)
+				}
+				webvtt := sanitizeWebVTT(string(fBytes))
+				fLines := strings.Split(webvtt, "\n")
+				if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
+					langLengths[lang] = len(fLines)
+					languages[lang] = webvtt
+				}
 			}
 		}
 	}

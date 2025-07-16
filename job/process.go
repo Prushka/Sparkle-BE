@@ -3,6 +3,7 @@ package job
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/translation"
 	"Sparkle/utils"
 	"encoding/json"
 	"fmt"
@@ -179,6 +180,29 @@ func (job *Job) handbrakeTranscode() error {
 	return nil
 }
 
+func (job *Job) translateFlow() error {
+	if len(config.TheConfig.TranslationLanguages) == 0 {
+		return nil
+	}
+
+	for i, languageWithCode := range config.TheConfig.TranslationLanguages {
+		ss := strings.Split(languageWithCode, ";")
+		language := ss[0]
+		languageCode := ss[1]
+		dest := job.OutputJoin(fmt.Sprintf("ai%d-%s.vtt", i, languageCode))
+
+		err := translation.Translate(job.Input, job.OutputJoin(), dest, language)
+		if err != nil {
+			discord.Errorf("Error translating: %v", err)
+			return err
+		}
+
+		discord.Infof("Done: %s", dest)
+	}
+
+	return nil
+}
+
 func (job *Job) Pipeline() error {
 	var err error
 	job.SHA256, err = utils.CalculateFileSHA256(job.InputJoin(job.Input))
@@ -205,6 +229,10 @@ func (job *Job) Pipeline() error {
 		return err
 	}
 	err = job.ExtractStreams(job.InputJoin(job.Input), SubtitlesType)
+	if err != nil {
+		return err
+	}
+	err = job.translateFlow()
 	if err != nil {
 		return err
 	}
