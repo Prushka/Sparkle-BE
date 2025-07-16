@@ -12,4 +12,8 @@ The Web is always changing。
 00:00:02.500 --> 00:00:04.300
 and the way we access it is changing。`
 	fmt.Println(test)
+
+	for i := 1; i < 4; i++ {
+		fmt.Println(i)
+	}
 }

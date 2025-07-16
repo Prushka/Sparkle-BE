@@ -63,21 +63,17 @@ func countVTTTimeLines(input string) int {
 	return count
 }
 
-// TODO: add retry (max 3 times) when time lines no match (2% cutoff)
-// TODO: add translator interface to support multiple ai providers
 // TODO: finish o4-mini
 // TODO: sanitize input webvtt, remove time with empty content, remove duplicate entries (same time and same content), (remove html tags <i></i> <b></b> ?? necessary?)
 
-func TranslateSubtitlesGemini(input []string) (string, error) {
+func TranslateSubtitles(translator Translator, input []string) (string, error) {
 	err := limit(input)
 	if err != nil {
 		return "", err
 	}
 
 	ctx := context.Background()
-	chat, err := GeminiCli.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
-		SystemInstruction: genai.NewContentFromText(systemMessage, genai.RoleUser)},
-		[]*genai.Content{})
+	err = translator.StartChat(ctx, systemMessage)
 	if err != nil {
 		return "", err
 	}
@@ -85,18 +81,19 @@ func TranslateSubtitlesGemini(input []string) (string, error) {
 	var translated []string
 
 	for idx, i := range input {
+		inputTimeLines := countVTTTimeLines(i)
 		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
-			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), countVTTTimeLines(i))
-		result, err := chat.SendMessage(ctx, genai.Part{Text: i})
+			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
+		result, err := translator.SendWithRetry(ctx, i, func(result Result) bool {
+			sanitized := sanitizeSegment(result.Text())
+			sanitizedTimeLines := countVTTTimeLines(sanitized)
+			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= 0.98
+		}, 3)
 		if err != nil {
 			return "", err
 		}
-
-		if len(result.Candidates) < 0 {
-			return "", fmt.Errorf("unable to find candidate in response")
-		}
-		t := result.Candidates[0].Content.Parts[0].Text
-		fmt.Printf("%v\n", utils.AsJson(result.UsageMetadata))
+		t := result.Text()
+		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
 		sanitized := sanitizeSegment(t)
 		translated = append(translated, sanitized)
 		discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
