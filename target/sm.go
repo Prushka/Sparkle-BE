@@ -140,6 +140,7 @@ func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, paren
 
 // "DAN DA DAN,1|3" means starting from season 1, episode 3, it stops at season 1 and doesn't encode seasons > 1
 // "DAN DA DAN,1:3" means only process season 1, episode 3
+// "f:DAN DA DAN,1|6,2:t" means season 1, episode 6 to end, then season 2, with fast encoding and subtitle translation
 
 func StringToShow(keyword string) Show {
 	s := strings.Split(keyword, ",")
