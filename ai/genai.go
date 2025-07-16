@@ -44,7 +44,6 @@ func limit(input []string) error {
 	return nil
 }
 
-// TODO: finish o4-mini
 // TODO: remove html tags <i></i> <b></b> ?? necessary?
 
 func TranslateSubtitles(translator Translator, input []string) (string, error) {
