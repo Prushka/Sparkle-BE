@@ -41,7 +41,7 @@ func splitAssembled(assembled string, atLine int) []string {
 	return result
 }
 
-func Translate(media, inputDir, outputFile string) error {
+func Translate(media, inputDir, dest, language string) error {
 	files, err := os.ReadDir(inputDir)
 	if err != nil {
 		return err
@@ -89,11 +89,11 @@ func Translate(media, inputDir, outputFile string) error {
 	if config.TheConfig.AiProvider == "openai" {
 		translator = ai.NewOpenAI()
 	}
-	translated, err := ai.TranslateSubtitles(translator, splitAssembled(assembled, 1000))
+	translated, err := ai.TranslateSubtitles(translator, splitAssembled(assembled, 1000), language)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(inputDir, outputFile), []byte(translated), 0755)
+	return os.WriteFile(dest, []byte(translated), 0755)
 }
 
 // sanitizeWebVTT removes contiguous duplicate blocks and empty blocks from text.

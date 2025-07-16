@@ -62,23 +62,22 @@ func pipeline(j job.Job) error {
 	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
 	_ = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
-	err = translation.Translate(j.Input, j.OutputJoin(), config.GetOutputVTT(""))
-	if err != nil {
-		discord.Errorf("Error translating: %v", err)
-		return err
+
+	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+		ss := strings.Split(languageWithCode, ";")
+		language := ss[0]
+		languageCode := ss[1]
+		dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
+			fmt.Sprintf(".%s.vtt", languageCode)))
+
+		err = translation.Translate(j.Input, j.OutputJoin(), dest, language)
+		if err != nil {
+			discord.Errorf("Error translating: %v", err)
+			return err
+		}
+
+		discord.Infof("Done: %s", dest)
 	}
-
-	destExt := fmt.Sprintf(".%s.vtt", config.TheConfig.TranslationLanguageCode)
-
-	source := j.OutputJoin(config.GetOutputVTT(""))
-	dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv", destExt))
-	_, err = utils.CopyFile(source, dest)
-	if err != nil {
-		discord.Errorf("error copying file: %s->%s %v", source, dest, err)
-		return err
-	}
-
-	discord.Infof("Done: %s", strings.ReplaceAll(j.Input, ".mkv", destExt))
 
 	return nil
 }

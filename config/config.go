@@ -45,14 +45,13 @@ type Config struct {
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
-	PurgeCacheUrl           string `env:"PURGE_CACHE_URL" envDefault:""`
-	OpenAI                  string `env:"OPENAI" envDefault:""`
-	Gemini                  string `env:"GEMINI" envDefault:""`
-	AiProvider              string `env:"AI_PROVIDER" envDefault:"gemini"`
-	OpenAIModel             string `env:"OPENAI_MODEL" envDefault:"o4-mini"`
-	GeminiModel             string `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
-	TranslationLanguage     string `env:"TRANSLATION_LANGUAGE" envDefault:"Simplified Chinese"`
-	TranslationLanguageCode string `env:"TRANSLATION_LANGUAGE_CODE" envDefault:"zh"`
+	PurgeCacheUrl        string   `env:"PURGE_CACHE_URL" envDefault:""`
+	OpenAI               string   `env:"OPENAI" envDefault:""`
+	Gemini               string   `env:"GEMINI" envDefault:""`
+	AiProvider           string   `env:"AI_PROVIDER" envDefault:"gemini"`
+	OpenAIModel          string   `env:"OPENAI_MODEL" envDefault:"o4-mini"`
+	GeminiModel          string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
+	TranslationLanguages []string `env:"TRANSLATION_LANGUAGES" envDefault:"Simplified Chinese;zh"`
 }
 
 var TheConfig = &Config{}

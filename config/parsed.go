@@ -11,17 +11,5 @@ Task:
 Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in %s.`
 
 func GetSystemMessage(translationLanguage string) string {
-	if translationLanguage == "" {
-		translationLanguage = TheConfig.TranslationLanguage
-	}
 	return fmt.Sprintf(systemMessage, translationLanguage, translationLanguage)
-}
-
-const outputVTT = "output.%s.vtt"
-
-func GetOutputVTT(languageCode string) string {
-	if languageCode == "" {
-		languageCode = TheConfig.TranslationLanguageCode
-	}
-	return fmt.Sprintf(outputVTT, languageCode)
 }

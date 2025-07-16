@@ -46,14 +46,14 @@ func limit(input []string) error {
 
 // TODO: remove html tags <i></i> <b></b> ?? necessary?
 
-func TranslateSubtitles(translator Translator, input []string) (string, error) {
+func TranslateSubtitles(translator Translator, input []string, language string) (string, error) {
 	err := limit(input)
 	if err != nil {
 		return "", err
 	}
 
 	ctx := context.Background()
-	err = translator.StartChat(ctx, config.GetSystemMessage(""))
+	err = translator.StartChat(ctx, config.GetSystemMessage(language))
 	if err != nil {
 		return "", err
 	}
