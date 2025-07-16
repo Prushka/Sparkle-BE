@@ -3,6 +3,7 @@ package ai
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"context"
 	"fmt"
 	"github.com/openai/openai-go"
@@ -51,17 +52,6 @@ func limit(input []string) error {
 	return nil
 }
 
-func countVTTTimeLines(input string) int {
-	lines := strings.Split(input, "\n")
-	count := 0
-	for _, s := range lines {
-		if strings.Contains(s, "-->") {
-			count++
-		}
-	}
-	return count
-}
-
 // TODO: finish o4-mini
 // TODO: sanitize input webvtt, remove time with empty content, remove duplicate entries (same time and same content), (remove html tags <i></i> <b></b> ?? necessary?)
 
@@ -80,18 +70,18 @@ func TranslateSubtitles(translator Translator, input []string) (string, error) {
 	var translated []string
 
 	for idx, i := range input {
-		inputTimeLines := countVTTTimeLines(i)
+		inputTimeLines := utils.CountVTTTimeLines(i)
 		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
 			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
 		result, err := translator.SendWithRetry(ctx, i, func(result Result) bool {
 			t := result.Text()
 			sanitized := sanitizeSegment(t)
-			sanitizedTimeLines := countVTTTimeLines(sanitized)
+			sanitizedTimeLines := utils.CountVTTTimeLines(sanitized)
 
 			discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
 				len(t),
 				len(strings.Split(t, "\n")),
-				countVTTTimeLines(t),
+				utils.CountVTTTimeLines(t),
 				len(sanitized),
 				len(strings.Split(sanitized, "\n")),
 				sanitizedTimeLines)

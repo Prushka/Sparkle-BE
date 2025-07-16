@@ -19,6 +19,24 @@ import (
 	"strings"
 )
 
+// Matches lines like "00:00:01.000 --> 00:00:05.000"
+var webvttTimeRangeRegex = regexp.MustCompile(`\d{2}:\d{2}:\d{2}\.\d{1,3}\s-->\s\d{2}:\d{2}:\d{2}\.\d{1,3}`)
+
+func IsWebVTTTimeRangeLine(input string) bool {
+	return webvttTimeRangeRegex.MatchString(input)
+}
+
+func CountVTTTimeLines(input string) int {
+	lines := strings.Split(input, "\n")
+	count := 0
+	for _, s := range lines {
+		if IsWebVTTTimeRangeLine(s) {
+			count++
+		}
+	}
+	return count
+}
+
 func PanicOnSec(a interface{}, err error) {
 	if err != nil {
 		panic(err)

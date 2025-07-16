@@ -4,6 +4,7 @@ import (
 	"Sparkle/ai"
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func splitAssembled(assembled string, atLine int) []string {
 
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "" && count >= atLine {
-			if i+1 >= len(lines) || strings.Contains(lines[i+1], "-->") {
+			if i+1 >= len(lines) || utils.IsWebVTTTimeRangeLine(lines[i+1]) {
 				result = append(result, strings.Join(currentLines, "\n"))
 				currentLines = nil
 				count = 0
@@ -57,10 +58,11 @@ func translate(media, inputDir string) error {
 			if err != nil {
 				discord.Errorf("Error reading file: %v", err)
 			}
-			fLines := strings.Split(string(fBytes), "\n")
+			webvtt := string(fBytes)
+			fLines := strings.Split(webvtt, "\n")
 			if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
 				langLengths[lang] = len(fLines)
-				languages[lang] = string(fBytes)
+				languages[lang] = webvtt
 			}
 		}
 	}
