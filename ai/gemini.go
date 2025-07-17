@@ -17,7 +17,7 @@ type geminiResponse struct {
 	response *genai.GenerateContentResponse
 }
 
-func NewGemini() Translator {
+func NewGemini() AI {
 	return &gemini{}
 }
 

@@ -1,4 +1,4 @@
-package ai
+package translation
 
 import (
 	"Sparkle/utils"
@@ -139,4 +139,100 @@ func trimCommas(text string) string {
 	}
 
 	return strings.Join(lines[:len(lines)-1], "\n")
+}
+
+func splitAssembled(assembled string, atLine int) []string {
+	lines := strings.Split(assembled, "\n")
+
+	var (
+		result       []string
+		currentLines []string
+		count        int
+	)
+
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "" && count >= atLine {
+			if i+1 >= len(lines) || utils.IsWebVTTTimeRangeLine(lines[i+1]) {
+				result = append(result, strings.Join(currentLines, "\n"))
+				currentLines = nil
+				count = 0
+				continue
+			}
+		}
+
+		currentLines = append(currentLines, line)
+		count++
+	}
+
+	if len(currentLines) > 0 {
+		result = append(result, strings.Join(currentLines, "\n"))
+	}
+
+	return result
+}
+
+// sanitizeWebVTT removes contiguous duplicate blocks and empty blocks from text.
+// A block starts with a time range line and ends at either the last line
+// or the next time range line.
+// Two blocks are considered identical if they are identical after removing all empty lines.
+func sanitizeWebVTT(input string) string {
+	if input == "" {
+		return ""
+	}
+
+	lines := strings.Split(input, "\n")
+	var resultLines []string
+
+	// Find all block start indices
+	var blockStarts []int
+	for i, line := range lines {
+		if utils.IsWebVTTTimeRangeLine(line) {
+			blockStarts = append(blockStarts, i)
+		}
+	}
+
+	// If no blocks found, return original input
+	if len(blockStarts) == 0 {
+		return input
+	}
+
+	// Add lines before the first block
+	if blockStarts[0] > 0 {
+		resultLines = append(resultLines, lines[:blockStarts[0]]...)
+	}
+
+	var lastNormalizedBlock string
+	for i, start := range blockStarts {
+		// Determine the end of the block
+		end := len(lines)
+		if i+1 < len(blockStarts) {
+			end = blockStarts[i+1]
+		}
+
+		// Extract the block
+		block := lines[start:end]
+
+		// Normalize the block for comparison (remove empty lines)
+		normalizedBlock := normalizeBlock(block)
+
+		// Only add the block if it's different from the last one
+		if (len(strings.Split(normalizedBlock, "\n")) > 1) &&
+			(i == 0 || normalizedBlock != lastNormalizedBlock) {
+			resultLines = append(resultLines, block...)
+			lastNormalizedBlock = normalizedBlock
+		}
+	}
+
+	return strings.Join(resultLines, "\n")
+}
+
+// normalizeBlock removes empty lines from a block and returns it as a string
+func normalizeBlock(block []string) string {
+	var nonEmptyLines []string
+	for _, line := range block {
+		if strings.TrimSpace(line) != "" {
+			nonEmptyLines = append(nonEmptyLines, line)
+		}
+	}
+	return strings.Join(nonEmptyLines, "\n")
 }

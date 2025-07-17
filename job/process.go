@@ -189,7 +189,7 @@ func (job *Job) translateFlow() error {
 		ss := strings.Split(languageWithCode, ";")
 		language := ss[0]
 		languageCode := ss[1]
-		dest := job.OutputJoin(fmt.Sprintf("ai%d-%s.vtt", i, languageCode))
+		dest := job.OutputJoin(fmt.Sprintf("ai-%d-%s.vtt", i, languageCode))
 
 		err := translation.Translate(job.Input, job.OutputJoin(), dest, language)
 		if err != nil {

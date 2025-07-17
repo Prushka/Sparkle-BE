@@ -17,7 +17,7 @@ type openaiResponse struct {
 	response *openai.ChatCompletion
 }
 
-func NewOpenAI() Translator {
+func NewOpenAI() AI {
 	return &openaiTranslator{
 		messages: make([]openai.ChatCompletionMessageParamUnion, 0),
 	}

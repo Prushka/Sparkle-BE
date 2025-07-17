@@ -5,43 +5,18 @@ import (
 	"Sparkle/config"
 	"Sparkle/discord"
 	"Sparkle/utils"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func splitAssembled(assembled string, atLine int) []string {
-	lines := strings.Split(assembled, "\n")
-
-	var (
-		result       []string
-		currentLines []string
-		count        int
-	)
-
-	for i, line := range lines {
-		if strings.TrimSpace(line) == "" && count >= atLine {
-			if i+1 >= len(lines) || utils.IsWebVTTTimeRangeLine(lines[i+1]) {
-				result = append(result, strings.Join(currentLines, "\n"))
-				currentLines = nil
-				count = 0
-				continue
-			}
-		}
-
-		currentLines = append(currentLines, line)
-		count++
-	}
-
-	if len(currentLines) > 0 {
-		result = append(result, strings.Join(currentLines, "\n"))
-	}
-
-	return result
-}
-
 func Translate(media, inputDir, dest, language string) error {
+	if _, err := os.Stat(dest); err == nil {
+		discord.Infof("SKIPPING: File already exists: %s", dest)
+		return nil
+	}
 	files, err := os.ReadDir(inputDir)
 	if err != nil {
 		return err
@@ -89,75 +64,61 @@ func Translate(media, inputDir, dest, language string) error {
 	if config.TheConfig.AiProvider == "openai" {
 		translator = ai.NewOpenAI()
 	}
-	translated, err := ai.TranslateSubtitles(translator, splitAssembled(assembled, 1000), language)
+	translated, err := TranslateSubtitles(translator, splitAssembled(assembled, 1000), language)
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(dest, []byte(translated), 0755)
 }
 
-// sanitizeWebVTT removes contiguous duplicate blocks and empty blocks from text.
-// A block starts with a time range line and ends at either the last line
-// or the next time range line.
-// Two blocks are considered identical if they are identical after removing all empty lines.
-func sanitizeWebVTT(input string) string {
-	if input == "" {
-		return ""
+func limit(input []string) error {
+	if len(input) > 10 {
+		return fmt.Errorf("too many splitted")
 	}
-
-	lines := strings.Split(input, "\n")
-	var resultLines []string
-
-	// Find all block start indices
-	var blockStarts []int
-	for i, line := range lines {
-		if utils.IsWebVTTTimeRangeLine(line) {
-			blockStarts = append(blockStarts, i)
-		}
-	}
-
-	// If no blocks found, return original input
-	if len(blockStarts) == 0 {
-		return input
-	}
-
-	// Add lines before the first block
-	if blockStarts[0] > 0 {
-		resultLines = append(resultLines, lines[:blockStarts[0]]...)
-	}
-
-	var lastNormalizedBlock string
-	for i, start := range blockStarts {
-		// Determine the end of the block
-		end := len(lines)
-		if i+1 < len(blockStarts) {
-			end = blockStarts[i+1]
-		}
-
-		// Extract the block
-		block := lines[start:end]
-
-		// Normalize the block for comparison (remove empty lines)
-		normalizedBlock := normalizeBlock(block)
-
-		// Only add the block if it's different from the last one
-		if (len(strings.Split(normalizedBlock, "\n")) > 1) &&
-			(i == 0 || normalizedBlock != lastNormalizedBlock) {
-			resultLines = append(resultLines, block...)
-			lastNormalizedBlock = normalizedBlock
-		}
-	}
-
-	return strings.Join(resultLines, "\n")
+	return nil
 }
 
-// normalizeBlock removes empty lines from a block and returns it as a string
-func normalizeBlock(block []string) string {
-	var nonEmptyLines []string
-	for _, line := range block {
-		if strings.TrimSpace(line) != "" {
-			nonEmptyLines = append(nonEmptyLines, line)
-		}
+// TODO: remove html tags <i></i> <b></b> ?? necessary?
+
+func TranslateSubtitles(translator ai.AI, input []string, language string) (string, error) {
+	err := limit(input)
+	if err != nil {
+		return "", err
 	}
-	return strings.Join(nonEmptyLines, "\n")
+
+	discord.Infof("Translating to language: %s", language)
+
+	ctx := context.Background()
+	err = translator.StartChat(ctx, config.GetSystemMessage(language))
+	if err != nil {
+		return "", err
+	}
+
+	var translated []string
+
+	for idx, i := range input {
+		inputTimeLines := utils.CountVTTTimeLines(i)
+		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
+			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
+		result, err := ai.SendWithRetry(ctx, translator, i, func(result ai.Result) bool {
+			t := result.Text()
+			sanitized := sanitizeSegment(t)
+			sanitizedTimeLines := utils.CountVTTTimeLines(sanitized)
+
+			discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
+				len(t),
+				len(strings.Split(t, "\n")),
+				utils.CountVTTTimeLines(t),
+				len(sanitized),
+				len(strings.Split(sanitized, "\n")),
+				sanitizedTimeLines)
+			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= 0.98
+		}, 3)
+		if err != nil {
+			return "", err
+		}
+		sanitized := sanitizeSegment(result.Text())
+		translated = append(translated, sanitized)
+	}
+	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }
