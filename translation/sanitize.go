@@ -183,6 +183,11 @@ func sanitizeInputVTT(input string) string {
 	return sanitizeBlocks(input)
 }
 
+// TODO: if previous block same content as current block, same end and start time, merge two time
+// TODO: if previous block same time as current block, different content, merge content
+
+// TODO: after previous two done, run remove contiguous again
+
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
 // or the next time range line.
