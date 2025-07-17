@@ -1,10 +1,14 @@
 package translation
 
 import (
+	"Sparkle/discord"
 	"Sparkle/utils"
 	"regexp"
 	"strings"
+	"unicode"
 )
+
+const isStyleCutoff = 80
 
 func sanitizeOutputVTT(input string) string {
 	return trimCommas(trimLinesPreserveTags(removeSingleFullStops(sanitizeSegment(input))))
@@ -175,11 +179,15 @@ func splitAssembled(assembled string, atLine int) []string {
 	return result
 }
 
-// sanitizeInputVTT removes contiguous duplicate blocks and empty blocks from text.
+func sanitizeInputVTT(input string) string {
+	return sanitizeBlocks(input)
+}
+
+// sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
 // or the next time range line.
 // Two blocks are considered identical if they are identical after removing all empty lines.
-func sanitizeInputVTT(input string) string {
+func sanitizeBlocks(input string) string {
 	if input == "" {
 		return ""
 	}
@@ -219,15 +227,39 @@ func sanitizeInputVTT(input string) string {
 		// Normalize the block for comparison (remove empty lines)
 		normalizedBlock := normalizeBlock(block)
 
+		styleCharsInBlock := countDigitsAndSpecialChars(normalizedBlock)
+
+		if styleCharsInBlock >= isStyleCutoff {
+			discord.Infof("Prob styled block: %d | %s", styleCharsInBlock, normalizedBlock)
+		}
+
 		// Only add the block if it's different from the last one
 		if (len(strings.Split(normalizedBlock, "\n")) > 1) &&
-			(i == 0 || normalizedBlock != lastNormalizedBlock) {
+			(i == 0 || normalizedBlock != lastNormalizedBlock) &&
+			(styleCharsInBlock < isStyleCutoff) {
 			resultLines = append(resultLines, block...)
 			lastNormalizedBlock = normalizedBlock
 		}
 	}
 
 	return strings.Join(resultLines, "\n")
+}
+
+// countDigitsAndSpecialChars counts the number of characters in a block
+// that may belong to a style.
+func countDigitsAndSpecialChars(s string) int {
+	count := 0
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			count++
+			continue
+		}
+		switch r {
+		case '{', '}', '\\', '&', '*', '(', ')':
+			count++
+		}
+	}
+	return count
 }
 
 // normalizeBlock removes empty lines from a block and returns it as a string
