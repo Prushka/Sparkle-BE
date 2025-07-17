@@ -113,7 +113,7 @@ func TranslateSubtitles(translator ai.AI, input []string, language string) (stri
 				len(strings.Split(sanitized, "\n")),
 				sanitizedTimeLines)
 			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= 0.98
-		}, 3)
+		}, 2)
 		if err != nil {
 			return "", err
 		}
