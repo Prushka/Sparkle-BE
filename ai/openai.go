@@ -59,6 +59,7 @@ func (o *openaiTranslator) Send(ctx context.Context, input string) (Result, erro
 		Model:    config.TheConfig.OpenAIModel,
 		Messages: o.messages,
 	})
+	result := &openaiResponse{response: resp}
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,6 @@ func (o *openaiTranslator) Send(ctx context.Context, input string) (Result, erro
 	// Add assistant response to conversation history
 	o.messages = append(o.messages, openai.AssistantMessage(resp.Choices[0].Message.Content))
 
-	result := &openaiResponse{response: resp}
 	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
 	return result, nil
 }

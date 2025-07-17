@@ -25,7 +25,9 @@ func SendWithRetry(ctx context.Context, translator Translator, input string, pas
 		result, err := translator.Send(ctx, input)
 		if err != nil {
 			discord.Errorf("Error on attempt %d: %v", i, err)
-			fmt.Println(utils.AsJson(result.Response()))
+			if result != nil {
+				fmt.Println(utils.AsJson(result.Response()))
+			}
 		}
 		if err == nil && pass(result) {
 			return result, nil
