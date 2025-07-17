@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-// Matches lines like "00:00:01.000 --> 00:00:05.000"
+// Matches lines like "00:00:01.000 --> 00:00:05.000; 00:01.000 --> 00:05.000"
 var webvttTimeRangeRegex = regexp.MustCompile(`^(?:\d{1,2}:){0,2}\d{1,2}\.\d{1,3}\s*-->\s*(?:\d{1,2}:){0,2}\d{1,2}\.\d{1,3}$`)
 
 func IsWebVTTTimeRangeLine(input string) bool {

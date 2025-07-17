@@ -188,6 +188,9 @@ func sanitizeInputVTT(input string) string {
 
 // TODO: after previous two done, run remove contiguous again
 
+// TODO: skip at the start before extracting streams in subtitle runs
+// TODO: configurable after 2 failed attempts, keep the longest one
+
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
 // or the next time range line.
