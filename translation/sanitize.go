@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+func sanitizeOutputVTT(input string) string {
+	return trimCommas(trimLinesPreserveTags(removeSingleFullStops(sanitizeSegment(input))))
+}
+
 // sanitizeSegment removes lines with WEBVTT or ```
 // and trims leading and trailing empty lines.
 func sanitizeSegment(input string) string {
@@ -34,7 +38,7 @@ func sanitizeSegment(input string) string {
 		return ""
 	}
 
-	return trimCommas(trimLinesPreserveTags(removeSingleFullStops(strings.Join(filtered[start:end+1], "\n"))))
+	return strings.Join(filtered[start:end+1], "\n")
 }
 
 // removeSingleFullStops replace any lone '。' with space while preserving contiguous runs of '。'
@@ -171,11 +175,11 @@ func splitAssembled(assembled string, atLine int) []string {
 	return result
 }
 
-// sanitizeWebVTT removes contiguous duplicate blocks and empty blocks from text.
+// sanitizeInputVTT removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
 // or the next time range line.
 // Two blocks are considered identical if they are identical after removing all empty lines.
-func sanitizeWebVTT(input string) string {
+func sanitizeInputVTT(input string) string {
 	if input == "" {
 		return ""
 	}

@@ -32,7 +32,7 @@ func Translate(media, inputDir, dest, language string) error {
 				if err != nil {
 					discord.Errorf("Error reading file: %v", err)
 				}
-				webvtt := sanitizeWebVTT(string(fBytes))
+				webvtt := sanitizeInputVTT(string(fBytes))
 				fLines := strings.Split(webvtt, "\n")
 				if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
 					langLengths[lang] = len(fLines)
@@ -102,7 +102,7 @@ func TranslateSubtitles(translator ai.AI, input []string, language string) (stri
 			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
 		result, err := ai.SendWithRetry(ctx, translator, i, func(result ai.Result) bool {
 			t := result.Text()
-			sanitized := sanitizeSegment(t)
+			sanitized := sanitizeOutputVTT(t)
 			sanitizedTimeLines := utils.CountVTTTimeLines(sanitized)
 
 			discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
@@ -117,7 +117,7 @@ func TranslateSubtitles(translator ai.AI, input []string, language string) (stri
 		if err != nil {
 			return "", err
 		}
-		sanitized := sanitizeSegment(result.Text())
+		sanitized := sanitizeOutputVTT(result.Text())
 		translated = append(translated, sanitized)
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
