@@ -8,7 +8,7 @@ import (
 	"unicode"
 )
 
-const isStyleCutoff = 80
+const isStyleCutoff = 100
 
 func sanitizeOutputVTT(input string) string {
 	return trimCommas(trimLinesPreserveTags(removeSingleFullStops(sanitizeSegment(input))))
