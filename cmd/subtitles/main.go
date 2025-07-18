@@ -55,7 +55,24 @@ func process() {
 	}
 }
 
+func skip(j job.Job) bool {
+	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+		ss := strings.Split(languageWithCode, ";")
+		languageCode := ss[1]
+		dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
+			fmt.Sprintf(".%s.vtt", languageCode)))
+		if _, err := os.Stat(dest); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func pipeline(j job.Job) error {
+	if skip(j) {
+		discord.Infof("Skipping run as all languages are processed: %s", j.Input)
+		return nil
+	}
 	err := os.MkdirAll(j.OutputJoin(), 0755)
 	if err != nil {
 		return err
