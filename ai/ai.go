@@ -48,6 +48,7 @@ func Init() {
 
 func SendWithRetry(ctx context.Context, a AI, input string, pass func(result Result) bool, attempts int) (Result, error) {
 	var err error
+	var attempted []Result
 	for i := 1; i < attempts+1; i++ {
 		discord.Infof("Attempt: %d", i)
 		result, err := a.Send(ctx, input)
@@ -57,9 +58,20 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(result Res
 				fmt.Println(utils.AsJson(result.Response()))
 			}
 		}
-		if err == nil && pass(result) {
-			return result, nil
+		if err == nil {
+			attempted = append(attempted, result)
+			if pass(result) {
+				return result, nil
+			}
 		}
 	}
-	return nil, fmt.Errorf("failed after %d attempts | %v", attempts, err)
+	longest := 0
+	var longestResult Result
+	for _, a := range attempted {
+		if len(a.Text()) > longest {
+			longest = len(a.Text())
+			longestResult = a
+		}
+	}
+	return longestResult, fmt.Errorf("failed after %d attempts | %v", attempts, err)
 }

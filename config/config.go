@@ -45,13 +45,14 @@ type Config struct {
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
-	PurgeCacheUrl        string   `env:"PURGE_CACHE_URL" envDefault:""`
-	OpenAI               string   `env:"OPENAI" envDefault:""`
-	Gemini               string   `env:"GEMINI" envDefault:""`
-	AiProvider           string   `env:"AI_PROVIDER" envDefault:"gemini"`
-	OpenAIModel          string   `env:"OPENAI_MODEL" envDefault:"o4-mini"`
-	GeminiModel          string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
-	TranslationLanguages []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese;zh,Turkish;tr"` // Turkish;tr,Spanish;spa
+	PurgeCacheUrl          string   `env:"PURGE_CACHE_URL" envDefault:""`
+	OpenAI                 string   `env:"OPENAI" envDefault:""`
+	Gemini                 string   `env:"GEMINI" envDefault:""`
+	AiProvider             string   `env:"AI_PROVIDER" envDefault:"gemini"`
+	OpenAIModel            string   `env:"OPENAI_MODEL" envDefault:"o4-mini"`
+	GeminiModel            string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
+	TranslationLanguages   []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese;zh,Turkish;tr"` // Turkish;tr,Spanish;spa
+	KeepTranslationAttempt bool     `env:"KEEP_TRANSLATION_ATTEMPT" envDefault:"true"`
 }
 
 var TheConfig = &Config{}

@@ -78,8 +78,6 @@ func limit(input []string) error {
 	return nil
 }
 
-// TODO: remove html tags <i></i> <b></b> ?? necessary?
-
 func TranslateSubtitles(translator ai.AI, input []string, language string) (string, error) {
 	err := limit(input)
 	if err != nil {
@@ -114,8 +112,11 @@ func TranslateSubtitles(translator ai.AI, input []string, language string) (stri
 				sanitizedTimeLines)
 			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= 0.98
 		}, 2)
-		if err != nil {
+		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
 			return "", err
+		}
+		if err != nil {
+			discord.Infof("Keeping longest translation attempt")
 		}
 		sanitized := sanitizeOutputVTT(result.Text())
 		translated = append(translated, sanitized)
