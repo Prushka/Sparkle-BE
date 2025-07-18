@@ -56,7 +56,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	resp, err := g.Chat.SendMessage(ctx, genai.Part{Text: input})
 	result := &geminiResponse{response: resp}
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("no candidates found in response")
+		return result, fmt.Errorf("no candidates found in response")
 	}
 	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
 	return result, err

@@ -61,11 +61,11 @@ func (o *openaiTranslator) Send(ctx context.Context, input string) (Result, erro
 	})
 	result := &openaiResponse{response: resp}
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	if len(resp.Choices) == 0 {
-		return nil, fmt.Errorf("no choices found in response")
+		return result, fmt.Errorf("no choices found in response")
 	}
 
 	// Add assistant response to conversation history
