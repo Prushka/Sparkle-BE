@@ -1,8 +1,8 @@
 package translation
 
 import (
-	"Sparkle/discord"
 	"Sparkle/utils"
+	"github.com/labstack/gommon/log"
 	"regexp"
 	"strings"
 	"unicode"
@@ -180,21 +180,20 @@ func splitAssembled(assembled string, atLine int) []string {
 }
 
 func sanitizeInputVTT(input string) string {
-	return sanitizeBlocks(input)
+	return sanitizeBlocks(sanitizeBlocks(input, true), false)
 }
 
-// TODO: if previous block same content as current block, same end and start time, merge two time
-// TODO: if previous block same time as current block, different content, merge content, same line, space in between
-// TODO: think about multi-line subtitles split into same time blocks
-// TODO: after previous two done, run remove contiguous again
-
-// TODO: configurable after 2 failed attempts, keep the longest one
+// TODO: ass translation
+// TODO: context aware seasons
 
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
 // or the next time range line.
 // Two blocks are considered identical if they are identical after removing all empty lines.
-func sanitizeBlocks(input string) string {
+// Only run the following when contiguousOnly is true:
+// If the last block contains the same content as the current block, same end and start time, merge two time
+// if the last block contains the same time as the current block, different content, merge content, new line in between
+func sanitizeBlocks(input string, contiguousOnly bool) string {
 	if input == "" {
 		return ""
 	}
@@ -217,7 +216,7 @@ func sanitizeBlocks(input string) string {
 
 	// Add lines before the first block
 	if blockStarts[0] > 0 {
-		resultLines = append(resultLines, lines[:blockStarts[0]]...)
+		resultLines = append(resultLines, normalizeBlock(lines[:blockStarts[0]])...)
 	}
 
 	var lastNormalizedBlock string
@@ -232,19 +231,60 @@ func sanitizeBlocks(input string) string {
 		block := lines[start:end]
 
 		// Normalize the block for comparison (remove empty lines)
-		normalizedBlock := normalizeBlock(block)
+		normalizedBlockSlice := normalizeBlock(block)
+		normalizedBlock := strings.Join(normalizeBlock(block), "\n")
 
 		styleCharsInBlock := countDigitsAndSpecialChars(normalizedBlock)
 
 		if styleCharsInBlock >= isStyleCutoff {
-			discord.Infof("Prob styled block: %d | %s", styleCharsInBlock, normalizedBlock)
+			log.Debugf("Prob styled block: %d | %s", styleCharsInBlock, normalizedBlock)
 		}
 
-		// Only add the block if it's different from the last one
-		if (len(strings.Split(normalizedBlock, "\n")) > 1) &&
-			(i == 0 || normalizedBlock != lastNormalizedBlock) &&
-			(styleCharsInBlock < isStyleCutoff) {
-			resultLines = append(resultLines, block...)
+		if (len(strings.Split(normalizedBlock, "\n")) > 1) && // non-empty content
+			(i == 0 || normalizedBlock != lastNormalizedBlock) && // not duplicate block (same time and content)
+			(styleCharsInBlock < isStyleCutoff) { // not a style block
+			// we are trying to add this block
+			if lastNormalizedBlock != "" && !contiguousOnly {
+				splitCurr := strings.Split(normalizedBlock, "\n")
+				currTimeLine := splitCurr[0]
+				splitLast := strings.Split(lastNormalizedBlock, "\n")
+				lastTimeLine := splitLast[0]
+				var (
+					currTimeStart string
+					currTimeEnd   string
+					lastTimeStart string
+					lastTimeEnd   string
+				)
+				curr := utils.WebvttTimeRangeRegex.FindStringSubmatch(currTimeLine)
+				last := utils.WebvttTimeRangeRegex.FindStringSubmatch(lastTimeLine)
+				if curr != nil && last != nil {
+					currTimeStart = curr[1]
+					currTimeEnd = curr[3]
+					lastTimeStart = last[1]
+					lastTimeEnd = last[3]
+					currContent := splitCurr[1:]
+					lastContent := splitLast[1:]
+					if curr[0] == last[0] { // same time
+						resultLines = append(resultLines, normalizedBlockSlice[1:]...)
+						lastNormalizedBlock = lastNormalizedBlock + strings.Join(normalizedBlockSlice[1:], "\n")
+						continue
+					} else if currTimeStart == lastTimeEnd && strings.Join(currContent, "") == strings.Join(lastContent, "") {
+						// same content, and last end time = curr start time
+						for j := len(resultLines) - 1; j >= 0; j-- {
+							if utils.IsWebVTTTimeRangeLine(resultLines[j]) { // find the lastBlock in result lines
+								resultLines[j] = lastTimeStart + " --> " + currTimeEnd
+								lastNormalizedBlock = resultLines[j] + "\n" + strings.Join(strings.Split(lastNormalizedBlock, "\n")[1:], "\n")
+								break
+							}
+						}
+						continue
+					}
+				}
+			}
+
+			// only add the result when we aren't skipping the current block
+			resultLines = append(resultLines, "")
+			resultLines = append(resultLines, normalizedBlockSlice...)
 			lastNormalizedBlock = normalizedBlock
 		}
 	}
@@ -269,13 +309,13 @@ func countDigitsAndSpecialChars(s string) int {
 	return count
 }
 
-// normalizeBlock removes empty lines from a block and returns it as a string
-func normalizeBlock(block []string) string {
+// normalizeBlock removes empty lines from a block and returns it as a string slice
+func normalizeBlock(block []string) []string {
 	var nonEmptyLines []string
 	for _, line := range block {
 		if strings.TrimSpace(line) != "" {
 			nonEmptyLines = append(nonEmptyLines, line)
 		}
 	}
-	return strings.Join(nonEmptyLines, "\n")
+	return nonEmptyLines
 }

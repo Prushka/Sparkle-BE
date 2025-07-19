@@ -19,7 +19,3 @@ func TestSanitization(t *testing.T) {
 	}
 
 }
-
-func TestCount(t *testing.T) {
-	t.Log(countDigitsAndSpecialChars("T{*\\c&HFCFBF7&\\t(4951"))
-}
