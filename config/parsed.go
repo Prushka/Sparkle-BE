@@ -16,8 +16,8 @@ Task:
 1. Preserve every original timing cue and style exactly.
 2. Replace each subtitle line with a context‑aware and natural %s translation, except for lines or phrases with intentionally untranslated content.
 3. Do NOT omit any lines. Translate every single line from start to end.
-4. If you are given a partial .ass content, process ONLY the partial content, do not add extra headers or footers.
-Output: A single, valid, sanitized .ass (SubStation Alpha) as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in %s.`
+4. If you are given a partial .ass content, process ONLY the partial content, do not add any extra headers or footers.
+Output: A single, valid .ass (SubStation Alpha) as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in %s.`
 
 const (
 	WEBVTT = iota // 0
