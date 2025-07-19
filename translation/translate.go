@@ -82,7 +82,7 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 			return err
 		}
 	} else if subtitleSuffix == "ass" {
-		translated, err = TranslateSubtitlesASS(translator, splitAssembled(in, 1000, true),
+		translated, err = TranslateSubtitlesASS(translator, splitAssembled(in, 400, true),
 			language, config.GetSystemMessage(chosenLanguage, language, media, config.ASS))
 		if err != nil {
 			return err
