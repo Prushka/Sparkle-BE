@@ -3,7 +3,8 @@ package config
 import "fmt"
 
 const systemMessageWEBVTT = `You are an intelligent WEBVTT subtitle translator.
-Input: WEBVTT containing subtitles in one foreign language.
+Input: WEBVTT containing subtitles in one foreign (%s) language.
+Media: %s.
 Task:
 1. Preserve every original timing cue exactly.
 2. Replace each subtitle line with a fluent, context‑aware %s translation, except for segments that are intentionally left untranslated.
@@ -11,7 +12,8 @@ Task:
 Output: A single, valid, sanitized WEBVTT as plain text—no markdown, notes, or comments—identical in structure to the input, with dialogue text now in %s.`
 
 const systemMessageASS = `You are an intelligent .ass (Advanced SubStation Alpha) subtitle translator.
-Input: A fragment of .ass file containing subtitles in one foreign language.
+Input: A fragment of .ass file containing subtitles in one foreign (%s) language.
+Media: %s.
 Task:
 1. Reproduce every non‑dialogue subtitle element—timing cues, style definitions, and all other formatting—exactly as it appears in the original file.
 2. Replace each dialogue line text with a fluent, context‑aware %s translation, except for segments that are intentionally left untranslated.
@@ -24,7 +26,7 @@ const (
 	ASS           // 1
 )
 
-func GetSystemMessage(translationLanguage string, whichOne int) string {
+func GetSystemMessage(inputLang, translationLanguage, media string, whichOne int) string {
 	var msg string
 	if whichOne == ASS {
 		msg = systemMessageASS
@@ -33,5 +35,5 @@ func GetSystemMessage(translationLanguage string, whichOne int) string {
 	} else {
 		panic(fmt.Errorf("unknown subtitle type: %d", whichOne))
 	}
-	return fmt.Sprintf(msg, translationLanguage, translationLanguage)
+	return fmt.Sprintf(msg, inputLang, media, translationLanguage, translationLanguage)
 }
