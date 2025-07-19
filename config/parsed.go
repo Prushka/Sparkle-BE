@@ -6,9 +6,9 @@ const systemMessageWEBVTT = `You are an intelligent WEBVTT subtitle translator.
 Input: WEBVTT containing subtitles in one foreign language.
 Task:
 1. Preserve every original timing cue exactly.
-2. Replace each subtitle line with a context‑aware and natural %s translation, except for lines or phrases with intentionally untranslated content.
+2. Replace each subtitle line with a fluent, context‑aware %s translation, except for segments that are intentionally left untranslated.
 3. Do NOT omit any lines. Translate every single line from start to end.
-Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in %s.`
+Output: A single, valid, sanitized WEBVTT as plain text—no markdown, notes, or comments—identical in structure to the input, with dialogue text now in %s.`
 
 const systemMessageASS = `You are an intelligent .ass (Advanced SubStation Alpha) subtitle translator.
 Input: A fragment of .ass file containing subtitles in one foreign language.
@@ -16,7 +16,7 @@ Task:
 1. Reproduce every non‑dialogue subtitle element—timing cues, style definitions, and all other formatting—exactly as it appears in the original file.
 2. Replace each dialogue line text with a fluent, context‑aware %s translation, except for segments that are intentionally left untranslated.
 3. Do NOT omit any lines. Translate every single dialogue line from start to end.
-4. Translate ONLY the input fragment; do not add missing headers, footers, or any other content.
+4. Translate ONLY the input fragment; do not add any missing headers, footers, or other content.
 Output: A single, valid fragment of .ass as plain text—no markdown, notes, or comments—identical in structure to the input, with dialogue text now in %s.`
 
 const (
