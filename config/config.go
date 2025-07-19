@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/caarlos0/env"
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type Config struct {
@@ -65,4 +66,8 @@ func Configure() {
 		log.Fatalf("error parsing config: %v", err)
 	}
 	TheConfig.OriginalOutput = TheConfig.Output
+
+	for i, t := range TheConfig.TranslationSubtitleTypes {
+		TheConfig.TranslationSubtitleTypes[i] = strings.ToLower(t)
+	}
 }

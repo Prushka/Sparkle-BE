@@ -56,13 +56,15 @@ func process() {
 }
 
 func skip(j job.Job) bool {
-	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-		ss := strings.Split(languageWithCode, ";")
-		languageCode := ss[1]
-		dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
-			fmt.Sprintf(".%s.vtt", languageCode)))
-		if _, err := os.Stat(dest); err != nil {
-			return false
+	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
+		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+			ss := strings.Split(languageWithCode, ";")
+			languageCode := ss[1]
+			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
+				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
+			if _, err := os.Stat(dest); err != nil {
+				return false
+			}
 		}
 	}
 	return true
@@ -80,20 +82,22 @@ func pipeline(j job.Job) error {
 	discord.Infof("Extracting subtitles: %s", j.Input)
 	_ = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
 
-	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-		ss := strings.Split(languageWithCode, ";")
-		language := ss[0]
-		languageCode := ss[1]
-		dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
-			fmt.Sprintf(".%s.vtt", languageCode)))
+	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
+		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+			ss := strings.Split(languageWithCode, ";")
+			language := ss[0]
+			languageCode := ss[1]
+			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
+				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
-		err = translation.Translate(j.Input, j.OutputJoin(), dest, language)
-		if err != nil {
-			discord.Errorf("Error translating: %v", err)
-			return err
+			err = translation.Translate(j.Input, j.OutputJoin(), dest, language, subtitleType)
+			if err != nil {
+				discord.Errorf("Error translating: %v", err)
+				return err
+			}
+
+			discord.Infof("Done: %s", dest)
 		}
-
-		discord.Infof("Done: %s", dest)
 	}
 
 	return nil

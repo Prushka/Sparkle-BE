@@ -185,19 +185,21 @@ func (job *Job) translateFlow() error {
 		return nil
 	}
 
-	for i, languageWithCode := range config.TheConfig.TranslationLanguages {
-		ss := strings.Split(languageWithCode, ";")
-		language := ss[0]
-		languageCode := ss[1]
-		dest := job.OutputJoin(fmt.Sprintf("ai-%d-%s.vtt", i, languageCode))
+	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
+		for i, languageWithCode := range config.TheConfig.TranslationLanguages {
+			ss := strings.Split(languageWithCode, ";")
+			language := ss[0]
+			languageCode := ss[1]
+			dest := job.OutputJoin(fmt.Sprintf("ai-%d-%s.%s", i, languageCode, subtitleType))
 
-		err := translation.Translate(job.Input, job.OutputJoin(), dest, language)
-		if err != nil {
-			discord.Errorf("Error translating: %v", err)
-			return err
+			err := translation.Translate(job.Input, job.OutputJoin(), dest, language, subtitleType)
+			if err != nil {
+				discord.Errorf("Error translating: %v", err)
+				return err
+			}
+
+			discord.Infof("Done: %s", dest)
 		}
-
-		discord.Infof("Done: %s", dest)
 	}
 
 	return nil
