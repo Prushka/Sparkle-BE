@@ -53,7 +53,7 @@ type Config struct {
 	GeminiModel             string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
 	TranslationLanguages    []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese;zh,Turkish;tr"` // Turkish;tr,Spanish;spa
 	KeepTranslationAttempt  bool     `env:"KEEP_TRANSLATION_ATTEMPT" envDefault:"true"`
-	TranslationOutputCutoff float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.92"`
+	TranslationOutputCutoff float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.96"`
 }
 
 var TheConfig = &Config{}
