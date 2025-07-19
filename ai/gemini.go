@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/genai"
+	"strings"
+	"time"
 )
 
 type gemini struct {
@@ -55,6 +57,13 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	}
 	resp, err := g.Chat.SendMessage(ctx, genai.Part{Text: input})
 	result := &geminiResponse{response: resp}
+	if err != nil {
+		if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
+			discord.Errorf("Exceeded quota/rate limit, sleeping...")
+			time.Sleep(15 * time.Minute)
+		}
+		return result, err
+	}
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return result, fmt.Errorf("no candidates found in response")
 	}
