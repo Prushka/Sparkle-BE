@@ -85,7 +85,7 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 		if err != nil {
 			return err
 		}
-		translated = languageHeaders[chosenLanguage] + translated
+		translated = sanitizeOutputASS(languageHeaders[chosenLanguage], translated)
 	} else {
 		return fmt.Errorf("unknown subtitle type: %s", subtitleSuffix)
 	}
