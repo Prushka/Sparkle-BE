@@ -84,15 +84,15 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 	return os.WriteFile(dest, []byte(translated), 0755)
 }
 
-func limit(input []string) error {
-	if len(input) > 10 {
-		return fmt.Errorf("too many splitted")
+func limit(input []string, limit int) error {
+	if len(input) > limit {
+		return fmt.Errorf("too many split lines")
 	}
 	return nil
 }
 
 func TranslateSubtitlesASS(translator ai.AI, input []string, language string) (string, error) {
-	err := limit(input)
+	err := limit(input, 20)
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +131,7 @@ func TranslateSubtitlesASS(translator ai.AI, input []string, language string) (s
 }
 
 func TranslateSubtitlesWebVTT(translator ai.AI, input []string, language string) (string, error) {
-	err := limit(input)
+	err := limit(input, 10)
 	if err != nil {
 		return "", err
 	}
