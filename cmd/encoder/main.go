@@ -152,6 +152,9 @@ func process() {
 					markedForRemoval = false
 				}
 			}
+			if j.State != job.Complete {
+				markedForRemoval = true
+			}
 			if markedForRemoval {
 				discord.Infof("File: %s, remove old, %s", utils.OutputJoin(j.Id), j.Input)
 				err := os.RemoveAll(utils.OutputJoin(j.Id))
