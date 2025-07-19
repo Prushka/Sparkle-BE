@@ -125,7 +125,6 @@ func TranslateSubtitlesASS(translator ai.AI, input []string, language string) (s
 			discord.Infof("Output length: %d, Output lines: %d",
 				len(t),
 				outputLines)
-			fmt.Println(t)
 			return float64(outputLines)/float64(inputLines) >= config.TheConfig.TranslationOutputCutoff
 		}, 2)
 		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
