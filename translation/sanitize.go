@@ -231,8 +231,8 @@ func sanitizeBlocks(input string, contiguousOnly bool) string {
 		block := lines[start:end]
 
 		// Normalize the block for comparison (remove empty lines)
-		normalizedBlockSlice := normalizeBlock(block)
-		normalizedBlock := strings.Join(normalizeBlock(block), "\n")
+		normalizedBlockSlice := normalizeBlock(block, false)
+		normalizedBlock := strings.Join(normalizedBlockSlice, "\n")
 
 		styleCharsInBlock := countDigitsAndSpecialChars(normalizedBlock)
 
@@ -240,7 +240,9 @@ func sanitizeBlocks(input string, contiguousOnly bool) string {
 			log.Debugf("Prob styled block: %d | %s", styleCharsInBlock, normalizedBlock)
 		}
 
-		if (len(strings.Split(normalizedBlock, "\n")) > 1) && // non-empty content
+		HTMLStrippedNormalizedBlock := normalizeBlock(block, true)
+
+		if (len(HTMLStrippedNormalizedBlock) > 1) && // non-empty content
 			(i == 0 || normalizedBlock != lastNormalizedBlock) && // not duplicate block (same time and content)
 			(styleCharsInBlock < isStyleCutoff) { // not a style block
 			// we are trying to add this block
@@ -310,9 +312,15 @@ func countDigitsAndSpecialChars(s string) int {
 }
 
 // normalizeBlock removes empty lines from a block and returns it as a string slice
-func normalizeBlock(block []string) []string {
+// HTML tags are unwrapped first if treatHTML is set to true
+func normalizeBlock(block []string, treatHTML bool) []string {
 	var nonEmptyLines []string
 	for _, line := range block {
+		if treatHTML {
+			if m := trimLineRE.FindStringSubmatch(line); m != nil {
+				line = m[2]
+			}
+		}
 		if strings.TrimSpace(line) != "" {
 			nonEmptyLines = append(nonEmptyLines, line)
 		}
