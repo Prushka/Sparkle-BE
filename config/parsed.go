@@ -10,7 +10,7 @@ Task:
 3. Do NOT omit any lines. Translate every single line from start to end.
 Output: A single, valid, sanitized WEBVTT as plain text and nothing else, no extra notes, no markdown, formatted correctly and identically to the input except that subtitle text is now in %s.`
 
-const systemMessageASS = `You are an intelligent .ass (SubStation Alpha) subtitle translator.
+const systemMessageASS = `You are an intelligent .ass (Advanced SubStation Alpha) subtitle translator.
 Input: .ass containing subtitles in one foreign language.
 Task:
 1. Reproduce every non‑dialogue element—timing cues, style definitions, headers, and all other formatting—exactly as it appears in the original file.
