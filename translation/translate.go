@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func Translate(media, inputDir, dest, language string) error {
+func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 	if _, err := os.Stat(dest); err == nil {
 		discord.Infof("SKIPPING: File already exists: %s", dest)
 		return nil
@@ -24,7 +24,7 @@ func Translate(media, inputDir, dest, language string) error {
 	langLengths := make(map[string]int)
 	languages := make(map[string]string)
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".vtt") && !strings.HasPrefix(file.Name(), "ai") {
+		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && !strings.HasPrefix(file.Name(), "ai") {
 			discord.Infof(file.Name())
 			if len(file.Name()) >= 7 {
 				lang := file.Name()[len(file.Name())-7 : len(file.Name())-4]
@@ -32,18 +32,21 @@ func Translate(media, inputDir, dest, language string) error {
 				if err != nil {
 					discord.Errorf("Error reading file: %v", err)
 				}
-				webvtt := sanitizeInputVTT(string(fBytes))
-				fLines := strings.Split(webvtt, "\n")
+				subtitles := string(fBytes)
+				if subtitleSuffix == "vtt" {
+					subtitles = sanitizeInputVTT(subtitles)
+				}
+				fLines := strings.Split(subtitles, "\n")
 				if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
 					langLengths[lang] = len(fLines)
-					languages[lang] = webvtt
+					languages[lang] = subtitles
 				}
 			}
 		}
 	}
 	discord.Infof("%v", langLengths)
 	if len(languages) == 0 {
-		return fmt.Errorf("unable to find any webvtt")
+		return fmt.Errorf("unable to find any %s subtitle", subtitleSuffix)
 	}
 	assembled := fmt.Sprintf("Media: %s\n", media)
 	count := 0
@@ -64,9 +67,19 @@ func Translate(media, inputDir, dest, language string) error {
 	if config.TheConfig.AiProvider == "openai" {
 		translator = ai.NewOpenAI()
 	}
-	translated, err := TranslateSubtitles(translator, splitAssembled(assembled, 1000), language)
-	if err != nil {
-		return err
+	var translated string
+	if subtitleSuffix == "vtt" {
+		translated, err = TranslateSubtitlesWebVTT(translator, splitAssembled(assembled, 1000, false), language)
+		if err != nil {
+			return err
+		}
+	} else if subtitleSuffix == "ass" {
+		translated, err = TranslateSubtitlesASS(translator, splitAssembled(assembled, 1000, true), language)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("unknown subtitle type: %s", subtitleSuffix)
 	}
 	return os.WriteFile(dest, []byte(translated), 0755)
 }
@@ -78,16 +91,55 @@ func limit(input []string) error {
 	return nil
 }
 
-func TranslateSubtitles(translator ai.AI, input []string, language string) (string, error) {
+func TranslateSubtitlesASS(translator ai.AI, input []string, language string) (string, error) {
 	err := limit(input)
 	if err != nil {
 		return "", err
 	}
 
-	discord.Infof("Translating to language: %s", language)
+	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
-	err = translator.StartChat(ctx, config.GetSystemMessage(language))
+	err = translator.StartChat(ctx, config.GetSystemMessage(language, config.ASS))
+	if err != nil {
+		return "", err
+	}
+
+	var translated []string
+
+	for idx, i := range input {
+		inputLines := len(strings.Split(i, "\n"))
+		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d",
+			idx, len(input)-1, len(i), inputLines)
+		result, err := ai.SendWithRetry(ctx, translator, i, func(result ai.Result) bool {
+			t := result.Text()
+			outputLines := len(strings.Split(t, "\n"))
+			discord.Infof("Output length: %d, Output lines: %d",
+				len(t),
+				outputLines)
+			return float64(outputLines)/float64(inputLines) >= config.TheConfig.TranslationOutputCutoff
+		}, 2)
+		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
+			return "", err
+		}
+		if err != nil {
+			discord.Infof("Keeping longest translation attempt")
+		}
+		translated = append(translated, result.Text())
+	}
+	return strings.Join(translated, "\n\n"), nil
+}
+
+func TranslateSubtitlesWebVTT(translator ai.AI, input []string, language string) (string, error) {
+	err := limit(input)
+	if err != nil {
+		return "", err
+	}
+
+	discord.Infof("[WEBVTT] Translating to language: %s", language)
+
+	ctx := context.Background()
+	err = translator.StartChat(ctx, config.GetSystemMessage(language, config.WEBVTT))
 	if err != nil {
 		return "", err
 	}
