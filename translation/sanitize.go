@@ -180,7 +180,7 @@ func splitAssembled(assembled string, atLine int) []string {
 }
 
 func sanitizeInputVTT(input string) string {
-	return sanitizeBlocks(sanitizeBlocks(input, true), false)
+	return "WEBVTT\n" + sanitizeBlocks(sanitizeBlocks(input, true), false)
 }
 
 // TODO: ass translation
@@ -215,9 +215,9 @@ func sanitizeBlocks(input string, contiguousOnly bool) string {
 	}
 
 	// Add lines before the first block
-	if blockStarts[0] > 0 {
-		resultLines = append(resultLines, normalizeBlock(lines[:blockStarts[0]])...)
-	}
+	// if blockStarts[0] > 0 {
+	// 	resultLines = append(resultLines, normalizeBlock(lines[:blockStarts[0]])...)
+	// }
 
 	var lastNormalizedBlock string
 	for i, start := range blockStarts {
