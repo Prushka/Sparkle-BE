@@ -183,7 +183,6 @@ func sanitizeInputVTT(input string) string {
 	return "WEBVTT\n" + sanitizeBlocks(sanitizeBlocks(input, true), false)
 }
 
-// TODO: ass translation
 // TODO: context aware seasons
 
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
