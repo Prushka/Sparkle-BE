@@ -23,6 +23,7 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 	}
 	langLengths := make(map[string]int)
 	languages := make(map[string]string)
+	languageHeaders := make(map[string]string)
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && !strings.HasPrefix(file.Name(), "ai") {
 			discord.Infof(file.Name())
@@ -33,13 +34,17 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 					discord.Errorf("Error reading file: %v", err)
 				}
 				subtitles := string(fBytes)
+				headers := ""
 				if subtitleSuffix == "vtt" {
 					subtitles = sanitizeInputVTT(subtitles)
+				} else if subtitleSuffix == "ass" {
+					headers, subtitles = sanitizeInputASS(subtitles)
 				}
 				fLines := strings.Split(subtitles, "\n")
 				if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
 					langLengths[lang] = len(fLines)
 					languages[lang] = subtitles
+					languageHeaders[lang] = headers
 				}
 			}
 		}
@@ -50,9 +55,10 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 	}
 	assembled := fmt.Sprintf("Media: %s\n", media)
 	count := 0
-	if eng, ok := languages["eng"]; ok {
-		discord.Infof("Using language: eng")
-		assembled += fmt.Sprintf("Language: %s\n%s\n", "eng", eng)
+	chosenLanguage := "eng"
+	if elem, ok := languages[chosenLanguage]; ok {
+		discord.Infof("Using language: %s", chosenLanguage)
+		assembled += fmt.Sprintf("Language: %s\n%s\n", chosenLanguage, elem)
 		count++
 	}
 	for key, value := range languages {
@@ -61,6 +67,7 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 		}
 		discord.Infof("Using language: %s", key)
 		assembled += fmt.Sprintf("Language: %s\n%s\n", key, value)
+		chosenLanguage = key
 		count++
 	}
 	translator := ai.NewGemini()
@@ -78,6 +85,7 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 		if err != nil {
 			return err
 		}
+		translated = languageHeaders[chosenLanguage] + translated
 	} else {
 		return fmt.Errorf("unknown subtitle type: %s", subtitleSuffix)
 	}
@@ -117,6 +125,7 @@ func TranslateSubtitlesASS(translator ai.AI, input []string, language string) (s
 			discord.Infof("Output length: %d, Output lines: %d",
 				len(t),
 				outputLines)
+			fmt.Println(t)
 			return float64(outputLines)/float64(inputLines) >= config.TheConfig.TranslationOutputCutoff
 		}, 2)
 		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
