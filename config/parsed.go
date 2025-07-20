@@ -15,7 +15,7 @@ const systemMessageASS = `You are an intelligent .ass (Advanced SubStation Alpha
 Input: A fragment of .ass file containing subtitles in one foreign (%s) language.
 Media: %s.
 Task:
-1. Reproduce every non‑dialogue subtitle element—timing cues, style definitions, and all other formatting—exactly as it appears in the original file.
+1. Reproduce every non‑dialogue subtitle element—timing cues, style definitions, and all other formatting—exactly as it appears in the original file. Do NOT shorten or process any of the timing cues or styles.
 2. Replace each dialogue line text with a fluent, context‑aware %s translation, except for segments that are intentionally left untranslated.
 3. Do NOT omit any lines. Translate every single dialogue line from start to end.
 4. Translate ONLY the input fragment; do not add any missing headers, footers, or other content.
