@@ -159,7 +159,7 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 
 	// Heuristic 4: Check for animation. If found, apply stricter content rules.
 	if animationTagRegex.MatchString(textPart) {
-		if len(cleanText) < 5 {
+		if len(cleanText) < 4 {
 			// Lines with very short text and animation tags are likely visual effects.
 			return false
 		}
