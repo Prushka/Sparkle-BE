@@ -61,6 +61,8 @@ type Config struct {
 
 var TheConfig = &Config{}
 
+var gitHash, gitVersion string
+
 func Configure() {
 	err := env.Parse(TheConfig)
 	if err != nil {
@@ -71,4 +73,5 @@ func Configure() {
 	for i, t := range TheConfig.TranslationSubtitleTypes {
 		TheConfig.TranslationSubtitleTypes[i] = strings.ToLower(t)
 	}
+	log.Infof("Running: %s, %s", gitVersion, gitHash)
 }

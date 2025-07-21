@@ -4,6 +4,10 @@ FROM --platform=$BUILDPLATFORM golang:1.24-bullseye AS build
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG GIT_COMMIT
+ARG GIT_VERSION
+
+RUN echo "Building for OS: ${TARGETOS}, Architecture: ${TARGETARCH}, Commit: ${GIT_COMMIT}, Version: ${GIT_VERSION}"
 
 WORKDIR /app
 RUN apt update -y
@@ -15,22 +19,17 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-s -w" -a -installsuffix cgo -o subtitles ./cmd/subtitles
-RUN upx --best --lzma subtitles
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+    -ldflags "-s -w -X config.gitHash=${GIT_COMMIT} -X config.gitVersion=${GIT_VERSION}" \
+    -trimpath -a -installsuffix cgo -o main ./cmd/subtitles
+RUN upx --best --lzma main
 
 FROM alpine:latest
-
-ARG COMMIT_SHA
-ARG COMMIT_MESSAGE
-ARG COMMIT_TIME
 
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 # Copy the pre-built binary file from the previous stage
-COPY --from=build /app/subtitles ./
+COPY --from=build /app/main ./
 COPY --from=mwader/static-ffmpeg:7.1.1 /ffmpeg /usr/local/bin/
 COPY --from=mwader/static-ffmpeg:7.1.1 /ffprobe /usr/local/bin/
-ENV COMMIT_SHA=${COMMIT_SHA}
-ENV COMMIT_MESSAGE=${COMMIT_MESSAGE}
-ENV COMMIT_TIME=${COMMIT_TIME}
-CMD [ "./subtitles" ]
+CMD [ "./main" ]
