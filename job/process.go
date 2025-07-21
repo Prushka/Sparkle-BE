@@ -186,11 +186,11 @@ func (job *Job) translateFlow() error {
 	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
-		for i, languageWithCode := range config.TheConfig.TranslationLanguages {
+		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
 			ss := strings.Split(languageWithCode, ";")
 			language := ss[0]
 			languageCode := ss[1]
-			dest := job.OutputJoin(fmt.Sprintf("ai-%d-%s.%s", i, languageCode, subtitleType))
+			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
 			err := translation.Translate(job.Input, job.OutputJoin(), dest, language, subtitleType)
 			if err != nil {
