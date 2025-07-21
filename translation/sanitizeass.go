@@ -1,30 +1,44 @@
 package translation
 
-import "strings"
+import (
+	"Sparkle/discord"
+	"fmt"
+	"regexp"
+	"strings"
+	"time"
+)
 
 // only translate when Default or English in dialogue block
 // (and for those blocks, send only text)
-func sanitizeInputASS(input string) (string, string) {
+func sanitizeInputASS(input string) (string, string, error) {
 	lines := strings.Split(input, "\n")
 	var resultLines []string
 	var dialogueLines []string
+	var start, end, text int
 	for _, line := range lines {
-		if shouldTranslate(line) {
-			dialogueLines = append(dialogueLines, line)
+		if isFormatLine(line) {
+			// Find the indices of the fields in the format line
+			text = findField(line, "text")
+			start = findField(line, "start")
+			end = findField(line, "end")
+			if text < 0 || start < 0 || end < 0 {
+				return "", "", fmt.Errorf("invalid format line: %s", line)
+			}
+			resultLines = append(resultLines, line)
+		} else if text > 0 && isDialogueLine(line) && isTranslatableText(line, start, end, text) {
+			dialogueLines = append(dialogueLines, RemoveComments(line))
 		} else {
 			resultLines = append(resultLines, line)
 		}
 	}
-	return strings.Join(resultLines, "\n"), strings.Join(dialogueLines, "\n")
+	return strings.Join(resultLines, "\n"), strings.Join(dialogueLines, "\n"), nil
 }
 
-func shouldTranslate(input string) bool {
-	return strings.Contains(strings.ToLower(input), "dialogue") &&
+func isDialogueLine(input string) bool {
+	return strings.Contains(strings.ToLower(input), "dialogue:") &&
 		strings.Contains(strings.ToLower(input), ":") &&
 		strings.Contains(strings.ToLower(input), ".") &&
-		strings.Contains(strings.ToLower(input), ",") &&
-		(strings.Contains(strings.ToLower(input), "default") ||
-			strings.Contains(strings.ToLower(input), "english"))
+		strings.Contains(strings.ToLower(input), ",")
 }
 
 func isFormatLine(input string) bool {
@@ -35,7 +49,7 @@ func isFormatLine(input string) bool {
 }
 
 func sanitizeOutputASS(headers, translated string) string {
-	headerLines := normalizeBlock(strings.Split(headers, "\n"), false)
+	headerLines := strings.Split(headers, "\n")
 	translatedLines := normalizeBlock(strings.Split(removeSingleFullStops(translated), "\n"), false)
 	for i, l := range translatedLines {
 		runes := []rune(l)
@@ -60,4 +74,102 @@ func sanitizeOutputASS(headers, translated string) string {
 		}
 	}
 	return strings.Join(headerLines, "\n")
+}
+
+func findField(input, field string) int {
+	// Remove the "Format: " prefix and any leading/trailing whitespace
+	headerLine := strings.ReplaceAll(strings.TrimPrefix(strings.ToLower(input), "format:"), " ", "")
+
+	// Split the remaining string by the comma delimiter
+	headers := strings.Split(headerLine, ",")
+
+	for i, header := range headers {
+		if header == strings.ToLower(field) {
+			return i
+		}
+	}
+	return -1
+}
+
+func extractDialogueField(line string, idx int, tillEnd bool) string {
+	s := strings.Split(strings.TrimSpace(strings.TrimPrefix(line, "dialogue:")), ",")
+	if len(s) > idx {
+		field := strings.TrimSpace(s[idx])
+		if tillEnd {
+			if idx+1 < len(s) {
+				return strings.TrimSpace(strings.Join(s[idx:], ","))
+			}
+		}
+		return field
+	}
+	return ""
+}
+
+var overrideBlockRegex = regexp.MustCompile(`\{[^}]*}`)
+
+// Tags strongly associated with non-translatable visual effects.
+var visualEffectRegex = regexp.MustCompile(`\\p[1-9]|\\clip|\\iclip|\\t`)
+
+// isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
+// It returns false for drawing commands, visual effects, or lines with very short durations.
+func isTranslatableText(dialogueLine string, start, end, text int) bool {
+
+	textPart := extractDialogueField(dialogueLine, text, true)
+	startTimeStr := extractDialogueField(dialogueLine, start, false)
+	endTimeStr := extractDialogueField(dialogueLine, end, false)
+
+	// Heuristic 1: Check for drawing commands within the override block.
+	if overrideBlockRegex.MatchString(textPart) {
+		if visualEffectRegex.MatchString(textPart) {
+			return false
+		}
+	}
+
+	// Heuristic 2: Check the duration. Short durations often indicate visual effects.
+	const timeFormat = "15:04:05.00"
+	startTime, err1 := time.Parse(timeFormat, startTimeStr)
+	endTime, err2 := time.Parse(timeFormat, endTimeStr)
+
+	if err1 == nil && err2 == nil {
+		duration := endTime.Sub(startTime)
+		// Lines displayed for less than half a second are likely not for reading.
+		if duration < 250*time.Millisecond {
+			return false
+		}
+	} else {
+		discord.Errorf("Failed to parse time, start: %s, end: %s, %s", startTimeStr, endTimeStr, dialogueLine)
+	}
+
+	// Heuristic 3: Check the actual text content after stripping style overrides.
+	cleanText := overrideBlockRegex.ReplaceAllString(textPart, "")
+	cleanText = strings.TrimSpace(cleanText)
+
+	if len(cleanText) == 0 {
+		// No text content.
+		return false
+	}
+
+	// Lines with only 1 character are often signs or effects, not dialogue.
+	if len(cleanText) < 2 {
+		return false
+	}
+
+	return true
+}
+
+// RemoveComments removes comment blocks from an ASS dialogue line's text part.
+// It identifies comments as any {}-enclosed block that does not contain a backslash '\',
+// thus preserving valid override tag blocks.
+func RemoveComments(dialogueText string) string {
+	// The replacer function is called for each match found by the regex.
+	replacer := func(block string) string {
+		// If the block does NOT contain a backslash, it's a comment. Replace it with nothing.
+		if !strings.Contains(block, `\`) {
+			return ""
+		}
+		// Otherwise, it's an override tag block. Keep it unchanged.
+		return block
+	}
+
+	return overrideBlockRegex.ReplaceAllStringFunc(dialogueText, replacer)
 }

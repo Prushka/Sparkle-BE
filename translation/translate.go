@@ -32,13 +32,18 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 				fBytes, err := os.ReadFile(filepath.Join(inputDir, file.Name()))
 				if err != nil {
 					discord.Errorf("Error reading file: %v", err)
+					continue
 				}
 				subtitles := string(fBytes)
 				headers := ""
 				if subtitleSuffix == "vtt" {
 					subtitles = sanitizeInputVTT(subtitles)
 				} else if subtitleSuffix == "ass" {
-					headers, subtitles = sanitizeInputASS(subtitles)
+					headers, subtitles, err = sanitizeInputASS(subtitles)
+					if err != nil {
+						discord.Errorf("Error sanitizing input ass: %v", err)
+						continue
+					}
 				}
 				fLines := strings.Split(subtitles, "\n")
 				if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
