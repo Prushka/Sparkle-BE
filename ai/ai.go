@@ -54,7 +54,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(result Res
 		result, err := a.Send(ctx, input)
 		if err != nil {
 			discord.Errorf("Error on attempt %d: %v", i, err)
-			if result != nil {
+			if result != nil && result.Response() != nil {
 				fmt.Println(utils.AsJson(result.Response()))
 			}
 		}
