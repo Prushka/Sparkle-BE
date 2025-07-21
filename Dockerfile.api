@@ -20,7 +20,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
-    -ldflags "-s -w -X config.gitHash=${GIT_COMMIT} -X config.gitVersion=${GIT_VERSION}" \
+    -ldflags "-s -w -X Sparkle/config.gitHash=${GIT_COMMIT} -X Sparkle/config.gitVersion=${GIT_VERSION}" \
     -trimpath -a -installsuffix cgo -o main ./cmd/api
 RUN upx --best --lzma main
 
