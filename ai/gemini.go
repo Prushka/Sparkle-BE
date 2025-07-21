@@ -58,7 +58,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	resp, err := g.Chat.SendMessage(ctx, genai.Part{Text: input})
 	result := &geminiResponse{response: resp}
 	if err != nil {
-		if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
+		if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") || strings.Contains(err.Error(), "try again later") {
 			discord.Errorf("Exceeded quota/rate limit, sleeping...")
 			time.Sleep(15 * time.Minute)
 		}
