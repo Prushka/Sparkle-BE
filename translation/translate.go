@@ -81,13 +81,13 @@ func Translate(media, inputDir, dest, language, subtitleSuffix string) error {
 	}
 	var translated string
 	if subtitleSuffix == "vtt" {
-		translated, err = TranslateSubtitlesWebVTT(translator, splitAssembled(in, 1000, false),
+		translated, err = TranslateSubtitlesWebVTT(translator, splitByCharacters(in, config.TheConfig.TranslationBatchLength, false),
 			language, config.GetSystemMessage(chosenLanguage, language, media, config.WEBVTT))
 		if err != nil {
 			return err
 		}
 	} else if subtitleSuffix == "ass" {
-		translated, err = TranslateSubtitlesASS(translator, splitAssembled(in, 400, true),
+		translated, err = TranslateSubtitlesASS(translator, splitByCharacters(in, config.TheConfig.TranslationBatchLength, true),
 			language, config.GetSystemMessage(chosenLanguage, language, media, config.ASS))
 		if err != nil {
 			return err

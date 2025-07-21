@@ -150,7 +150,7 @@ func trimCommas(text string) string {
 	return strings.Join(lines[:len(lines)-1], "\n")
 }
 
-func splitAssembled(assembled string, atLine int, skipVTTCutOff bool) []string {
+func splitByCharacters(assembled string, atChar int, skipVTTCutOff bool) []string {
 	lines := strings.Split(assembled, "\n")
 
 	var (
@@ -160,7 +160,7 @@ func splitAssembled(assembled string, atLine int, skipVTTCutOff bool) []string {
 	)
 
 	for i, line := range lines {
-		if (skipVTTCutOff || strings.TrimSpace(line) == "") && count >= atLine {
+		if count >= atChar {
 			if i+1 >= len(lines) || utils.IsWebVTTTimeRangeLine(lines[i+1]) || skipVTTCutOff {
 				result = append(result, strings.Join(currentLines, "\n"))
 				currentLines = nil
@@ -170,7 +170,7 @@ func splitAssembled(assembled string, atLine int, skipVTTCutOff bool) []string {
 		}
 
 		currentLines = append(currentLines, line)
-		count++
+		count += len(line)
 	}
 
 	if len(currentLines) > 0 {
