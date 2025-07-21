@@ -59,7 +59,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	result := &geminiResponse{response: resp}
 	if err != nil {
 		if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") || strings.Contains(err.Error(), "try again later") {
-			discord.Errorf("Exceeded quota/rate limit, sleeping...")
+			discord.Errorf("Exceeded quota/rate limit or gemini unavaialble, sleeping..., %v", err)
 			time.Sleep(15 * time.Minute)
 		}
 		return result, err
