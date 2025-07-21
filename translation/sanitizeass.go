@@ -50,7 +50,9 @@ func isFormatLine(input string) bool {
 
 func sanitizeOutputASS(headers, translated string) string {
 	headerLines := strings.Split(headers, "\n")
-	translatedLines := normalizeBlock(strings.Split(removeSingleFullStops(translated), "\n"), false)
+	translatedLines := normalizeBlock(strings.Split(
+		removeSingleFullStops(removeSingleFullStops(translated, '。'), '，'), "\n"),
+		false)
 	for i, l := range translatedLines {
 		runes := []rune(l)
 		n := len(runes)

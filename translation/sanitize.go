@@ -11,7 +11,8 @@ import (
 const isStyleCutoff = 100
 
 func sanitizeOutputVTT(input string) string {
-	return trimCommas(trimLinesPreserveTags(removeSingleFullStops(sanitizeSegment(input))))
+	return trimCommas(trimLinesPreserveTags(
+		removeSingleFullStops(removeSingleFullStops(sanitizeSegment(input), '。'), '，')))
 }
 
 // sanitizeSegment removes lines with WEBVTT or ```
@@ -45,16 +46,16 @@ func sanitizeSegment(input string) string {
 	return strings.Join(filtered[start:end+1], "\n")
 }
 
-// removeSingleFullStops replace any lone '。' with space while preserving contiguous runs of '。'
-func removeSingleFullStops(input string) string {
+// removeSingleFullStops replace any lone [char] with space while preserving contiguous runs of [char]
+func removeSingleFullStops(input string, char rune) string {
 	var b strings.Builder
 	runes := []rune(input)
 
 	for i := 0; i < len(runes); {
-		if runes[i] == '。' {
-			// count how many consecutive '。' we have
+		if runes[i] == char {
+			// count how many consecutive [char] we have
 			j := i + 1
-			for j < len(runes) && runes[j] == '。' {
+			for j < len(runes) && runes[j] == char {
 				j++
 			}
 			count := j - i
