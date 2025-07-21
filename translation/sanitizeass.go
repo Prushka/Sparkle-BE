@@ -109,8 +109,11 @@ func extractDialogueField(line string, idx int, tillEnd bool) string {
 
 var overrideBlockRegex = regexp.MustCompile(`\{[^}]*}`)
 
-// Tags strongly associated with non-translatable visual effects.
-var visualEffectRegex = regexp.MustCompile(`\\p[1-9]|\\clip|\\iclip|\\t`)
+// hardVisualEffectRegex finds tags that are almost always non-translatable inside a { } block.
+var hardVisualEffectRegex = regexp.MustCompile(`\{[^}]*(?:\\p[1-9]|\\clip|\\iclip)[^}]*}`)
+
+// animationTagRegex finds tags that might be used on translatable text inside a { } block.
+var animationTagRegex = regexp.MustCompile(`\{[^}]*(?:\\t|\\move)[^}]*}`)
 
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
 // It returns false for drawing commands, visual effects, or lines with very short durations.
@@ -121,10 +124,8 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 	endTimeStr := extractDialogueField(dialogueLine, end, false)
 
 	// Heuristic 1: Check for drawing commands, clipping, or animation within the override block.
-	if overrideBlockRegex.MatchString(textPart) {
-		if visualEffectRegex.MatchString(textPart) {
-			return false
-		}
+	if hardVisualEffectRegex.MatchString(textPart) {
+		return false
 	}
 
 	// Heuristic 2: Check the duration. Short durations often indicate visual effects.
@@ -135,7 +136,7 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 	if err1 == nil && err2 == nil {
 		duration := endTime.Sub(startTime)
 		// Lines displayed for less than half a second are likely not for reading.
-		if duration < 250*time.Millisecond {
+		if duration < 280*time.Millisecond {
 			return false
 		}
 	} else {
@@ -154,6 +155,33 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 	// Lines with only 1 character are often signs or effects, not dialogue.
 	if len(cleanText) < 2 {
 		return false
+	}
+
+	// Heuristic 4: Check for animation. If found, apply stricter content rules.
+	if animationTagRegex.MatchString(textPart) {
+		if len(cleanText) < 5 {
+			// Lines with very short text and animation tags are likely visual effects.
+			return false
+		}
+
+		// Animated lines with very short text are likely effects.
+		// We check for more than one word as a simple heuristic.
+		if !strings.Contains(cleanText, " ") && len(cleanText) < 8 {
+			return false
+		}
+
+		// Per-character animation (many override blocks) is a strong sign of a visual effect.
+		// If there are more override blocks than words, it's probably an effect.
+		blockCount := len(overrideBlockRegex.FindAllString(textPart, -1))
+		wordCount := len(strings.Fields(cleanText))
+		if wordCount > 0 && blockCount > wordCount+1 { // Allow one block for overall styling
+			return false
+		}
+
+		// If there are more than 3 override blocks, it's likely a visual effect.
+		if blockCount > 3 {
+			return false
+		}
 	}
 
 	return true
