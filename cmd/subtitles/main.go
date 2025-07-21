@@ -25,18 +25,18 @@ func process() {
 
 	target.SMMutex.Lock()
 	defer target.SMMutex.Unlock()
-	if target.ShowSet.Cardinality() == 0 && target.MovieSet.Cardinality() == 0 {
+	if len(target.Shows) == 0 && len(target.Movies) == 0 {
 		return
 	}
 	shows := make([]target.Show, 0)
 	movies := make([]target.Movie, 0)
 
-	for _, keyword := range target.ShowSet.ToSlice() {
+	for _, keyword := range target.Shows {
 		show := target.StringToShow(keyword)
 		discord.Infof(utils.AsJson(show))
 		shows = append(shows, show)
 	}
-	for _, keyword := range target.MovieSet.ToSlice() {
+	for _, keyword := range target.Movies {
 		movie := target.Movie{Name: keyword}
 		discord.Infof(utils.AsJson(movie))
 		movies = append(movies, movie)

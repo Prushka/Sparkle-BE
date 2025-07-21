@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
@@ -184,4 +185,28 @@ func InputJoin(args ...string) string {
 
 func OutputJoin(args ...string) string {
 	return filepath.Join(config.TheConfig.Output, filepath.Join(args...))
+}
+
+// UniqueStrings returns a new slice with duplicates removed, preserving the
+// original order of the first occurrences.
+func UniqueStrings(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var out []string
+
+	for _, s := range in {
+		if _, ok := seen[s]; ok {
+			continue // already added
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
+}
+
+func SlicesSetEqual(a []string, b []string) bool {
+	return mapset.NewSet[string](a...).Equal(mapset.NewSet[string](b...))
 }

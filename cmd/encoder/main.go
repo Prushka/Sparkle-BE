@@ -97,7 +97,7 @@ func process() {
 	totalProcessed = 0
 	target.SMMutex.Lock()
 	defer target.SMMutex.Unlock()
-	if target.ShowSet.Cardinality() == 0 && target.MovieSet.Cardinality() == 0 {
+	if len(target.Shows) == 0 && len(target.Movies) == 0 {
 		return
 	}
 	shows := make([]target.Show, 0)
@@ -111,14 +111,14 @@ func process() {
 	for _, j := range jobs {
 		target.SessionIds.Add(j.Id)
 	}
-	for _, keyword := range target.ShowSet.ToSlice() {
+	for _, keyword := range target.Shows {
 		te, keyword := parseExtraParams(keyword)
 		show := target.StringToShow(keyword)
 		show.ToEncode = te
 		discord.Infof(utils.AsJson(show))
 		shows = append(shows, show)
 	}
-	for _, keyword := range target.MovieSet.ToSlice() {
+	for _, keyword := range target.Movies {
 		te, keyword := parseExtraParams(keyword)
 		movie := target.Movie{Name: keyword}
 		movie.ToEncode = te

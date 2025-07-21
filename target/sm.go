@@ -46,9 +46,9 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 		discord.Errorf("error reading directory: %v", err)
 		return
 	}
-	for _, file := range files {
-		if file.IsDir() {
-			for _, show := range shows {
+	for _, show := range shows {
+		for _, file := range files {
+			if file.IsDir() {
 				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
 					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
 					if err != nil {
@@ -121,9 +121,9 @@ func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, paren
 		discord.Errorf("error reading directory: %v", err)
 		return
 	}
-	for _, file := range files {
-		if file.IsDir() {
-			for _, movie := range movies {
+	for _, movie := range movies {
+		for _, file := range files {
+			if file.IsDir() {
 				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) {
 					root := filepath.Join(root, file.Name())
 					discord.Infof("Processing %s", root)
@@ -180,8 +180,8 @@ type EncodeList struct {
 	Movies []string `json:"movies"`
 }
 
-var ShowSet = mapset.NewSet[string]()
-var MovieSet = mapset.NewSet[string]()
+var Shows []string
+var Movies []string
 var SMMutex sync.Mutex
 
 var SeasonRe = regexp.MustCompile(`Season\s+\d+`)
@@ -235,15 +235,13 @@ func UpdateEncoderList() bool {
 		}
 	}
 	SMMutex.Lock()
-	currShows := mapset.NewSet[string](encodeList.Shows...)
-	currMovies := mapset.NewSet[string](encodeList.Movies...)
 	changed := false
-	if !ShowSet.Equal(currShows) {
-		ShowSet = currShows
+	if !utils.SlicesSetEqual(Shows, encodeList.Shows) {
+		Shows = utils.UniqueStrings(encodeList.Shows)
 		changed = true
 	}
-	if !MovieSet.Equal(currMovies) {
-		MovieSet = currMovies
+	if !utils.SlicesSetEqual(Movies, encodeList.Movies) {
+		Movies = utils.UniqueStrings(encodeList.Movies)
 		changed = true
 	}
 	SMMutex.Unlock()
