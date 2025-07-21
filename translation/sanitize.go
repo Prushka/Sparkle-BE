@@ -185,7 +185,6 @@ func sanitizeInputVTT(input string) string {
 }
 
 // TODO: context aware seasons
-// TODO: split not 1000 but by character count
 
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
