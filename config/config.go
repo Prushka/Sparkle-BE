@@ -57,6 +57,7 @@ type Config struct {
 	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.96"`
 	TranslationSubtitleTypes []string `env:"TRANSLATION_SUBTITLE_TYPES" envDefault:"ass"`
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"30000"`
+	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
 }
 
 var TheConfig = &Config{}

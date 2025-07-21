@@ -133,7 +133,7 @@ func TranslateSubtitlesASS(translator ai.AI, input []string, language, systemMes
 				len(t),
 				outputLines)
 			return float64(outputLines)/float64(inputLines) >= config.TheConfig.TranslationOutputCutoff
-		}, 2)
+		}, config.TheConfig.TranslationAttempts)
 		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
 			return "", err
 		}
@@ -178,7 +178,7 @@ func TranslateSubtitlesWebVTT(translator ai.AI, input []string, language, system
 				len(strings.Split(sanitized, "\n")),
 				sanitizedTimeLines)
 			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= config.TheConfig.TranslationOutputCutoff
-		}, 2)
+		}, config.TheConfig.TranslationAttempts)
 		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
 			return "", err
 		}
