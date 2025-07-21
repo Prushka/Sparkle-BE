@@ -118,7 +118,7 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 	startTimeStr := extractDialogueField(dialogueLine, start, false)
 	endTimeStr := extractDialogueField(dialogueLine, end, false)
 
-	// Heuristic 1: Check for drawing commands within the override block.
+	// Heuristic 1: Check for drawing commands, clipping, or animation within the override block.
 	if overrideBlockRegex.MatchString(textPart) {
 		if visualEffectRegex.MatchString(textPart) {
 			return false
