@@ -72,7 +72,7 @@ func skip(j job.Job) bool {
 
 func pipeline(j job.Job) error {
 	if skip(j) {
-		discord.Infof("Skipping run as all languages are processed: %s", j.Input)
+		discord.Infof("Skipping: %s", j.Input)
 		return nil
 	}
 	err := os.MkdirAll(j.OutputJoin(), 0755)
