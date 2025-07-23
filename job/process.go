@@ -190,7 +190,7 @@ func (job *Job) translateFlow() error {
 			languageCode := strings.Split(languageWithCode, ";")[1]
 			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
-			err := translation.Translate(job, dest, languageWithCode, subtitleType)
+			err := translation.Translate(job.Input, job.OutputJoin(), job.InputJoin(job.Input), dest, languageWithCode, subtitleType)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err

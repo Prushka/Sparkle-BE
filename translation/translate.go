@@ -4,7 +4,6 @@ import (
 	"Sparkle/ai"
 	"Sparkle/config"
 	"Sparkle/discord"
-	"Sparkle/job"
 	"Sparkle/utils"
 	"context"
 	"fmt"
@@ -13,15 +12,13 @@ import (
 	"strings"
 )
 
-func Translate(j *job.Job, dest, languageWithCode, subtitleSuffix string) error {
+func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffix string) error {
 	ss := strings.Split(languageWithCode, ";")
 	language := ss[0]
 	languageCode := ss[1]
 
-	media := j.Input
-	inputDir := j.OutputJoin()
 	stat, err := os.Stat(dest)
-	statInput, _ := os.Stat(j.InputJoin(j.Input))
+	statInput, _ := os.Stat(mediaFile)
 	if err == nil && statInput.ModTime().Before(stat.ModTime()) {
 		discord.Infof("SKIPPING: File already exists: %s", dest)
 		return nil
