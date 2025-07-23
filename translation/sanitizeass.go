@@ -226,7 +226,7 @@ func AssToVTT(file string) error {
 		}
 	}
 	out := strings.Join(resultLines, "\n") + "\n" + translatable
-	tmp := "temp_" + file
+	tmp := file + "temp"
 	if err := os.WriteFile(tmp, []byte(out), 0644); err != nil {
 		return fmt.Errorf("failed to write converted file: %w", err)
 	}

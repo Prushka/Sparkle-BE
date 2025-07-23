@@ -85,7 +85,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 			case SubtitlesType:
 				errAss := convert("ass", "ass", fmt.Sprintf("%s.ass", id))
 				var errVtt error
-				if errAss != nil {
+				if errAss == nil {
 					errVtt = convert("webvtt", "webvttFromASS", fmt.Sprintf("%s.vtt", id))
 				} else {
 					errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
