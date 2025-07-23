@@ -205,7 +205,16 @@ func (job *Job) translateFlow() error {
 				return err
 			}
 
-			discord.Infof("Done: %s", dest)
+			discord.Infof("Translated: %s", dest)
+
+			// current subtitle is .ass, and we don't have .vtt translations to run
+			if subtitleType == "ass" && !strings.Contains(strings.Join(config.TheConfig.TranslationSubtitleTypes, ""),
+				"vtt") {
+				err = translation.AssToVTT(dest)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 

@@ -105,7 +105,7 @@ func pipeline(j job.Job) error {
 				return err
 			}
 
-			discord.Infof("Done: %s", dest)
+			discord.Infof("Translated: %s", dest)
 		}
 	}
 

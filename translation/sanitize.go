@@ -185,7 +185,6 @@ func sanitizeInputVTT(input string) string {
 }
 
 // TODO: context aware seasons
-// TODO: in encoder, transform translated ass to vtt
 
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
