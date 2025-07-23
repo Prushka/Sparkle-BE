@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-// only translate when Default or English in dialogue block
-// (and for those blocks, send only text)
 func sanitizeInputASS(input string) (string, string, error) {
 	lines := strings.Split(input, "\n")
 	var resultLines []string
