@@ -54,7 +54,7 @@ type Config struct {
 	GeminiModel              string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese;chi,Turkish;tur"` // Turkish;tur,Spanish;spa
 	KeepTranslationAttempt   bool     `env:"KEEP_TRANSLATION_ATTEMPT" envDefault:"true"`
-	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.96"`
+	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.98"`
 	TranslationSubtitleTypes []string `env:"TRANSLATION_SUBTITLE_TYPES" envDefault:"ass"`
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
