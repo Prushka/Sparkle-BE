@@ -49,9 +49,9 @@ func (job *Job) ExtractStreams(path, t string) error {
 		if stream.CodecType == t {
 			log.Debugf("Stream: %+v", stream)
 			id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
-			var cmd *exec.Cmd
-			var err error
 			convert := func(codec, cs, filename string) error {
+				var cmd *exec.Cmd
+				var err error
 				log.Debugf("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
 				s := Stream{
 					CodecName: codec,

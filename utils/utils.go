@@ -62,7 +62,7 @@ func GetTitleId(title string) string {
 	return titleId + se
 }
 
-func Run(c *exec.Cmd) error {
+func run(c *exec.Cmd) error {
 	if err := c.Start(); err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func Run(c *exec.Cmd) error {
 	return c.Wait()
 }
 
-func CombinedOutput(c *exec.Cmd) ([]byte, error) {
+func combinedOutput(c *exec.Cmd) ([]byte, error) {
 	if c.Stdout != nil {
 		return nil, fmt.Errorf("exec: Stdout already set")
 	}
@@ -85,12 +85,12 @@ func CombinedOutput(c *exec.Cmd) ([]byte, error) {
 	var b bytes.Buffer
 	c.Stdout = &b
 	c.Stderr = &b
-	err := Run(c)
+	err := run(c)
 	return b.Bytes(), err
 }
 
 func RunCommand(cmd *exec.Cmd) ([]byte, error) {
-	out, err := CombinedOutput(cmd)
+	out, err := combinedOutput(cmd)
 	if err != nil {
 		discord.Errorf(cmd.String())
 		fmt.Println(string(out))
