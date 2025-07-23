@@ -62,7 +62,17 @@ func skip(j job.Job) bool {
 			languageCode := ss[1]
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
-			if _, err := os.Stat(dest); err != nil {
+			stat, err := os.Stat(dest)
+			if err != nil {
+				return false
+			}
+			statInput, err := os.Stat(j.InputJoin(j.Input))
+			if err != nil {
+				discord.Errorf("Error getting stat for input: %v", err)
+				return false
+			}
+			if statInput.ModTime().After(stat.ModTime()) {
+				// If the input file is newer than the subtitle file, we need to process it again
 				return false
 			}
 		}
@@ -90,7 +100,7 @@ func pipeline(j job.Job) error {
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
-			err = translation.Translate(j.Input, j.OutputJoin(), dest, language, subtitleType)
+			err = translation.Translate(&j, dest, language, subtitleType)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err
