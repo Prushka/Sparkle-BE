@@ -7,7 +7,7 @@ import (
 
 func TestSanitization(t *testing.T) {
 	// read from output.vtt
-	fBytes, err := os.ReadFile("2-eng.ass")
+	fBytes, err := os.ReadFile("3-eng.ass")
 	if err != nil {
 		t.Fatalf("Failed to read file: %v", err)
 	}
@@ -22,6 +22,9 @@ func TestSanitization(t *testing.T) {
 		t.Fatalf("Failed to write sanitized file: %v", err)
 	}
 	if err := os.WriteFile("output_headers.ass", []byte(headers), 0644); err != nil {
+		t.Fatalf("Failed to write sanitized file: %v", err)
+	}
+	if err := os.WriteFile("output.ass", []byte(sanitizeOutputASS(headers, sanitized)), 0644); err != nil {
 		t.Fatalf("Failed to write sanitized file: %v", err)
 	}
 
