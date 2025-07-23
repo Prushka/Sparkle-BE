@@ -140,7 +140,7 @@ func TranslateSubtitlesASS(translator ai.AI, input []string, language, systemMes
 			idx, len(input)-1, len(i), inputLines)
 		result, err := ai.SendWithRetry(ctx, translator, i, func(result ai.Result) bool {
 			t := result.Text()
-			outputLines := len(strings.Split(t, "\n"))
+			outputLines := len(normalizeBlock(strings.Split(t, "\n"), false))
 			discord.Infof("Output length: %d, Output lines: %d",
 				len(t),
 				outputLines)
