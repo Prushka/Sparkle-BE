@@ -1,8 +1,12 @@
 package translation
 
 import (
+	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"fmt"
+	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -202,4 +206,43 @@ func RemoveComments(dialogueText string) string {
 	}
 
 	return overrideBlockRegex.ReplaceAllStringFunc(dialogueText, replacer)
+}
+
+func AssToVTT(file string) error {
+	fBytes, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	headers, translatable, err := sanitizeInputASS(string(fBytes))
+	if err != nil {
+		return err
+	}
+	var resultLines []string
+	for _, h := range strings.Split(headers, "\n") {
+		if !isDialogueLine(h) {
+			resultLines = append(resultLines, h)
+		} else {
+			break
+		}
+	}
+	out := strings.Join(resultLines, "\n") + "\n" + translatable
+	tmp := "temp_" + file
+	if err := os.WriteFile(tmp, []byte(out), 0644); err != nil {
+		return fmt.Errorf("failed to write converted file: %w", err)
+	}
+
+	defer func() {
+		if err := os.Remove(tmp); err != nil {
+			discord.Errorf("Error removing temporary file %s: %v", tmp, err)
+		}
+	}()
+
+	cmd := exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", tmp, "-c:s", "webvtt",
+		strings.ReplaceAll(file, ".ass", ".vtt"))
+	_, err = utils.RunCommand(cmd)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

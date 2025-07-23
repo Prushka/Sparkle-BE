@@ -66,21 +66,30 @@ func (job *Job) ExtractStreams(path, t string) error {
 				}
 				if stream.CodecType == AttachmentType {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", fmt.Sprintf("-dump_attachment:%d", stream.Index), job.OutputJoin(filename), "-i", path, "-t", "0", "-f", "null", "null")
+				} else if cs == "webvttFromASS" {
+					err = translation.AssToVTT(job.OutputJoin(fmt.Sprintf("%s.ass", id)))
 				} else {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
 				}
-				_, err = utils.RunCommand(cmd)
-				if err == nil {
-					job.Streams = append(job.Streams, s)
-				} else {
-					discord.Errorf("error converting %s: %v", t, err)
+				if cmd != nil {
+					_, err = utils.RunCommand(cmd)
+					if err == nil {
+						job.Streams = append(job.Streams, s)
+					} else {
+						discord.Errorf("error converting %s: %v", t, err)
+					}
 				}
 				return err
 			}
 			switch stream.CodecType {
 			case SubtitlesType:
 				errAss := convert("ass", "ass", fmt.Sprintf("%s.ass", id))
-				errVtt := convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
+				var errVtt error
+				if errAss != nil {
+					errVtt = convert("webvtt", "webvttFromASS", fmt.Sprintf("%s.vtt", id))
+				} else {
+					errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
+				}
 				if errAss != nil && errVtt != nil {
 					toCodec, ok := codecMap[stream.CodecName]
 					if !ok {
