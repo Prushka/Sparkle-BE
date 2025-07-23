@@ -13,7 +13,11 @@ import (
 	"strings"
 )
 
-func Translate(j *job.Job, dest, language, subtitleSuffix string) error {
+func Translate(j *job.Job, dest, languageWithCode, subtitleSuffix string) error {
+	ss := strings.Split(languageWithCode, ";")
+	language := ss[0]
+	languageCode := ss[1]
+
 	media := j.Input
 	inputDir := j.OutputJoin()
 	stat, err := os.Stat(dest)
@@ -30,10 +34,16 @@ func Translate(j *job.Job, dest, language, subtitleSuffix string) error {
 	languages := make(map[string]string)
 	languageHeaders := make(map[string]string)
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && !strings.HasPrefix(file.Name(), "ai") {
+		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && strings.Contains(file.Name(), "-") {
 			discord.Infof(file.Name())
 			if len(file.Name()) >= 7 {
 				lang := file.Name()[len(file.Name())-7 : len(file.Name())-4]
+				if strings.ToLower(lang) == strings.ToLower(languageCode) {
+					discord.Infof("SKIPPING: Subtitle with language %s already exists: %s",
+						language,
+						dest)
+					return nil
+				}
 				fBytes, err := os.ReadFile(filepath.Join(inputDir, file.Name()))
 				if err != nil {
 					discord.Errorf("Error reading file: %v", err)

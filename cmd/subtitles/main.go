@@ -94,13 +94,11 @@ func pipeline(j job.Job) error {
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			ss := strings.Split(languageWithCode, ";")
-			language := ss[0]
-			languageCode := ss[1]
+			languageCode := strings.Split(languageWithCode, ";")[1]
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
-			err = translation.Translate(&j, dest, language, subtitleType)
+			err = translation.Translate(&j, dest, languageWithCode, subtitleType)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err

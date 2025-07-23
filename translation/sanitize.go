@@ -185,7 +185,6 @@ func sanitizeInputVTT(input string) string {
 }
 
 // TODO: context aware seasons
-// TODO: skip if extracted already contains language
 // TODO: in encoder, transform translated ass to vtt
 
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
