@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -226,7 +227,7 @@ func AssToVTT(file string) error {
 		}
 	}
 	out := strings.Join(resultLines, "\n") + "\n" + translatable
-	tmp := file + "temp"
+	tmp := addTempSuffix(file)
 	if err := os.WriteFile(tmp, []byte(out), 0644); err != nil {
 		return fmt.Errorf("failed to write converted file: %w", err)
 	}
@@ -245,4 +246,11 @@ func AssToVTT(file string) error {
 	}
 
 	return nil
+}
+
+// addTempSuffix inserts "_temp" before the file’s extension.
+func addTempSuffix(path string) string {
+	ext := filepath.Ext(path)             // ".csv", ".gz", or ""
+	base := strings.TrimSuffix(path, ext) // everything except the extension
+	return base + "_temp" + ext
 }
