@@ -3,7 +3,6 @@
 package priority
 
 import (
-	"Sparkle/discord"
 	"syscall"
 )
 
@@ -18,10 +17,5 @@ func setPriorityLinux(pid int, priority int) error {
 }
 
 func LowPriority(pid int) error {
-	err := setPriorityLinux(pid, LOW_PRIORITY)
-	if err != nil {
-		discord.Errorf("error setting low priority for pid %d: %v", pid, err)
-		return err
-	}
-	return nil
+	return setPriorityLinux(pid, LOW_PRIORITY)
 }
