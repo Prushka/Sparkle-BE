@@ -73,11 +73,11 @@ func (job *Job) ExtractStreams(path, t string) error {
 				}
 				if cmd != nil {
 					_, err = utils.RunCommand(cmd)
-					if err == nil {
-						job.Streams = append(job.Streams, s)
-					} else {
-						discord.Errorf("error converting %s: %v", t, err)
-					}
+				}
+				if err == nil {
+					job.Streams = append(job.Streams, s)
+				} else {
+					discord.Errorf("error converting %s: %v", t, err)
 				}
 				return err
 			}
