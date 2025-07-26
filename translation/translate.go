@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffix string) error {
+func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffix string, convertToVTT bool) error {
 	ss := strings.Split(languageWithCode, ";")
 	language := ss[0]
 	languageCode := ss[1]
@@ -108,7 +108,22 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	} else {
 		return fmt.Errorf("unknown subtitle type: %s", subtitleSuffix)
 	}
-	return os.WriteFile(dest, []byte(translated), 0755)
+
+	err = os.WriteFile(dest, []byte(translated), 0755)
+	if err != nil {
+		return err
+	}
+
+	// current subtitle is .ass, and we don't have .vtt translations to run
+	if convertToVTT && subtitleSuffix == "ass" &&
+		!strings.Contains(strings.Join(config.TheConfig.TranslationSubtitleTypes, ""),
+			"vtt") {
+		err = AssToVTT(dest)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func limit(input []string, limit int) error {

@@ -99,7 +99,7 @@ func pipeline(j job.Job) error {
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
 			err = translation.Translate(j.Input, j.OutputJoin(), j.InputJoin(j.Input),
-				dest, languageWithCode, subtitleType)
+				dest, languageWithCode, subtitleType, false)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err

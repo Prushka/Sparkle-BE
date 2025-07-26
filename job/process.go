@@ -199,22 +199,13 @@ func (job *Job) translateFlow() error {
 			languageCode := strings.Split(languageWithCode, ";")[1]
 			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
-			err := translation.Translate(job.Input, job.OutputJoin(), job.InputJoin(job.Input), dest, languageWithCode, subtitleType)
+			err := translation.Translate(job.Input, job.OutputJoin(), job.InputJoin(job.Input), dest, languageWithCode, subtitleType, true)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err
 			}
 
 			discord.Infof("Translated: %s", dest)
-
-			// current subtitle is .ass, and we don't have .vtt translations to run
-			if subtitleType == "ass" && !strings.Contains(strings.Join(config.TheConfig.TranslationSubtitleTypes, ""),
-				"vtt") {
-				err = translation.AssToVTT(dest)
-				if err != nil {
-					return err
-				}
-			}
 		}
 	}
 
