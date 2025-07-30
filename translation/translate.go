@@ -12,6 +12,20 @@ import (
 	"strings"
 )
 
+func findInputLang(languages map[string]string) (string, string) {
+	for _, chosenLanguage := range config.TheConfig.TranslationInputLanguage {
+		if elem, ok := languages[chosenLanguage]; ok {
+			discord.Infof("Using language: %s", chosenLanguage)
+			return elem, chosenLanguage
+		}
+	}
+	for key, value := range languages {
+		discord.Infof("Using language: %s", key)
+		return value, key
+	}
+	return "", ""
+}
+
 func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffix string, convertToVTT bool) error {
 	ss := strings.Split(languageWithCode, ";")
 	language := ss[0]
@@ -70,23 +84,7 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	if len(languages) == 0 {
 		return fmt.Errorf("unable to find any %s subtitle", subtitleSuffix)
 	}
-	in := ""
-	count := 0
-	chosenLanguage := "eng"
-	if elem, ok := languages[chosenLanguage]; ok {
-		discord.Infof("Using language: %s", chosenLanguage)
-		in = elem
-		count++
-	}
-	for key, value := range languages {
-		if count > 0 {
-			break
-		}
-		discord.Infof("Using language: %s", key)
-		in = value
-		chosenLanguage = key
-		count++
-	}
+	in, chosenLanguage := findInputLang(languages)
 	translator := ai.NewGemini()
 	if config.TheConfig.AiProvider == "openai" {
 		translator = ai.NewOpenAI()

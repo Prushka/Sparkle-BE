@@ -57,6 +57,7 @@ type Config struct {
 	TranslationSubtitleTypes []string `env:"TRANSLATION_SUBTITLE_TYPES" envDefault:"ass"`
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
+	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"jpn,eng"`
 }
 
 var TheConfig = &Config{}
