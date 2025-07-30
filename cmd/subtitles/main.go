@@ -143,13 +143,13 @@ func main() {
 	cleanup.AddOnStopFunc(func(_ os.Signal) {
 		scheduler.Stop()
 	})
-	utils.PanicOnSec(scheduler.SingletonMode().Every(5).Minute().Do(func() {
+	utils.PanicOnSec(scheduler.SingletonMode().Every(config.TheConfig.ScanConfigInterval).Do(func() {
 		changed := target.UpdateEncoderList()
 		if changed {
 			process()
 		}
 	}))
-	utils.PanicOnSec(scheduler.SingletonMode().Every(2).Hours().Do(func() {
+	utils.PanicOnSec(scheduler.SingletonMode().Every(config.TheConfig.ScanInputInterval).Do(func() {
 		process()
 	}))
 	scheduler.StartAsync()

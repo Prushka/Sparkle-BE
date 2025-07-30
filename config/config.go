@@ -45,6 +45,9 @@ type Config struct {
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
+	ScanConfigInterval int `env:"SCAN_CONFIG_INTERVAL" envDefault:"10m"`
+	ScanInputInterval  int `env:"SCAN_INPUT_INTERVAL" envDefault:"2h"`
+
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
 	OpenAI                   string   `env:"OPENAI" envDefault:""`
 	Gemini                   string   `env:"GEMINI" envDefault:""`
