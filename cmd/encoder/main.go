@@ -193,7 +193,6 @@ func main() {
 			process()
 		}
 	}))
-
 	utils.PanicOnSec(scheduler.SingletonMode().Every(2).Hours().Do(func() {
 		process()
 	}))
