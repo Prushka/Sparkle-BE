@@ -92,7 +92,10 @@ func pipeline(j job.Job) error {
 		return err
 	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
-	_ = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
+	err = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
+	if err != nil {
+		return err
+	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {

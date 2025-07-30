@@ -45,8 +45,10 @@ func (job *Job) ExtractStreams(path, t string) error {
 	if err != nil {
 		return err
 	}
+	meaningful := false
 	for _, stream := range probeOutput.Streams {
 		if stream.CodecType == t {
+			meaningful = true
 			log.Debugf("Stream: %+v", stream)
 			id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
 			convert := func(codec, cs, filename string) error {
@@ -107,6 +109,9 @@ func (job *Job) ExtractStreams(path, t string) error {
 				}
 			}
 		}
+	}
+	if !meaningful && (t == AudioType || t == SubtitlesType) {
+		return fmt.Errorf("no %s streams found in %s", t, path)
 	}
 	return nil
 }
