@@ -8,7 +8,6 @@ import (
 
 type Config struct {
 	Output                 string `env:"OUTPUT" envDefault:"./output"`
-	OriginalOutput         string
 	Input                  string `env:"INPUT" envDefault:"./input"`
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
@@ -69,7 +68,6 @@ func Configure() {
 	if err != nil {
 		log.Fatalf("error parsing config: %v", err)
 	}
-	TheConfig.OriginalOutput = TheConfig.Output
 
 	for i, t := range TheConfig.TranslationSubtitleTypes {
 		TheConfig.TranslationSubtitleTypes[i] = strings.ToLower(t)
