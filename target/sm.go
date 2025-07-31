@@ -242,6 +242,7 @@ func UpdateEncoderList() bool {
 			if err != nil {
 				discord.Errorf("Error getting user requests: %v, user id: %d", err, userId)
 			}
+			discord.Infof("Found %d requests from user id: %d", len(responses.Results), userId)
 			for _, req := range responses.Results {
 				title, err := overseerr.GetTitleById(req.Type, req.Media.TMDBID)
 				if err != nil {
