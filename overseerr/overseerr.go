@@ -91,7 +91,9 @@ func getOverseerr(path string) ([]byte, error) {
 // GetUserRequests retrieves the list of requests for a specific user.
 func GetUserRequests(userId int) (*Response, error) {
 	body, err := getOverseerr(fmt.Sprintf("/api/v1/request?requestedBy=%d&take=5000", userId))
-
+	if err != nil {
+		return nil, err
+	}
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
@@ -112,6 +114,9 @@ type MediaDetails struct {
 // GetTitleById retrieves a movie/tv's title by its ID from the Overseerr API.
 func GetTitleById(t string, id int) (string, error) {
 	body, err := getOverseerr(fmt.Sprintf("/api/v1/%s/%d", t, id))
+	if err != nil {
+		return "", err
+	}
 	var media MediaDetails
 	err = json.Unmarshal(body, &media)
 	if err != nil {
@@ -125,4 +130,50 @@ func GetTitleById(t string, id int) (string, error) {
 		return media.Title, nil
 	}
 	return media.OriginalTitle, nil
+}
+
+type WatchlistResponse struct {
+	Page         int               `json:"page"`
+	TotalPages   int               `json:"totalPages"`
+	TotalResults int               `json:"totalResults"`
+	Results      []WatchlistResult `json:"results"`
+}
+
+type WatchlistResult struct {
+	RatingKey string `json:"ratingKey"`
+	Title     string `json:"title"`
+	MediaType string `json:"mediaType"`
+	TmdbId    int    `json:"tmdbId"`
+}
+
+func GetWatchlist(userId int) ([]WatchlistResult, error) {
+	var allResults []WatchlistResult
+
+	page := 1
+	for {
+		body, err := getOverseerr(fmt.Sprintf("/api/v1/user/%d/watchlist?page=%d", userId, page))
+		if err != nil {
+			return nil, err
+		}
+
+		var response WatchlistResponse
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(response.Results) == 0 {
+			break
+		}
+
+		allResults = append(allResults, response.Results...)
+
+		if page >= response.TotalPages {
+			break
+		}
+
+		page++
+	}
+
+	return allResults, nil
 }
