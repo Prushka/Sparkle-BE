@@ -115,14 +115,14 @@ func process() {
 		te, keyword := parseExtraParams(keyword)
 		show := target.StringToShow(keyword)
 		show.ToEncode = te
-		discord.Infof("%+v", show)
+		discord.Infof(utils.AsJsonNoFormat(show))
 		shows = append(shows, show)
 	}
 	for _, keyword := range target.Movies {
 		te, keyword := parseExtraParams(keyword)
 		movie := target.Movie{Name: keyword}
 		movie.ToEncode = te
-		discord.Infof("%+v", movie)
+		discord.Infof(utils.AsJsonNoFormat(movie))
 		movies = append(movies, movie)
 	}
 	for _, root := range config.TheConfig.ShowDirs {

@@ -153,6 +153,14 @@ func AsJson(v interface{}) string {
 	return string(b)
 }
 
+func AsJsonNoFormat(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		discord.Errorf(err.Error())
+	}
+	return string(b)
+}
+
 func CalculateFileSHA256(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
