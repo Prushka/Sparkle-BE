@@ -46,8 +46,8 @@ type Config struct {
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
-	ScanConfigInterval time.Duration `env:"SCAN_CONFIG_INTERVAL" envDefault:"10m"`
-	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"2h"`
+	ScanConfigInterval time.Duration `env:"SCAN_CONFIG_INTERVAL" envDefault:"1h"`
+	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"3h"`
 
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
 	OpenAI                   string   `env:"OPENAI" envDefault:""`
