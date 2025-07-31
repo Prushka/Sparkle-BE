@@ -241,18 +241,35 @@ func UpdateEncoderList() bool {
 			responses, err := overseerr.GetUserRequests(userId)
 			if err != nil {
 				discord.Errorf("Error getting user requests: %v, user id: %d", err, userId)
-			}
-			discord.Infof("Found %d requests from user id: %d", len(responses.Results), userId)
-			for _, req := range responses.Results {
-				title, err := overseerr.GetTitleById(req.Type, req.Media.TMDBID)
-				if err != nil {
-					discord.Errorf("Error getting title: %v, id: %d", err, req.Media.TMDBID)
+			} else {
+				discord.Infof("Found %d requests from user id: %d", len(responses.Results), userId)
+				for _, req := range responses.Results {
+					title, err := overseerr.GetTitleById(req.Type, req.Media.TMDBID)
+					if err != nil {
+						discord.Errorf("Error getting title: %v, id: %d", err, req.Media.TMDBID)
+						continue
+					}
+					switch req.Type {
+					case "movie":
+						encodeList.Movies = append(encodeList.Movies, title)
+					case "tv":
+						encodeList.Shows = append(encodeList.Shows, title)
+					}
 				}
-				switch req.Type {
-				case "movie":
-					encodeList.Movies = append(encodeList.Movies, title)
-				case "tv":
-					encodeList.Shows = append(encodeList.Shows, title)
+			}
+
+			watchlist, err := overseerr.GetWatchlist(userId)
+			if err != nil {
+				discord.Errorf("Error getting user watchlist: %v, user id: %d", err, userId)
+			} else {
+				discord.Infof("Found %d watchlist items from user id: %d", len(watchlist), userId)
+				for _, res := range watchlist {
+					switch res.MediaType {
+					case "movie":
+						encodeList.Movies = append(encodeList.Movies, res.Title)
+					case "tv":
+						encodeList.Shows = append(encodeList.Shows, res.Title)
+					}
 				}
 			}
 		}
