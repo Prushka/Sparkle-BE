@@ -270,7 +270,8 @@ func UpdateEncoderList() bool {
 	}
 	SMMutex.Unlock()
 	if changed {
-		discord.Infof("List updated: %v", encodeList)
+		discord.Infof("List updated")
+		fmt.Println(utils.AsJson(encodeList))
 	}
 	return changed
 }

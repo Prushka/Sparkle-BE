@@ -35,12 +35,12 @@ func process() {
 
 	for _, keyword := range target.Shows {
 		show := target.StringToShow(keyword)
-		discord.Infof(utils.AsJson(show))
+		discord.Infof("%+v", show)
 		shows = append(shows, show)
 	}
 	for _, keyword := range target.Movies {
 		movie := target.Movie{Name: keyword}
-		discord.Infof(utils.AsJson(movie))
+		discord.Infof("%+v", movie)
 		movies = append(movies, movie)
 	}
 
