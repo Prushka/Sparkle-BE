@@ -4,6 +4,7 @@ import (
 	"github.com/caarlos0/env"
 	log "github.com/sirupsen/logrus"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -45,8 +46,8 @@ type Config struct {
 	ShowDirs            []string `env:"SHOW_DIR" envDefault:""`
 	MovieDirs           []string `env:"MOVIE_DIR" envDefault:""`
 
-	ScanConfigInterval int `env:"SCAN_CONFIG_INTERVAL" envDefault:"10m"`
-	ScanInputInterval  int `env:"SCAN_INPUT_INTERVAL" envDefault:"2h"`
+	ScanConfigInterval time.Duration `env:"SCAN_CONFIG_INTERVAL" envDefault:"10m"`
+	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"2h"`
 
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
 	OpenAI                   string   `env:"OPENAI" envDefault:""`
