@@ -62,6 +62,10 @@ type Config struct {
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
 	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"jpn,eng"`
+
+	OverSeerrURL     string `env:"OVERSEERR_URL" envDefault:"http://localhost"`
+	OverSeerrAPI     string `env:"OVERSEERR_API" envDefault:""`
+	OverSeerrUserIds []int  `env:"OVERSEERR_USER_IDS" envDefault:""`
 }
 
 var TheConfig = &Config{}

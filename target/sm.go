@@ -3,6 +3,7 @@ package target
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/overseerr"
 	"Sparkle/utils"
 	"encoding/json"
 	"fmt"
@@ -232,6 +233,27 @@ func UpdateEncoderList() bool {
 		err = json.Unmarshal(content, &encodeList)
 		if err != nil {
 			discord.Errorf("error unmarshalling file: %v", err)
+		}
+	}
+	if config.TheConfig.OverSeerrAPI != "" && len(config.TheConfig.OverSeerrUserIds) > 0 {
+		discord.Infof("Appending overseerr requests")
+		for _, userId := range config.TheConfig.OverSeerrUserIds {
+			responses, err := overseerr.GetUserRequests(userId)
+			if err != nil {
+				discord.Errorf("Error getting user requests: %v, user id: %d", err, userId)
+			}
+			for _, req := range responses.Results {
+				title, err := overseerr.GetTitleById(req.Type, req.Media.TMDBID)
+				if err != nil {
+					discord.Errorf("Error getting title: %v, id: %d", err, req.Media.TMDBID)
+				}
+				switch req.Type {
+				case "movie":
+					encodeList.Movies = append(encodeList.Movies, title)
+				case "tv":
+					encodeList.Shows = append(encodeList.Shows, title)
+				}
+			}
 		}
 	}
 	SMMutex.Lock()
