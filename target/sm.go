@@ -256,14 +256,16 @@ func UpdateEncoderList() bool {
 			}
 		}
 	}
+	encodeList.Movies = utils.RemoveEmptyStrings(utils.UniqueStrings(encodeList.Movies))
+	encodeList.Shows = utils.RemoveEmptyStrings(utils.UniqueStrings(encodeList.Shows))
 	SMMutex.Lock()
 	changed := false
 	if !utils.SlicesSetEqual(Shows, encodeList.Shows) {
-		Shows = utils.UniqueStrings(encodeList.Shows)
+		Shows = encodeList.Shows
 		changed = true
 	}
 	if !utils.SlicesSetEqual(Movies, encodeList.Movies) {
-		Movies = utils.UniqueStrings(encodeList.Movies)
+		Movies = encodeList.Movies
 		changed = true
 	}
 	SMMutex.Unlock()

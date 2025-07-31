@@ -207,6 +207,16 @@ func UniqueStrings(in []string) []string {
 	return out
 }
 
+func RemoveEmptyStrings(arr []string) []string {
+	var result []string
+	for _, str := range arr {
+		if strings.TrimSpace(str) != "" {
+			result = append(result, str)
+		}
+	}
+	return result
+}
+
 func SlicesSetEqual(a []string, b []string) bool {
 	return mapset.NewSet[string](a...).Equal(mapset.NewSet[string](b...))
 }
