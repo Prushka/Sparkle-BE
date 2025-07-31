@@ -46,7 +46,6 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	languageHeaders := make(map[string]string)
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && strings.Contains(file.Name(), "-") {
-			discord.Infof(file.Name())
 			if len(file.Name()) >= 7 {
 				lang := strings.ToLower(file.Name()[len(file.Name())-7 : len(file.Name())-4])
 				if lang == strings.ToLower(languageCode) {
