@@ -84,19 +84,15 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 		return fmt.Errorf("unable to find any %s subtitle", subtitleSuffix)
 	}
 	in, chosenLanguage := findInputLang(languages)
-	translator := ai.NewGemini()
-	if config.TheConfig.AiProvider == "openai" {
-		translator = ai.NewOpenAI()
-	}
 	var translated string
 	if subtitleSuffix == "vtt" {
-		translated, err = TranslateSubtitlesWebVTT(translator, splitByCharacters(in, config.TheConfig.TranslationBatchLength, false),
+		translated, err = TranslateSubtitlesWebVTT(splitByCharacters(in, config.TheConfig.TranslationBatchLength, false),
 			language, config.GetSystemMessage(chosenLanguage, language, media, config.WEBVTT))
 		if err != nil {
 			return err
 		}
 	} else if subtitleSuffix == "ass" {
-		translated, err = TranslateSubtitlesASS(translator, splitByCharacters(in, config.TheConfig.TranslationBatchLength, true),
+		translated, err = TranslateSubtitlesASS(splitByCharacters(in, config.TheConfig.TranslationBatchLength, true),
 			language, config.GetSystemMessage(chosenLanguage, language, media, config.ASS))
 		if err != nil {
 			return err
@@ -123,94 +119,53 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	return nil
 }
 
-func limit(input []string, limit int) error {
-	if len(input) > limit {
-		return fmt.Errorf("too many split lines")
-	}
-	return nil
-}
-
-func TranslateSubtitlesASS(translator ai.AI, input []string, language, systemMessage string) (string, error) {
-	err := limit(input, 20)
-	if err != nil {
-		return "", err
-	}
-
+func TranslateSubtitlesASS(input []string, language, systemMessage string) (string, error) {
 	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
-	err = translator.StartChat(ctx, systemMessage)
+	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, input, func(input string, result ai.Result) bool {
+		t := result.Text()
+		outputLines := len(normalizeBlock(strings.Split(t, "\n"), false))
+		discord.Infof("Output length: %d, Output lines: %d",
+			len(t),
+			outputLines)
+		return float64(outputLines)/float64(len(strings.Split(input, "\n"))) >= config.TheConfig.TranslationOutputCutoff
+	}, func(input string) int {
+		return len(strings.Split(input, "\n"))
+	}, func(input string) string {
+		return input
+	})
 	if err != nil {
 		return "", err
-	}
-
-	var translated []string
-
-	for idx, i := range input {
-		inputLines := len(strings.Split(i, "\n"))
-		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d",
-			idx, len(input)-1, len(i), inputLines)
-		result, err := ai.SendWithRetry(ctx, translator, i, func(result ai.Result) bool {
-			t := result.Text()
-			outputLines := len(normalizeBlock(strings.Split(t, "\n"), false))
-			discord.Infof("Output length: %d, Output lines: %d",
-				len(t),
-				outputLines)
-			return float64(outputLines)/float64(inputLines) >= config.TheConfig.TranslationOutputCutoff
-		}, config.TheConfig.TranslationAttempts)
-		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
-			return "", err
-		}
-		if err != nil {
-			discord.Infof("Keeping longest translation attempt")
-		}
-		translated = append(translated, result.Text())
 	}
 	return strings.Join(translated, "\n"), nil
 }
 
-func TranslateSubtitlesWebVTT(translator ai.AI, input []string, language, systemMessage string) (string, error) {
-	err := limit(input, 10)
-	if err != nil {
-		return "", err
-	}
-
+func TranslateSubtitlesWebVTT(input []string, language, systemMessage string) (string, error) {
 	discord.Infof("[WEBVTT] Translating to language: %s", language)
 
 	ctx := context.Background()
-	err = translator.StartChat(ctx, systemMessage)
+	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, input, func(input string, result ai.Result) bool {
+		t := result.Text()
+		sanitized := sanitizeOutputVTT(t)
+		sanitizedTimeLines := utils.CountVTTTimeLines(sanitized)
+		inputTimeLines := utils.CountVTTTimeLines(input)
+
+		discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
+			len(t),
+			len(strings.Split(t, "\n")),
+			utils.CountVTTTimeLines(t),
+			len(sanitized),
+			len(strings.Split(sanitized, "\n")),
+			sanitizedTimeLines)
+		return float64(sanitizedTimeLines)/float64(inputTimeLines) >= config.TheConfig.TranslationOutputCutoff
+	}, func(input string) int {
+		return utils.CountVTTTimeLines(input)
+	}, func(input string) string {
+		return sanitizeOutputVTT(input)
+	})
 	if err != nil {
 		return "", err
-	}
-
-	var translated []string
-
-	for idx, i := range input {
-		inputTimeLines := utils.CountVTTTimeLines(i)
-		discord.Infof("Processing index: %d/%d, Input length: %d, Input lines: %d, Input time lines: %d",
-			idx, len(input)-1, len(i), len(strings.Split(i, "\n")), inputTimeLines)
-		result, err := ai.SendWithRetry(ctx, translator, i, func(result ai.Result) bool {
-			t := result.Text()
-			sanitized := sanitizeOutputVTT(t)
-			sanitizedTimeLines := utils.CountVTTTimeLines(sanitized)
-
-			discord.Infof("Output length: %d, Output lines: %d, Output time lines: %d, Sanitized length: %d, Sanitized lines: %d, Sanitized time lines: %d",
-				len(t),
-				len(strings.Split(t, "\n")),
-				utils.CountVTTTimeLines(t),
-				len(sanitized),
-				len(strings.Split(sanitized, "\n")),
-				sanitizedTimeLines)
-			return float64(sanitizedTimeLines)/float64(inputTimeLines) >= config.TheConfig.TranslationOutputCutoff
-		}, config.TheConfig.TranslationAttempts)
-		if (!config.TheConfig.KeepTranslationAttempt && err != nil) || result == nil {
-			return "", err
-		}
-		if err != nil {
-			discord.Infof("Keeping longest translation attempt")
-		}
-		sanitized := sanitizeOutputVTT(result.Text())
-		translated = append(translated, sanitized)
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }

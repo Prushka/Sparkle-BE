@@ -12,15 +12,18 @@ import (
 )
 
 type gemini struct {
-	Chat *genai.Chat
+	chat   *genai.Chat
+	client *genai.Client
 }
 
 type geminiResponse struct {
 	response *genai.GenerateContentResponse
 }
 
-func NewGemini() AI {
-	return &gemini{}
+func NewGemini(client *genai.Client) AI {
+	return &gemini{
+		client: client,
+	}
 }
 
 func (g *geminiResponse) Usage() interface{} {
@@ -42,20 +45,20 @@ func (g *geminiResponse) Response() interface{} {
 }
 
 func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error {
-	chat, err := GeminiCli.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
+	chat, err := g.client.Chats.Create(ctx, config.TheConfig.GeminiModel, &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText(systemInstruction, genai.RoleUser)},
 		[]*genai.Content{})
-	g.Chat = chat
+	g.chat = chat
 	return err
 }
 
 func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	discord.Infof("Sending to Gemini %s", config.TheConfig.GeminiModel)
 
-	if g.Chat == nil {
+	if g.chat == nil {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
-	resp, err := g.Chat.SendMessage(ctx, genai.Part{Text: input})
+	resp, err := g.chat.SendMessage(ctx, genai.Part{Text: input})
 	result := &geminiResponse{response: resp}
 	if err != nil {
 		if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") || strings.Contains(err.Error(), "try again later") {
