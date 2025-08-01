@@ -77,6 +77,8 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return result, fmt.Errorf("no candidates found in response")
 	}
-	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
+	if result.Usage() != nil {
+		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
+	}
 	return result, err
 }

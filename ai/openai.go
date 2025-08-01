@@ -71,6 +71,8 @@ func (o *openaiTranslator) Send(ctx context.Context, input string) (Result, erro
 	// Add assistant response to conversation history
 	o.messages = append(o.messages, openai.AssistantMessage(resp.Choices[0].Message.Content))
 
-	fmt.Printf("%v\n", utils.AsJson(result.Usage()))
+	if result.Usage() != nil {
+		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
+	}
 	return result, nil
 }
