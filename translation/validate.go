@@ -24,14 +24,12 @@ func isASSOutputValid(headers string, output []string) bool {
 			break
 		}
 	}
-	if len(normalizeBlock(output, false)) == 0 {
+	normalizedOutput := normalizeBlock(output, false)
+	if len(normalizedOutput) == 0 {
 		discord.Errorf("Subtitle contains no dialogues")
 		return false
 	}
-	for _, line := range output {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
+	for _, line := range normalizedOutput {
 		startTimeStr := extractDialogueField(line, start, false)
 		endTimeStr := extractDialogueField(line, end, false)
 		startTime, err1 := time.Parse(ASSTimeFormat, startTimeStr)
