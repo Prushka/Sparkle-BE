@@ -34,6 +34,25 @@ func (job *Job) extractChapters() error {
 	return nil
 }
 
+func ContainsTranslatableSubtitles(path string) (bool, error) {
+	// Run ffprobe command to get subtitle codec names
+	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "s", "-show_entries", "stream=codec_name", "-of", "csv=p=0", path)
+	output, err := utils.RunCommand(cmd)
+	if err != nil {
+		return false, fmt.Errorf("ffprobe error: %v", err)
+	}
+
+	codecs := strings.Split(string(output), "\n")
+
+	for _, codec := range codecs {
+		codec = strings.ToLower(codec)
+		if codec != "" && !strings.Contains(codec, "image") && !strings.Contains(codec, "pgs") {
+			return true, nil // Found a translatable subtitle
+		}
+	}
+	return false, nil
+}
+
 func (job *Job) ExtractStreams(path, t string) error {
 	cmd := exec.Command(config.TheConfig.Ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", path)
 	out, err := utils.RunCommand(cmd)
@@ -197,6 +216,14 @@ func (job *Job) handbrakeTranscode() error {
 func (job *Job) translateFlow() error {
 	if len(config.TheConfig.TranslationLanguages) == 0 || !job.Translate {
 		return nil
+	}
+
+	translatable, err := ContainsTranslatableSubtitles(job.InputJoin(job.Input))
+	if err != nil {
+		return err
+	}
+	if !translatable {
+		return fmt.Errorf("media doesn't contain translatable subtitle")
 	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {

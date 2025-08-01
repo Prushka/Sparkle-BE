@@ -91,6 +91,13 @@ func pipeline(j job.Job) error {
 	if err != nil {
 		return err
 	}
+	translatable, err := job.ContainsTranslatableSubtitles(j.InputJoin(j.Input))
+	if err != nil {
+		return err
+	}
+	if !translatable {
+		return fmt.Errorf("media doesn't contain translatable subtitle")
+	}
 	discord.Infof("Extracting subtitles: %s", j.Input)
 	err = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
 	if err != nil {
