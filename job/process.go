@@ -223,7 +223,7 @@ func (job *Job) translateFlow() error {
 		return err
 	}
 	if !translatable {
-		return fmt.Errorf("media doesn't contain translatable subtitle")
+		return fmt.Errorf("%s doesn't contain translatable subtitle", job.Input)
 	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
