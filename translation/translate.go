@@ -92,7 +92,7 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 			return err
 		}
 	} else if subtitleSuffix == "ass" {
-		translated, err = TranslateSubtitlesASS(splitByCharacters(in, config.TheConfig.TranslationBatchLength, true),
+		translated, err = TranslateSubtitlesASS(languageHeaders[chosenLanguage], splitByCharacters(in, config.TheConfig.TranslationBatchLength, true),
 			language, config.GetSystemMessage(chosenLanguage, language, media, config.ASS))
 		if err != nil {
 			return err
@@ -119,17 +119,18 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	return nil
 }
 
-func TranslateSubtitlesASS(input []string, language, systemMessage string) (string, error) {
+func TranslateSubtitlesASS(headers string, input []string, language, systemMessage string) (string, error) {
 	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
 	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, input, func(input string, result ai.Result) bool {
-		t := result.Text()
-		outputLines := len(normalizeBlock(strings.Split(t, "\n"), false))
+		t := normalizeBlock(strings.Split(result.Text(), "\n"), false)
+		outputLines := len(t)
 		discord.Infof("Output length: %d, Output lines: %d",
-			len(t),
+			len(strings.Join(t, "\n")),
 			outputLines)
-		return float64(outputLines)/float64(len(strings.Split(input, "\n"))) >= config.TheConfig.TranslationOutputCutoff
+		return float64(outputLines)/float64(len(strings.Split(input, "\n"))) >= config.TheConfig.TranslationOutputCutoff &&
+			isASSOutputValid(headers, t)
 	}, func(input string) int {
 		return len(strings.Split(input, "\n"))
 	}, func(input string) string {
