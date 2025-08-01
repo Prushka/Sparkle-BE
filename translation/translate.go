@@ -48,13 +48,15 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && strings.Contains(file.Name(), "-") {
 			if len(file.Name()) >= 7 {
 				lang := strings.ToLower(file.Name()[len(file.Name())-7 : len(file.Name())-4])
+				source := filepath.Join(inputDir, file.Name())
 				if lang == strings.ToLower(languageCode) {
 					discord.Infof("SKIPPING: Subtitle with language %s already exists: %s",
 						language,
 						dest)
-					return nil
+					_, err = utils.CopyFile(source, dest)
+					return err
 				}
-				fBytes, err := os.ReadFile(filepath.Join(inputDir, file.Name()))
+				fBytes, err := os.ReadFile(source)
 				if err != nil {
 					discord.Errorf("Error reading file: %v", err)
 					continue
