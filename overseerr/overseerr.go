@@ -3,10 +3,13 @@ package overseerr
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // Media represents the media information in each request
@@ -56,17 +59,24 @@ type Response struct {
 }
 
 func getOverseerr(path string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel() // Ensure the context is canceled to free resources
+
 	url := fmt.Sprintf("%s%s", config.TheConfig.OverSeerrURL, path)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	req = req.WithContext(ctx)
 	req.Header.Add("X-Api-Key", config.TheConfig.OverSeerrAPI)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("request timed out")
+		}
 		return nil, err
 	}
 	defer func(Body io.ReadCloser) {
