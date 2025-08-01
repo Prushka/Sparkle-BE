@@ -9,6 +9,7 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"google.golang.org/genai"
+	"strings"
 )
 
 type AI interface {
@@ -105,6 +106,9 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(input stri
 			discord.Errorf("Error on attempt %d: %v", i, err)
 			if result != nil && result.Response() != nil {
 				fmt.Println(utils.AsJson(result.Response()))
+			}
+			if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
+				return result, err
 			}
 		}
 		if err == nil {
