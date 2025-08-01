@@ -218,12 +218,13 @@ func (job *Job) translateFlow() error {
 		return nil
 	}
 
-	translatable, err := ContainsTranslatableSubtitles(job.InputJoin(job.Input))
+	source := job.InputJoin(job.Input)
+	translatable, err := ContainsTranslatableSubtitles(source)
 	if err != nil {
 		return err
 	}
 	if !translatable {
-		return fmt.Errorf("%s doesn't contain translatable subtitle", job.Input)
+		return fmt.Errorf("%s doesn't contain translatable subtitle", source)
 	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
@@ -231,7 +232,7 @@ func (job *Job) translateFlow() error {
 			languageCode := strings.Split(languageWithCode, ";")[1]
 			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
-			err := translation.Translate(job.Input, job.OutputJoin(), job.InputJoin(job.Input), dest, languageWithCode, subtitleType, true)
+			err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, subtitleType, true)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err

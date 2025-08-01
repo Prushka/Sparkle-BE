@@ -91,15 +91,16 @@ func pipeline(j job.Job) error {
 	if err != nil {
 		return err
 	}
-	translatable, err := job.ContainsTranslatableSubtitles(j.InputJoin(j.Input))
+	source := j.InputJoin(j.Input)
+	translatable, err := job.ContainsTranslatableSubtitles(source)
 	if err != nil {
 		return err
 	}
 	if !translatable {
-		return fmt.Errorf("%s doesn't contain translatable subtitle", j.Input)
+		return fmt.Errorf("%s doesn't contain translatable subtitle", source)
 	}
-	discord.Infof("Extracting subtitles: %s", j.Input)
-	err = j.ExtractStreams(j.InputJoin(j.Input), job.SubtitlesType)
+	discord.Infof("Extracting subtitles: %s", source)
+	err = j.ExtractStreams(source, job.SubtitlesType)
 	if err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func pipeline(j job.Job) error {
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
-			err = translation.Translate(j.Input, j.OutputJoin(), j.InputJoin(j.Input),
+			err = translation.Translate(j.Input, j.OutputJoin(), source,
 				dest, languageWithCode, subtitleType, false)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
