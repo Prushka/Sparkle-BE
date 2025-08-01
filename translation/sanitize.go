@@ -328,3 +328,7 @@ func normalizeBlock(block []string, treatHTML bool) []string {
 	}
 	return nonEmptyLines
 }
+
+func removeEmptyLines(input string) []string {
+	return normalizeBlock(strings.Split(input, "\n"), false)
+}
