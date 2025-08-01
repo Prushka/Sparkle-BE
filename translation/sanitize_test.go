@@ -1,7 +1,10 @@
 package translation
 
 import (
+	"Sparkle/discord"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,4 +31,43 @@ func TestSanitization(t *testing.T) {
 		t.Fatalf("Failed to write sanitized file: %v", err)
 	}
 
+}
+
+func TestPrintMalformedASS(t *testing.T) {
+	err := ProcessFiles("/Volumes/media/Managed-Videos/")
+	if err != nil {
+		discord.Errorf("%v", err)
+	}
+}
+
+func ProcessFiles(dir string) error {
+	// Read the directory
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	// Iterate through the files in the directory
+	for _, file := range files {
+		// Get the full file path
+		filePath := filepath.Join(dir, file.Name())
+
+		// If the file is a directory, recursively process it
+		if file.IsDir() {
+			if err := ProcessFiles(filePath); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// If the file has a .ass extension, validate it
+		if strings.HasSuffix(file.Name(), ".ass") {
+			err = isASSFileValid(filePath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

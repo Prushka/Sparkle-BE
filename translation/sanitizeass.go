@@ -25,11 +25,11 @@ func sanitizeInputASS(input string) (string, string, error) {
 			start = findField(line, "start")
 			end = findField(line, "end")
 			if text < 0 || start < 0 || end < 0 {
-				return "", "", fmt.Errorf("invalid format line: %s", line)
+				return "", "", fmt.Errorf("invalid format line: %s, start: %d, end: %d, text: %d", line, start, end, text)
 			}
 			resultLines = append(resultLines, line)
 		} else if text > 0 && isDialogueLine(line) && isTranslatableText(line, start, end, text) {
-			dialogueLines = append(dialogueLines, RemoveComments(line))
+			dialogueLines = append(dialogueLines, RemoveComments(sanitizeDialogueLineTime(line, start, end)))
 		} else {
 			resultLines = append(resultLines, line)
 		}
@@ -84,6 +84,7 @@ func sanitizeOutputASS(headers, translated string) string {
 func findField(input, field string) int {
 	// Remove the "Format: " prefix and any leading/trailing whitespace
 	headerLine := strings.ReplaceAll(strings.TrimPrefix(strings.ToLower(input), "format:"), " ", "")
+	headerLine = strings.ReplaceAll(strings.ReplaceAll(headerLine, "\n", ""), "\r", "")
 
 	// Split the remaining string by the comma delimiter
 	headers := strings.Split(headerLine, ",")
@@ -118,6 +119,59 @@ var hardVisualEffectRegex = regexp.MustCompile(`\{[^}]*(?:\\p[1-9]|\\clip|\\icli
 // animationTagRegex finds tags that might be used on translatable text inside a { } block.
 var animationTagRegex = regexp.MustCompile(`\{[^}]*(?:\\t|\\move)[^}]*}`)
 
+func sanitizeTime(timeStr string) string {
+	// Check if the time is negative
+	if strings.HasPrefix(timeStr, "-") {
+		timeStr = timeStr[1:] // Remove the negative sign for parsing
+	}
+
+	// Split the time into hours, minutes, seconds, and milliseconds
+	parts := strings.Split(timeStr, ":")
+
+	// Ensure minutes and seconds have 2 digits
+	if len(parts) >= 2 && len(parts[1]) == 1 {
+		parts[1] = "0" + parts[1] // Add leading zero to minutes
+	}
+	if len(parts) >= 3 {
+		secondsParts := strings.Split(parts[2], ".")
+		if len(secondsParts[0]) == 1 {
+			secondsParts[0] = "0" + secondsParts[0] // Add leading zero to seconds
+		}
+		parts[2] = strings.Join(secondsParts, ".")
+	}
+
+	// Reassemble the time string
+	timeStr = strings.Join(parts, ":")
+
+	// If milliseconds have more than 2 digits, trim to 2 digits
+	if idx := strings.LastIndex(timeStr, "."); idx != -1 {
+		// Check if milliseconds have more than 2 digits
+		if len(timeStr) > idx+3 {
+			timeStr = timeStr[:idx+3] // Trim to 2 digits of milliseconds
+		} else if len(timeStr) == idx+2 {
+			// If milliseconds have 1 digit, add a 0 to make it 2 digits
+			timeStr = timeStr + "0"
+		}
+	}
+
+	return timeStr
+}
+
+func sanitizeDialogueLineTime(dialogueLine string, start, end int) string {
+	startTimeStr := extractDialogueField(dialogueLine, start, false)
+	endTimeStr := extractDialogueField(dialogueLine, end, false)
+
+	startTimeSanitized := sanitizeTime(startTimeStr)
+	endTimeSanitized := sanitizeTime(endTimeStr)
+	if startTimeSanitized != startTimeStr {
+		dialogueLine = strings.ReplaceAll(dialogueLine, startTimeStr, startTimeSanitized)
+	}
+	if endTimeSanitized != endTimeStr {
+		dialogueLine = strings.ReplaceAll(dialogueLine, endTimeStr, endTimeSanitized)
+	}
+	return dialogueLine
+}
+
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
 // It returns false for drawing commands, visual effects, or lines with very short durations.
 func isTranslatableText(dialogueLine string, start, end, text int) bool {
@@ -132,9 +186,8 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 	}
 
 	// Heuristic 2: Check the duration. Short durations often indicate visual effects.
-	const timeFormat = "15:04:05.00"
-	startTime, err1 := time.Parse(timeFormat, startTimeStr)
-	endTime, err2 := time.Parse(timeFormat, endTimeStr)
+	startTime, err1 := time.Parse(ASSTimeFormat, sanitizeTime(startTimeStr))
+	endTime, err2 := time.Parse(ASSTimeFormat, sanitizeTime(endTimeStr))
 
 	if err1 == nil && err2 == nil {
 		duration := endTime.Sub(startTime)
@@ -143,7 +196,8 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 			return false
 		}
 	} else {
-		discord.Errorf("Failed to parse time, start: %s, end: %s, %s", startTimeStr, endTimeStr, dialogueLine)
+		discord.Errorf("Failed to parse time, start: %s, end: %s, %s, %v, %v", startTimeStr, endTimeStr, dialogueLine, err1, err2)
+		return false
 	}
 
 	// Heuristic 3: Check the actual text content after stripping style overrides.
