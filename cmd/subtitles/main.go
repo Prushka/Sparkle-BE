@@ -84,7 +84,7 @@ func skip(j job.Job) bool {
 
 func pipeline(j job.Job) error {
 	if skip(j) {
-		discord.Infof("Skipping: %s", j.Input)
+		log.Debugf("Skipping: %s", j.Input)
 		return nil
 	}
 	err := os.MkdirAll(j.OutputJoin(), 0755)
