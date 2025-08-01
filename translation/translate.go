@@ -134,9 +134,9 @@ func TranslateSubtitlesASS(headers string, input []string, language, systemMessa
 		return float64(outputLines)/float64(len(strings.Split(input, "\n"))) >= config.TheConfig.TranslationOutputCutoff &&
 			isASSOutputValid(headers, t)
 	}, func(input string) int {
-		return len(removeEmptyLines(input))
+		return len(strings.Split(input, "\n"))
 	}, func(input string) string {
-		return strings.Join(removeEmptyLines(input), "\n")
+		return input
 	})
 	if err != nil {
 		return "", err
