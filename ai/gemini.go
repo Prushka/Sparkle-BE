@@ -52,6 +52,10 @@ func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error 
 	return err
 }
 
+func isErrorExhausted(err error) bool {
+	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED")
+}
+
 func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	discord.Infof("Sending to Gemini %s", config.TheConfig.GeminiModel)
 
@@ -61,7 +65,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	resp, err := g.chat.SendMessage(ctx, genai.Part{Text: input})
 	result := &geminiResponse{response: resp}
 	if err != nil {
-		if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
+		if isErrorExhausted(err) {
 			return result, err
 		}
 		if strings.Contains(err.Error(), "try again later") {

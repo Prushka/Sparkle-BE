@@ -9,7 +9,7 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"google.golang.org/genai"
-	"strings"
+	"time"
 )
 
 type AI interface {
@@ -85,6 +85,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		return translated, nil
 	}
 
+	exhausted := 0
 	for i, cli := range GeminiClis {
 		var res []string
 		res, err = run(NewGemini(cli))
@@ -92,6 +93,13 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 			return res, nil
 		}
 		discord.Errorf("Cli %d failed with error: %+v", i, err)
+		if isErrorExhausted(err) {
+			exhausted++
+		}
+	}
+	if exhausted == len(GeminiClis) {
+		discord.Errorf("All clients exhausted, sleeping for 1 hour")
+		time.Sleep(1 * time.Hour)
 	}
 	return nil, err
 }
@@ -108,7 +116,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(input stri
 			if result != nil && result.Response() != nil {
 				fmt.Println(utils.AsJson(result.Response()))
 			}
-			if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
+			if isErrorExhausted(err) {
 				return result, err
 			}
 		} else {
