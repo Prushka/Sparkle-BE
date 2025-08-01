@@ -110,8 +110,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(input stri
 			if strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") {
 				return result, err
 			}
-		}
-		if err == nil {
+		} else {
 			attempted = append(attempted, result)
 			if pass(input, result) {
 				return result, nil
