@@ -86,7 +86,8 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	}
 
 	for i, cli := range GeminiClis {
-		res, err := run(NewGemini(cli))
+		var res []string
+		res, err = run(NewGemini(cli))
 		if err == nil {
 			return res, nil
 		}
