@@ -185,7 +185,7 @@ func sanitizeInputVTT(input string) string {
 }
 
 // TODO: context aware seasons
-// TODO: directly convert sup subtitles
+// TODO: strip ass? send only timestamps and text? send only id and text?
 
 // sanitizeBlocks removes contiguous duplicate blocks and empty blocks from text.
 // A block starts with a time range line and ends at either the last line
