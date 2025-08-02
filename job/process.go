@@ -127,6 +127,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 					errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
 				}
 				if errAss != nil && errVtt != nil {
+					discord.Errorf("Found an unsupported codec: %+v", stream)
 					copySubtitle()
 				}
 			case AudioType:
