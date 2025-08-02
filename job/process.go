@@ -46,11 +46,15 @@ func ContainsTranslatableSubtitles(path string) (bool, error) {
 
 	for _, codec := range codecs {
 		codec = strings.ToLower(codec)
-		if codec != "" && !strings.Contains(codec, "image") && !strings.Contains(codec, "pgs") {
+		if isCodecNameText(codec) {
 			return true, nil // Found a translatable subtitle
 		}
 	}
 	return false, nil
+}
+
+func isCodecNameText(codec string) bool {
+	return codec != "" && !strings.Contains(codec, "image") && !strings.Contains(codec, "pgs")
 }
 
 func (job *Job) ExtractStreams(path, t string) error {
@@ -104,6 +108,17 @@ func (job *Job) ExtractStreams(path, t string) error {
 			}
 			switch stream.CodecType {
 			case SubtitlesType:
+				copySubtitle := func() {
+					toCodec, ok := codecMap[stream.CodecName]
+					if !ok {
+						toCodec = stream.CodecName
+					}
+					err = convert(toCodec, "copy", fmt.Sprintf("%s.%s", id, toCodec))
+				}
+				if !isCodecNameText(stream.CodecName) {
+					copySubtitle()
+					break
+				}
 				errAss := convert("ass", "ass", fmt.Sprintf("%s.ass", id))
 				var errVtt error
 				if errAss == nil {
@@ -112,11 +127,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 					errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
 				}
 				if errAss != nil && errVtt != nil {
-					toCodec, ok := codecMap[stream.CodecName]
-					if !ok {
-						toCodec = stream.CodecName
-					}
-					err = convert(toCodec, "copy", fmt.Sprintf("%s.%s", id, toCodec))
+					copySubtitle()
 				}
 			case AudioType:
 				if config.TheConfig.EnableAudioExtraction {
