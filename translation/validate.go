@@ -10,19 +10,15 @@ import (
 
 const ASSTimeFormat = "15:04:05.00"
 
+func correctTimestamps(headers string, input, output []string) []string {
+
+}
+
 func isASSOutputValid(headers string, output []string) bool {
-	var start, end, text int
-	for _, line := range strings.Split(headers, "\n") {
-		if isFormatLine(line) {
-			// Find the indices of the fields in the format line
-			text = findField(line, "text")
-			start = findField(line, "start")
-			end = findField(line, "end")
-			if text < 0 || start < 0 || end < 0 {
-				return false
-			}
-			break
-		}
+	pos, err := findFormatPositions(headers)
+	if err != nil {
+		discord.Errorf("Unable to process format line: %+v", err)
+		return false
 	}
 	normalizedOutput := normalizeBlock(output, false)
 	if len(normalizedOutput) == 0 {
@@ -30,8 +26,8 @@ func isASSOutputValid(headers string, output []string) bool {
 		return false
 	}
 	for _, line := range normalizedOutput {
-		startTimeStr := extractDialogueField(line, start, false)
-		endTimeStr := extractDialogueField(line, end, false)
+		startTimeStr := extractDialogueField(line, pos.Start, false)
+		endTimeStr := extractDialogueField(line, pos.End, false)
 		startTime, err1 := time.Parse(ASSTimeFormat, startTimeStr)
 		endTime, err2 := time.Parse(ASSTimeFormat, endTimeStr)
 		if err1 != nil || err2 != nil {

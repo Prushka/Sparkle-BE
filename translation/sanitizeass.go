@@ -13,23 +13,42 @@ import (
 	"time"
 )
 
+type FormatPositions struct {
+	Text  int
+	Start int
+	End   int
+}
+
+func findFormatPositions(input string) (pos FormatPositions, err error) {
+	pos.Text = -1
+	pos.Start = -1
+	pos.End = -1
+	for _, line := range strings.Split(input, "\n") {
+		if isFormatLine(line) {
+			pos.Text = findField(line, "text")
+			pos.Start = findField(line, "start")
+			pos.End = findField(line, "end")
+			if pos.Text < 0 || pos.Start < 0 || pos.End < 0 {
+				err = fmt.Errorf("unable to locate header positions: %+v", pos)
+			}
+			return
+		}
+	}
+	err = fmt.Errorf("format line not found")
+	return
+}
+
 func sanitizeInputASS(input string) (string, string, error) {
 	lines := strings.Split(input, "\n")
 	var resultLines []string
 	var dialogueLines []string
-	var start, end, text int
+	pos, err := findFormatPositions(input)
+	if err != nil {
+		return "", "", err
+	}
 	for _, line := range lines {
-		if isFormatLine(line) {
-			// Find the indices of the fields in the format line
-			text = findField(line, "text")
-			start = findField(line, "start")
-			end = findField(line, "end")
-			if text < 0 || start < 0 || end < 0 {
-				return "", "", fmt.Errorf("invalid format line: %s, start: %d, end: %d, text: %d", line, start, end, text)
-			}
-			resultLines = append(resultLines, line)
-		} else if text > 0 && isDialogueLine(line) && isTranslatableText(line, start, end, text) {
-			dialogueLines = append(dialogueLines, RemoveComments(sanitizeDialogueLineTime(line, start, end)))
+		if isDialogueLine(line) && isTranslatableText(line, pos.Start, pos.End, pos.Text) {
+			dialogueLines = append(dialogueLines, RemoveComments(sanitizeDialogueLineTime(line, pos.Start, pos.End)))
 		} else {
 			resultLines = append(resultLines, line)
 		}
