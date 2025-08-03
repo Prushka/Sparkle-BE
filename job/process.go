@@ -54,7 +54,7 @@ func ContainsTranslatableSubtitles(path string) (bool, error) {
 }
 
 func isCodecNameText(codec string) bool {
-	return codec != "" && !strings.Contains(codec, "image") && !strings.Contains(codec, "pgs")
+	return codec != "" && !strings.Contains(codec, "image") && !strings.Contains(codec, "pgs") && !strings.Contains(codec, "dvd")
 }
 
 func (job *Job) ExtractStreams(path, t string) error {
