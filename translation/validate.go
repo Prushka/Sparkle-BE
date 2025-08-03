@@ -71,6 +71,8 @@ func correctTimestamps(headers, inputStr, outputStr string) []string {
 	return output
 }
 
+// TODO: check the amount of fields in a line
+// TODO: strip ass? send only timestamps and text
 func isASSOutputValid(headers string, output []string) bool {
 	pos, err := findFormatPositions(headers)
 	if err != nil {
