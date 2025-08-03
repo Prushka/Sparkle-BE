@@ -121,12 +121,12 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	return nil
 }
 
-func TranslateSubtitlesASS(headers string, input []string, language, systemMessage string) (string, error) {
+func TranslateSubtitlesASS(headers string, inputs []string, language, systemMessage string) (string, error) {
 	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
-	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, input, func(input string, result ai.Result) bool {
-		t := removeEmptyLines(result.Text())
+	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, inputs, func(input string, result ai.Result) bool {
+		t := correctTimestamps(headers, input, result.Text())
 		outputLines := len(t)
 		discord.Infof("Output length: %d, Output lines: %d",
 			len(strings.Join(t, "\n")),
@@ -135,8 +135,8 @@ func TranslateSubtitlesASS(headers string, input []string, language, systemMessa
 			isASSOutputValid(headers, t)
 	}, func(input string) int {
 		return len(strings.Split(input, "\n"))
-	}, func(input string) string {
-		return input
+	}, func(input, output string) string {
+		return strings.Join(correctTimestamps(headers, input, output), "\n")
 	})
 	if err != nil {
 		return "", err
@@ -164,8 +164,8 @@ func TranslateSubtitlesWebVTT(input []string, language, systemMessage string) (s
 		return float64(sanitizedTimeLines)/float64(inputTimeLines) >= config.TheConfig.TranslationOutputCutoff
 	}, func(input string) int {
 		return utils.CountVTTTimeLines(input)
-	}, func(input string) string {
-		return sanitizeOutputVTT(input)
+	}, func(input, output string) string {
+		return sanitizeOutputVTT(output)
 	})
 	if err != nil {
 		return "", err

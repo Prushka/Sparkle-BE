@@ -11,7 +11,10 @@ import (
 
 const ASSTimeFormat = "15:04:05.00"
 
-func correctTimestamps(headers string, input, output []string) []string {
+func correctTimestamps(headers, inputStr, outputStr string) []string {
+	input := normalizeBlock(strings.Split(inputStr, "\n"), false)
+	output := normalizeBlock(strings.Split(outputStr, "\n"), false)
+
 	pos, err := findFormatPositions(headers)
 	if err != nil {
 		discord.Errorf("Unable to process format line when correcting timestamps: %+v", err)
@@ -19,8 +22,7 @@ func correctTimestamps(headers string, input, output []string) []string {
 	}
 	inputStarts := make(map[string]mapset.Set[string])
 	inputEnds := make(map[string]mapset.Set[string])
-	normalizedInput := normalizeBlock(input, false)
-	for _, line := range normalizedInput {
+	for _, line := range input {
 		startTimeStr := extractDialogueField(line, pos.Start, false)
 		endTimeStr := extractDialogueField(line, pos.End, false)
 		_, err1 := time.Parse(ASSTimeFormat, startTimeStr)
@@ -39,8 +41,7 @@ func correctTimestamps(headers string, input, output []string) []string {
 		inputEnds[endTimeStr].Add(startTimeStr)
 	}
 
-	normalizedOutput := normalizeBlock(output, false)
-	for i, line := range normalizedOutput {
+	for i, line := range output {
 		startTimeStr := extractDialogueField(line, pos.Start, false)
 		endTimeStr := extractDialogueField(line, pos.End, false)
 		_, err1 := time.Parse(ASSTimeFormat, startTimeStr)
@@ -55,17 +56,19 @@ func correctTimestamps(headers string, input, output []string) []string {
 				discord.Errorf("Malformed start time but can't find correct start time: %s, %+v", line, corrStartTime)
 				continue
 			}
-			normalizedOutput[i] = strings.ReplaceAll(line, startTimeStr, corrStartTime.ToSlice()[0])
+			output[i] = strings.ReplaceAll(line, startTimeStr, corrStartTime.ToSlice()[0])
+			discord.Infof("Corrected: %s -> %s", line, output[i])
 		} else if err2 != nil { // only end time malformed
 			corrEndTime, ok := inputStarts[startTimeStr]
 			if !ok || corrEndTime == nil || corrEndTime.Cardinality() != 1 {
 				discord.Errorf("Malformed end time but can't find correct end time: %s, %+v", line, corrEndTime)
 				continue
 			}
-			normalizedOutput[i] = strings.ReplaceAll(line, endTimeStr, corrEndTime.ToSlice()[0])
+			output[i] = strings.ReplaceAll(line, endTimeStr, corrEndTime.ToSlice()[0])
+			discord.Infof("Corrected: %s -> %s", line, output[i])
 		}
 	}
-	return normalizedOutput
+	return output
 }
 
 func isASSOutputValid(headers string, output []string) bool {

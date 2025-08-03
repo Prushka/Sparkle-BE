@@ -59,7 +59,7 @@ func limit(input []string, limit int) error {
 
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,
-	postProcessor func(input string) string) ([]string, error) {
+	postProcessor func(input, output string) string) ([]string, error) {
 	err := limit(inputs, 15)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 			if err != nil || result == nil {
 				return nil, err
 			}
-			translated = append(translated, postProcessor(result.Text()))
+			translated = append(translated, postProcessor(input, result.Text()))
 		}
 		return translated, nil
 	}
