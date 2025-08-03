@@ -73,6 +73,7 @@ func correctTimestamps(headers, inputStr, outputStr string) []string {
 
 // TODO: check the amount of fields in a line
 // TODO: strip ass? send only timestamps and text
+// TODO: pass lang when subtitle is unknown, subtitle becomes 3-.ass
 func isASSOutputValid(headers string, output []string) bool {
 	pos, err := findFormatPositions(headers)
 	if err != nil {
