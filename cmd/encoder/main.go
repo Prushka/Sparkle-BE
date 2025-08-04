@@ -187,13 +187,14 @@ func main() {
 	cleanup.AddOnStopFunc(func(_ os.Signal) {
 		scheduler.Stop()
 	})
-	utils.PanicOnSec(scheduler.SingletonMode().Every(config.TheConfig.ScanConfigInterval).Do(func() {
+	scheduler.SetMaxConcurrentJobs(1, gocron.RescheduleMode)
+	utils.PanicOnSec(scheduler.Every(config.TheConfig.ScanConfigInterval).Do(func() {
 		changed := target.UpdateEncoderList()
 		if changed {
 			process()
 		}
 	}))
-	utils.PanicOnSec(scheduler.SingletonMode().Every(config.TheConfig.ScanInputInterval).Do(func() {
+	utils.PanicOnSec(scheduler.Every(config.TheConfig.ScanInputInterval).Do(func() {
 		process()
 	}))
 	scheduler.StartAsync()
