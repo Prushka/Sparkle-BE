@@ -46,9 +46,10 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 	languageHeaders := make(map[string]string)
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), fmt.Sprintf(".%s", subtitleSuffix)) && strings.Contains(file.Name(), "-") {
+			var lang string
+			source := filepath.Join(inputDir, file.Name())
 			if len(file.Name()) >= 7 {
 				lang := strings.ToLower(file.Name()[len(file.Name())-7 : len(file.Name())-4])
-				source := filepath.Join(inputDir, file.Name())
 				if lang == strings.ToLower(languageCode) {
 					discord.Infof("SKIPPING: Subtitle with language %s already exists: %s",
 						language,
@@ -56,28 +57,32 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 					_, err = utils.CopyFile(source, dest)
 					return err
 				}
-				fBytes, err := os.ReadFile(source)
+			} else {
+				// when language is unknown, subtitle becomes format: 3-.ext
+				lang = "unknown"
+				discord.Infof("Subtitle with unknown language, proceeding: %s", source)
+			}
+			fBytes, err := os.ReadFile(source)
+			if err != nil {
+				discord.Errorf("Error reading file: %v", err)
+				continue
+			}
+			subtitles := string(fBytes)
+			headers := ""
+			if subtitleSuffix == "vtt" {
+				subtitles = sanitizeInputVTT(subtitles)
+			} else if subtitleSuffix == "ass" {
+				headers, subtitles, err = sanitizeInputASS(subtitles)
 				if err != nil {
-					discord.Errorf("Error reading file: %v", err)
+					discord.Errorf("Error sanitizing input ass: %v", err)
 					continue
 				}
-				subtitles := string(fBytes)
-				headers := ""
-				if subtitleSuffix == "vtt" {
-					subtitles = sanitizeInputVTT(subtitles)
-				} else if subtitleSuffix == "ass" {
-					headers, subtitles, err = sanitizeInputASS(subtitles)
-					if err != nil {
-						discord.Errorf("Error sanitizing input ass: %v", err)
-						continue
-					}
-				}
-				fLines := strings.Split(subtitles, "\n")
-				if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
-					langLengths[lang] = len(fLines)
-					languages[lang] = subtitles
-					languageHeaders[lang] = headers
-				}
+			}
+			fLines := strings.Split(subtitles, "\n")
+			if prev, ok := langLengths[lang]; !ok || prev < len(fLines) {
+				langLengths[lang] = len(fLines)
+				languages[lang] = subtitles
+				languageHeaders[lang] = headers
 			}
 		}
 	}
