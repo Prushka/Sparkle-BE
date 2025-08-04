@@ -139,14 +139,6 @@ func extractDialogueField(line string, idx int, tillEnd bool) string {
 	return ""
 }
 
-var overrideBlockRegex = regexp.MustCompile(`\{[^}]*}`)
-
-// hardVisualEffectRegex finds tags that are almost always non-translatable inside a { } block.
-var hardVisualEffectRegex = regexp.MustCompile(`\{[^}]*(?:\\p[1-9]|\\clip|\\iclip)[^}]*}`)
-
-// animationTagRegex finds tags that might be used on translatable text inside a { } block.
-var animationTagRegex = regexp.MustCompile(`\{[^}]*(?:\\t|\\move)[^}]*}`)
-
 func sanitizeTime(timeStr string) string {
 	// Check if the time is negative
 	if strings.HasPrefix(timeStr, "-") {
@@ -198,6 +190,20 @@ func sanitizeDialogueLineTime(dialogueLine string, start, end int) string {
 		dialogueLine = strings.ReplaceAll(dialogueLine, endTimeStr, endTimeSanitized)
 	}
 	return dialogueLine
+}
+
+var overrideBlockRegex = regexp.MustCompile(`\{[^}]*}`)
+
+// hardVisualEffectRegex finds tags that are almost always non-translatable inside a { } block.
+var hardVisualEffectRegex = regexp.MustCompile(`\{[^}]*(?:\\p[1-9]|\\clip|\\iclip)[^}]*}`)
+
+// animationTagRegex finds tags that might be used on translatable text inside a { } block.
+var animationTagRegex = regexp.MustCompile(`\{[^}]*(?:\\t|\\move)[^}]*}`)
+
+var weakAnimationTags = []*regexp.Regexp{
+	regexp.MustCompile(`\{[^}]*\\fad[^}]*}`),
+	regexp.MustCompile(`\{[^}]*\\pos[^}]*}`),
+	regexp.MustCompile(`\{[^}]*\\blur[^}]*}`),
 }
 
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
@@ -269,6 +275,15 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 		}
 	}
 
+	weakCount := 0
+	for _, weak := range weakAnimationTags {
+		if weak.MatchString(textPart) {
+			weakCount++
+		}
+	}
+	if weakCount >= 3 {
+		return false
+	}
 	return true
 }
 
