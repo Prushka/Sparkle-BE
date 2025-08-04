@@ -42,7 +42,7 @@ func findFormatPositions(input string) (pos FormatPositions, err error) {
 }
 
 func sanitizeInputASS(input string) (string, string, error) {
-	lines := strings.Split(input, "\n")
+	lines := strings.Split(strings.ReplaceAll(input, string(rune(0)), ""), "\n")
 	var resultLines []string
 	var dialogueLines []string
 	pos, err := findFormatPositions(input)
