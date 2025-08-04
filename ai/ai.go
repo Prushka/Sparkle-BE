@@ -96,6 +96,10 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		if isErrorExhausted(err) {
 			exhausted++
 		}
+		if isErrorProhibitedContent(err) {
+			discord.Errorf("Detected prohibited content, skipping...")
+			return nil, err
+		}
 	}
 	if exhausted == len(GeminiClis) {
 		discord.Errorf("All clients exhausted, sleeping for 1 hour")
@@ -116,7 +120,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(input stri
 			if result != nil && result.Response() != nil && utils.AsJson(result.Response()) != "null" {
 				fmt.Println(utils.AsJson(result.Response()))
 			}
-			if isErrorExhausted(err) {
+			if isErrorExhausted(err) || isErrorProhibitedContent(err) {
 				return result, err
 			}
 		} else {

@@ -56,6 +56,10 @@ func isErrorExhausted(err error) bool {
 	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED")
 }
 
+func isErrorProhibitedContent(err error) bool {
+	return strings.Contains(err.Error(), "PROHIBITED_CONTENT")
+}
+
 func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	discord.Infof("Sending to Gemini %s", config.TheConfig.GeminiModel)
 
@@ -79,6 +83,9 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	}
 	if result.Usage() != nil {
 		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
+		if strings.Contains(fmt.Sprintf("%s", result.Usage()), "PROHIBITED_CONTENT") {
+			err = fmt.Errorf("PROHIBITED_CONTENT")
+		}
 	}
 	return result, err
 }
