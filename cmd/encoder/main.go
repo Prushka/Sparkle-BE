@@ -195,6 +195,7 @@ func main() {
 		}
 	}))
 	utils.PanicOnSec(scheduler.Every(config.TheConfig.ScanInputInterval).Do(func() {
+		target.UpdateEncoderList()
 		process()
 	}))
 	scheduler.StartAsync()
