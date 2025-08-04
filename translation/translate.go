@@ -49,7 +49,7 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffi
 			var lang string
 			source := filepath.Join(inputDir, file.Name())
 			if len(file.Name()) >= 7 {
-				lang := strings.ToLower(file.Name()[len(file.Name())-7 : len(file.Name())-4])
+				lang = strings.ToLower(file.Name()[len(file.Name())-7 : len(file.Name())-4])
 				if lang == strings.ToLower(languageCode) {
 					discord.Infof("SKIPPING: Subtitle with language %s already exists: %s",
 						language,
