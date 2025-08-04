@@ -71,7 +71,6 @@ func correctTimestamps(headers, inputStr, outputStr string) []string {
 	return output
 }
 
-// TODO: check the amount of fields in a line
 // TODO: strip ass? send only timestamps and text
 // TODO: pass lang when subtitle is unknown, subtitle becomes 3-.ass
 func isASSOutputValid(headers string, output []string) bool {
@@ -86,18 +85,22 @@ func isASSOutputValid(headers string, output []string) bool {
 		return false
 	}
 	for _, line := range normalizedOutput {
+		commas := strings.Count(line, ",")
+		if commas < pos.TotalCommas {
+			discord.Errorf("Subtitle contains less commas than format line: %s, expected: %d, got: %d",
+				line, pos.TotalCommas, commas)
+			return false
+		}
 		startTimeStr := extractDialogueField(line, pos.Start, false)
 		endTimeStr := extractDialogueField(line, pos.End, false)
 		startTime, err1 := time.Parse(ASSTimeFormat, startTimeStr)
 		endTime, err2 := time.Parse(ASSTimeFormat, endTimeStr)
 		if err1 != nil || err2 != nil {
-			// time is malformed
 			discord.Errorf("Subtitle is malformed: %s", line)
 			return false
 		}
 		duration := endTime.Sub(startTime)
 		if duration > 2*time.Minute {
-			// subtitle sticks
 			discord.Errorf("Subtitle duration is too long: %s, %+v", line, duration)
 			return false
 		}

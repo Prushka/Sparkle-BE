@@ -14,22 +14,25 @@ import (
 )
 
 type FormatPositions struct {
-	Text  int
-	Start int
-	End   int
+	Text        int
+	Start       int
+	End         int
+	TotalCommas int
 }
 
 func findFormatPositions(input string) (pos FormatPositions, err error) {
 	pos.Text = -1
 	pos.Start = -1
 	pos.End = -1
+	pos.TotalCommas = -1
 	for _, line := range strings.Split(input, "\n") {
 		if isFormatLine(line) {
 			pos.Text = findField(line, "text")
 			pos.Start = findField(line, "start")
 			pos.End = findField(line, "end")
-			if pos.Text < 0 || pos.Start < 0 || pos.End < 0 {
-				err = fmt.Errorf("unable to locate header positions: %+v", pos)
+			pos.TotalCommas = countCommas(line)
+			if pos.TotalCommas <= 0 || pos.Text < 0 || pos.Start < 0 || pos.End < 0 {
+				err = fmt.Errorf("unable to preprocess format line headers: %+v", pos)
 			}
 			return
 		}
@@ -114,6 +117,12 @@ func findField(input, field string) int {
 		}
 	}
 	return -1
+}
+
+func countCommas(input string) int {
+	headerLine := strings.ReplaceAll(strings.TrimPrefix(strings.ToLower(input), "format:"), " ", "")
+	headerLine = strings.ReplaceAll(strings.ReplaceAll(headerLine, "\n", ""), "\r", "")
+	return strings.Count(headerLine, ",")
 }
 
 func extractDialogueField(line string, idx int, tillEnd bool) string {
