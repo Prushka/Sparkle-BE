@@ -204,6 +204,7 @@ var weakAnimationTags = []*regexp.Regexp{
 	regexp.MustCompile(`\{[^}]*\\fad[^}]*}`),
 	regexp.MustCompile(`\{[^}]*\\pos[^}]*}`),
 	regexp.MustCompile(`\{[^}]*\\blur[^}]*}`),
+	regexp.MustCompile(`\{[^}]*\\alpha[^}]*}`),
 }
 
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
