@@ -79,13 +79,14 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 		return result, err
 	}
 	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return result, fmt.Errorf("no candidates found in response")
+		err = fmt.Errorf("no candidates found in response")
+		if strings.Contains(fmt.Sprintf("%s", utils.AsJson(resp)), "PROHIBITED_CONTENT") {
+			err = fmt.Errorf("PROHIBITED_CONTENT")
+		}
+		return result, err
 	}
 	if result.Usage() != nil {
 		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
-		if strings.Contains(fmt.Sprintf("%s", result.Usage()), "PROHIBITED_CONTENT") {
-			err = fmt.Errorf("PROHIBITED_CONTENT")
-		}
 	}
 	return result, err
 }
