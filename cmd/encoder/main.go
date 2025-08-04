@@ -97,7 +97,7 @@ func process() {
 	totalProcessed = 0
 	target.SMMutex.Lock()
 	defer target.SMMutex.Unlock()
-	if len(target.Shows) == 0 && len(target.Movies) == 0 {
+	if len(target.Shows) == 0 && len(target.Movies) == 0 && !config.TheConfig.MatchEverything {
 		return
 	}
 	shows := make([]target.Show, 0)

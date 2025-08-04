@@ -28,12 +28,12 @@ func loop(matches func(s string) bool, te ToEncode, runner func(file os.DirEntry
 				return err
 			}
 			for _, f := range fs {
-				if matches == nil || matches(f.Name()) {
+				if matches == nil || matches(f.Name()) || config.TheConfig.MatchEverything {
 					runner(f, file.Name(), te)
 				}
 			}
 		} else {
-			if matches == nil || matches(file.Name()) {
+			if matches == nil || matches(file.Name()) || config.TheConfig.MatchEverything {
 				runner(file, "", te)
 			}
 		}
@@ -47,10 +47,13 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 		discord.Errorf("error reading directory: %v", err)
 		return
 	}
+	if config.TheConfig.MatchEverything {
+		shows = []Show{{}}
+	}
 	for _, show := range shows {
 		for _, file := range files {
 			if file.IsDir() {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(show.Name)) || config.TheConfig.MatchEverything {
 					fs, err := os.ReadDir(filepath.Join(root, file.Name()))
 					if err != nil {
 						discord.Errorf("error reading directory: %v", err)
@@ -122,10 +125,13 @@ func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, paren
 		discord.Errorf("error reading directory: %v", err)
 		return
 	}
+	if config.TheConfig.MatchEverything {
+		movies = []Movie{{}}
+	}
 	for _, movie := range movies {
 		for _, file := range files {
 			if file.IsDir() {
-				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) {
+				if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(movie.Name)) || config.TheConfig.MatchEverything {
 					root := filepath.Join(root, file.Name())
 					discord.Infof("Processing %s", root)
 					config.TheConfig.Input = root

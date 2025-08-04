@@ -8,6 +8,8 @@ import (
 )
 
 type Config struct {
+	MatchEverything bool `env:"MATCH_EVERYTHING" envDefault:"false"`
+
 	Output                 string `env:"OUTPUT" envDefault:"./output"`
 	Input                  string `env:"INPUT" envDefault:"./input"`
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
