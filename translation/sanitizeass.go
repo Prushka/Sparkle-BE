@@ -282,7 +282,7 @@ func isTranslatableText(dialogueLine string, start, end, text int) bool {
 			weakCount++
 		}
 	}
-	if weakCount >= 3 {
+	if weakCount >= 3 && !strings.Contains(cleanText, " ") {
 		return false
 	}
 	return true
