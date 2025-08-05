@@ -116,7 +116,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	}
 	if exhausted == len(GeminiClis) {
 		discord.Errorf("All clients exhausted, sleeping for 1 hour")
-		time.Sleep(1 * time.Hour)
+		time.Sleep(2 * time.Hour)
 	}
 	return nil, err
 }
