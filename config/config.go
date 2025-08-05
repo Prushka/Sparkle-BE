@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	MatchEverything bool `env:"MATCH_EVERYTHING" envDefault:"false"`
+	ReverseOrder    bool `env:"REVERSE_ORDER" envDefault:"false"`
 
 	Output                 string `env:"OUTPUT" envDefault:"./output"`
 	Input                  string `env:"INPUT" envDefault:"./input"`

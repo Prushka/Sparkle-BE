@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,6 +50,9 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 	}
 	if config.TheConfig.MatchEverything {
 		shows = []Show{{}}
+	}
+	if config.TheConfig.ReverseOrder {
+		slices.Reverse(files)
 	}
 	for _, show := range shows {
 		for _, file := range files {
@@ -127,6 +131,9 @@ func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, paren
 	}
 	if config.TheConfig.MatchEverything {
 		movies = []Movie{{}}
+	}
+	if config.TheConfig.ReverseOrder {
+		slices.Reverse(files)
 	}
 	for _, movie := range movies {
 		for _, file := range files {
