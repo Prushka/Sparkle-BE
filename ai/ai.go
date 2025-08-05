@@ -24,7 +24,12 @@ type Result interface {
 }
 
 var OpenAICli openai.Client
-var GeminiClis []*genai.Client
+var GeminiClis []*GenAIWrapper
+
+type GenAIWrapper struct {
+	gemini        *genai.Client
+	LastExhausted time.Time
+}
 
 func Init() {
 	discord.Infof("Initializing AI clients")
@@ -45,7 +50,10 @@ func Init() {
 				discord.Errorf("Unable to initialize gemini: %v", err)
 				continue
 			}
-			GeminiClis = append(GeminiClis, cli)
+			GeminiClis = append(GeminiClis, &GenAIWrapper{
+				gemini:        cli,
+				LastExhausted: time.Time{},
+			})
 		}
 	}
 }
@@ -86,15 +94,20 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	}
 
 	exhausted := 0
-	for i, cli := range GeminiClis {
+	for i, cliWrapper := range GeminiClis {
+		if time.Since(cliWrapper.LastExhausted) < 2*time.Hour {
+			continue
+		}
+		discord.Infof("Running on client: %d", i)
 		var res []string
-		res, err = run(NewGemini(cli))
+		res, err = run(NewGemini(cliWrapper.gemini))
 		if err == nil {
 			return res, nil
 		}
-		discord.Errorf("Cli %d failed with error: %+v", i, err)
+		discord.Errorf("Client %d failed with error: %+v", i, err)
 		if isErrorExhausted(err) {
 			exhausted++
+			cliWrapper.LastExhausted = time.Now()
 		}
 		if isErrorProhibitedContent(err) {
 			discord.Errorf("Detected prohibited content, skipping...")
