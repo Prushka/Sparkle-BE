@@ -237,3 +237,12 @@ func InsertBeforeExtension(filename, insert string) string {
 
 	return filename[:extIndex] + insert + filename[extIndex:]
 }
+
+func ReplaceExtension(filename, newExt string) string {
+	extIndex := strings.LastIndex(filename, ".")
+	if extIndex == -1 {
+		return filename + newExt
+	}
+
+	return filename[:extIndex] + newExt
+}
