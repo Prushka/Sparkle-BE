@@ -65,6 +65,8 @@ func limit(input []string, limit int) error {
 	return nil
 }
 
+const AfterExhausted = 2 * time.Hour
+
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,
 	postProcessor func(input, output string) string) ([]string, error) {
@@ -95,7 +97,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 
 	exhausted := 0
 	for i, cliWrapper := range GeminiClis {
-		if time.Since(cliWrapper.LastExhausted) < 2*time.Hour {
+		if time.Since(cliWrapper.LastExhausted) < AfterExhausted {
 			continue
 		}
 		discord.Infof("Running on client: %d", i)
@@ -115,8 +117,8 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		}
 	}
 	if exhausted == len(GeminiClis) {
-		discord.Errorf("All clients exhausted, sleeping for 1 hour")
-		time.Sleep(2 * time.Hour)
+		discord.Errorf("All clients exhausted, sleeping for %v", AfterExhausted)
+		time.Sleep(AfterExhausted)
 	}
 	return nil, err
 }
