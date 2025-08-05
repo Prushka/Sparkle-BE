@@ -244,7 +244,16 @@ func (job *Job) translateFlow() error {
 			languageCode := strings.Split(languageWithCode, ";")[1]
 			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
-			err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, subtitleType, true)
+			translationRunProduct := job.InputJoin(utils.InsertBeforeExtension(job.Input, "."+languageCode))
+			if _, err = os.Stat(translationRunProduct); err == nil {
+				discord.Infof("Copying translation product to encoder folder: %s -> %s", translationRunProduct, dest)
+				_, err = utils.CopyFile(translationRunProduct, dest)
+				if err != nil {
+					discord.Errorf("Error copying translation product: %v", err)
+				}
+			}
+
+			err = translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, subtitleType, true)
 			if err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err

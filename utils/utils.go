@@ -228,3 +228,12 @@ func RemoveEmptyStrings(arr []string) []string {
 func SlicesSetEqual(a []string, b []string) bool {
 	return mapset.NewSet[string](a...).Equal(mapset.NewSet[string](b...))
 }
+
+func InsertBeforeExtension(filename, insert string) string {
+	extIndex := strings.LastIndex(filename, ".")
+	if extIndex == -1 {
+		return filename + insert
+	}
+
+	return filename[:extIndex] + insert + filename[extIndex:]
+}
