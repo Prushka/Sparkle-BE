@@ -53,6 +53,7 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 	}
 	if config.TheConfig.ReverseOrder {
 		slices.Reverse(files)
+		slices.Reverse(shows)
 	}
 	for _, show := range shows {
 		for _, file := range files {
@@ -134,6 +135,7 @@ func LoopMovies(root string, movies []Movie, runner func(file os.DirEntry, paren
 	}
 	if config.TheConfig.ReverseOrder {
 		slices.Reverse(files)
+		slices.Reverse(movies)
 	}
 	for _, movie := range movies {
 		for _, file := range files {
