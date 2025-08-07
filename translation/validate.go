@@ -118,6 +118,11 @@ func isASSFileValid(filePath string) error {
 	if err != nil {
 		return err
 	}
+	dialogueLines := len(normalizeBlock(strings.Split(dialogue, "\n"), false))
+	if dialogueLines < 2 {
+		fmt.Printf("subtitle doesn't contain any dialogue (%d lines): %s\n", dialogueLines, filePath)
+		return nil
+	}
 	valid := isASSOutputValid(headers, strings.Split(dialogue, "\n"))
 	if !valid {
 		fmt.Printf("%s is invalid\n", filePath)
