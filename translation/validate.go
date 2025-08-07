@@ -92,7 +92,7 @@ func isASSOutputValid(headers string, output []string) bool {
 		}
 		startTimeStr := extractDialogueField(line, pos.Start, false)
 		endTimeStr := extractDialogueField(line, pos.End, false)
-		textStr := extractDialogueField(line, pos.Text, true)
+		textStr := strings.TrimSpace(extractDialogueField(line, pos.Text, true))
 		if len(textStr) == 0 {
 			discord.Errorf("Subtitle dialogue line has no text: %s", line)
 			return false
