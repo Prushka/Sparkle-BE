@@ -98,6 +98,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	exhausted := 0
 	for i, cliWrapper := range GeminiClis {
 		if time.Since(cliWrapper.LastExhausted) < AfterExhausted {
+			exhausted++
 			continue
 		}
 		discord.Infof("Running on client: %d", i)

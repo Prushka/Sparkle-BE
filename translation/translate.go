@@ -146,6 +146,9 @@ func TranslateSubtitlesASS(headers string, inputs []string, language, systemMess
 	if err != nil {
 		return "", err
 	}
+	if len(translated) == 0 {
+		return "", fmt.Errorf("unable to find any translation results")
+	}
 	return strings.Join(translated, "\n"), nil
 }
 
@@ -174,6 +177,9 @@ func TranslateSubtitlesWebVTT(input []string, language, systemMessage string) (s
 	})
 	if err != nil {
 		return "", err
+	}
+	if len(translated) == 0 {
+		return "", fmt.Errorf("unable to find any translation results")
 	}
 	return "WEBVTT\n\n" + strings.Join(translated, "\n\n"), nil
 }
