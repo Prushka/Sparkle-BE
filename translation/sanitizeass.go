@@ -50,7 +50,7 @@ func sanitizeInputASS(input string) (string, string, error) {
 		return "", "", err
 	}
 	for _, line := range lines {
-		if isDialogueLine(line) && isTranslatableText(line, pos.Start, pos.End, pos.Text) {
+		if isDialogueLine(line) && isTranslatableText(line, pos) {
 			dialogueLines = append(dialogueLines, RemoveComments(sanitizeDialogueLineTime(line, pos.Start, pos.End)))
 		} else {
 			resultLines = append(resultLines, line)
@@ -209,11 +209,11 @@ var weakAnimationTags = []*regexp.Regexp{
 
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
 // It returns false for drawing commands, visual effects, or lines with very short durations.
-func isTranslatableText(dialogueLine string, start, end, text int) bool {
+func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 
-	textPart := extractDialogueField(dialogueLine, text, true)
-	startTimeStr := extractDialogueField(dialogueLine, start, false)
-	endTimeStr := extractDialogueField(dialogueLine, end, false)
+	textPart := extractDialogueField(dialogueLine, pos.Text, true)
+	startTimeStr := extractDialogueField(dialogueLine, pos.Start, false)
+	endTimeStr := extractDialogueField(dialogueLine, pos.End, false)
 
 	// Heuristic 1: Check for drawing commands, clipping, or animation within the override block.
 	if hardVisualEffectRegex.MatchString(textPart) {
