@@ -263,7 +263,7 @@ func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 		return false
 	}
 
-	if weakCount >= 2 && wordCount > 0 && blockCount > wordCount*2 {
+	if weakCount >= 2 && wordCount > 0 && blockCount > int(float64(wordCount)*2.5) {
 		return false
 	}
 
