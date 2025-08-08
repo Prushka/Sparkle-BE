@@ -340,9 +340,23 @@ func AssToVTT(file string) error {
 		}
 	}()
 
+	dest := utils.ReplaceExtension(file, ".vtt")
 	cmd := exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", tmp, "-c:s", "webvtt",
-		strings.ReplaceAll(file, ".ass", ".vtt"))
+		dest)
 	_, err = utils.RunCommand(cmd)
+	if err != nil {
+		return err
+	}
+
+	vttOutput, err := os.ReadFile(dest)
+	if err != nil {
+		return err
+	}
+	var cleaned []string
+	for _, line := range strings.Split(string(vttOutput), "\n") {
+		cleaned = append(cleaned, overrideBlockRegex.ReplaceAllString(line, ""))
+	}
+	err = os.WriteFile(dest, []byte(strings.Join(cleaned, "\n")), 0644)
 	if err != nil {
 		return err
 	}
