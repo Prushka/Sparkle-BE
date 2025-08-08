@@ -250,6 +250,11 @@ func (job *Job) translateFlow() error {
 				_, err = utils.CopyFile(translationRunProduct, dest)
 				if err != nil {
 					discord.Errorf("Error copying translation product: %v", err)
+				} else if subtitleType == "ass" {
+					err = translation.AssToVTT(dest)
+					if err != nil {
+						discord.Errorf("Unable to convert translation product from ass to vtt: %v", err)
+					}
 				}
 			}
 
