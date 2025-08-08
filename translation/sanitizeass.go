@@ -249,6 +249,24 @@ func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 		return false
 	}
 
+	blockCount := len(overrideBlockRegex.FindAllString(textPart, -1))
+	wordCount := len(strings.Fields(cleanText))
+
+	weakCount := 0
+	for _, weak := range weakAnimationTags {
+		if weak.MatchString(textPart) {
+			weakCount++
+		}
+	}
+
+	if weakCount >= 3 && !strings.Contains(cleanText, " ") {
+		return false
+	}
+
+	if weakCount >= 2 && wordCount > 0 && blockCount > wordCount*2 {
+		return false
+	}
+
 	// Heuristic 4: Check for animation. If found, apply stricter content rules.
 	if animationTagRegex.MatchString(textPart) {
 		if len(cleanText) < 5 {
@@ -264,8 +282,6 @@ func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 
 		// Per-character animation (many override blocks) is a strong sign of a visual effect.
 		// If there are more override blocks than words, it's probably an effect.
-		blockCount := len(overrideBlockRegex.FindAllString(textPart, -1))
-		wordCount := len(strings.Fields(cleanText))
 		if wordCount > 0 && blockCount > wordCount+1 { // Allow one block for overall styling
 			return false
 		}
@@ -274,16 +290,6 @@ func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 		if blockCount > 3 {
 			return false
 		}
-	}
-
-	weakCount := 0
-	for _, weak := range weakAnimationTags {
-		if weak.MatchString(textPart) {
-			weakCount++
-		}
-	}
-	if weakCount >= 3 && !strings.Contains(cleanText, " ") {
-		return false
 	}
 	return true
 }
