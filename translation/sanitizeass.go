@@ -193,6 +193,7 @@ func sanitizeDialogueLineTime(dialogueLine string, start, end int) string {
 }
 
 var overrideBlockRegex = regexp.MustCompile(`\{[^}]*}`)
+var strictOverrideBlockRegex = regexp.MustCompile(`\{[^}]*\\[^}]*}`)
 
 // hardVisualEffectRegex finds tags that are almost always non-translatable inside a { } block.
 var hardVisualEffectRegex = regexp.MustCompile(`\{[^}]*(?:\\p[1-9]|\\clip|\\iclip)[^}]*}`)
@@ -354,7 +355,7 @@ func AssToVTT(file string) error {
 	}
 	var cleaned []string
 	for _, line := range strings.Split(string(vttOutput), "\n") {
-		cleaned = append(cleaned, overrideBlockRegex.ReplaceAllString(line, ""))
+		cleaned = append(cleaned, strictOverrideBlockRegex.ReplaceAllString(line, ""))
 	}
 	err = os.WriteFile(dest, []byte(strings.Join(cleaned, "\n")), 0644)
 	if err != nil {
