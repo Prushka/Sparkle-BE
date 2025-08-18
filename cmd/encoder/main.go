@@ -8,14 +8,15 @@ import (
 	"Sparkle/job"
 	"Sparkle/target"
 	"Sparkle/utils"
-	"github.com/go-co-op/gocron"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/go-co-op/gocron"
+	log "github.com/sirupsen/logrus"
 )
 
 func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
