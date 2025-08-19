@@ -7,8 +7,6 @@ import (
 	"Sparkle/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/cenkalti/dominantcolor"
-	log "github.com/sirupsen/logrus"
 	"image"
 	"math"
 	"os"
@@ -16,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/cenkalti/dominantcolor"
+	log "github.com/sirupsen/logrus"
 )
 
 func (job *Job) extractChapters() error {
@@ -313,6 +315,7 @@ func (job *Job) Pipeline() error {
 		return err
 	}
 	if config.TheConfig.EnableEncode {
+		startTime := time.Now()
 		if job.Fast {
 			err = job.ffmpegCopyOnly()
 			if err != nil {
@@ -339,6 +342,7 @@ func (job *Job) Pipeline() error {
 				}
 			}
 		}
+		discord.Infof("Encode time cost: %s", time.Since(startTime))
 	}
 	if len(job.EncodedCodecs) > 0 {
 		err = job.probe()
