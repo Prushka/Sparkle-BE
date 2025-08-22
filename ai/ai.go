@@ -65,7 +65,7 @@ func limit(input []string, limit int) error {
 	return nil
 }
 
-const AfterExhausted = 2 * time.Hour
+const AfterExhausted = 4 * time.Hour
 
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,

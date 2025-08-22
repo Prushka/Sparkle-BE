@@ -185,6 +185,7 @@ func (job *Job) handbrakeTranscode() error {
 			"--vfr",
 			"--quality", config.TheConfig.ConstantQuality,
 			"--encoder-preset", encoderPreset,
+			//"--color-range", "full",
 			"--subtitle", "none",
 			"--aencoder", "opus",
 			"--audio-lang-list", "any",
