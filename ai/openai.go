@@ -65,7 +65,7 @@ func (o *gpt) StartChat(_ context.Context, systemInstruction string) error {
 }
 
 func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
-	time.Sleep(65 * time.Second) // OpenAI has a more strict tokens per minute
+	time.Sleep(2 * time.Minute) // OpenAI has a more strict tokens per minute
 	discord.Infof("Sending to OpenAI %s", config.TheConfig.OpenAIModel)
 
 	if len(o.messages) == 0 {
