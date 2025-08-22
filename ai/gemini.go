@@ -13,8 +13,9 @@ import (
 )
 
 type gemini struct {
-	chat   *genai.Chat
-	client *genai.Client
+	chat          *genai.Chat
+	client        *genai.Client
+	LastExhausted time.Time
 }
 
 type geminiResponse struct {
@@ -48,6 +49,14 @@ func (g *geminiResponse) Text() string {
 
 func (g *geminiResponse) Response() interface{} {
 	return g.response
+}
+
+func (g *gemini) GetLastExhausted() time.Time {
+	return g.LastExhausted
+}
+
+func (g *gemini) SetLastExhausted() {
+	g.LastExhausted = time.Now()
 }
 
 func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error {

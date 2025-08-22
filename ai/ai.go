@@ -12,6 +12,8 @@ import (
 type AI interface {
 	StartChat(ctx context.Context, systemInstruction string) error
 	Send(ctx context.Context, input string) (Result, error)
+	GetLastExhausted() time.Time
+	SetLastExhausted()
 }
 
 type Result interface {
@@ -20,13 +22,8 @@ type Result interface {
 	Response() interface{}
 }
 
-var OpenAIClis []*GenAIWrapper
-var GeminiClis []*GenAIWrapper
-
-type GenAIWrapper struct {
-	ai            AI
-	LastExhausted time.Time
-}
+var OpenAIClis []AI
+var GeminiClis []AI
 
 func Init() {
 	discord.Infof("Initializing AI clients")
@@ -35,10 +32,7 @@ func Init() {
 		if len(config.TheConfig.OpenAI) > 0 {
 			discord.Infof("Initializing OpenAI %d clients", len(config.TheConfig.OpenAI))
 			for _, key := range config.TheConfig.OpenAI {
-				OpenAIClis = append(OpenAIClis, &GenAIWrapper{
-					ai:            NewGPT(key),
-					LastExhausted: time.Time{}},
-				)
+				OpenAIClis = append(OpenAIClis, NewGPT(key))
 			}
 		}
 	case "gemini":
@@ -50,10 +44,7 @@ func Init() {
 					discord.Errorf("Unable to initialize gemini: %v", err)
 					continue
 				}
-				GeminiClis = append(GeminiClis, &GenAIWrapper{
-					ai:            g,
-					LastExhausted: time.Time{},
-				})
+				GeminiClis = append(GeminiClis, g)
 			}
 		}
 	}
@@ -102,20 +93,20 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		runners = OpenAIClis
 	}
 	for i, runner := range runners {
-		if time.Since(runner.LastExhausted) < AfterExhausted {
+		if time.Since(runner.GetLastExhausted()) < AfterExhausted {
 			exhausted++
 			continue
 		}
 		discord.Infof("Running on client: %d", i)
 		var res []string
-		res, err = run(runner.ai)
+		res, err = run(runner)
 		if err == nil {
 			return res, nil
 		}
 		discord.Errorf("Client %d failed with error: %+v", i, err)
 		if isErrorExhausted(err) {
 			exhausted++
-			runner.LastExhausted = time.Now()
+			runner.SetLastExhausted()
 		}
 		if isErrorProhibitedContent(err) {
 			discord.Errorf("Detected prohibited content, skipping...")

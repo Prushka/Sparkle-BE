@@ -6,14 +6,16 @@ import (
 	"Sparkle/utils"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )
 
 type gpt struct {
-	messages []openai.ChatCompletionMessageParamUnion
-	client   openai.Client
+	messages      []openai.ChatCompletionMessageParamUnion
+	client        openai.Client
+	LastExhausted time.Time
 }
 
 type gptResponse struct {
@@ -45,6 +47,14 @@ func (r *gptResponse) Text() string {
 
 func (r *gptResponse) Response() interface{} {
 	return r.response
+}
+
+func (o *gpt) GetLastExhausted() time.Time {
+	return o.LastExhausted
+}
+
+func (o *gpt) SetLastExhausted() {
+	o.LastExhausted = time.Now()
 }
 
 func (o *gpt) StartChat(_ context.Context, systemInstruction string) error {
