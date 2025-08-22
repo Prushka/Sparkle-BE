@@ -6,9 +6,10 @@ import (
 	"Sparkle/utils"
 	"context"
 	"fmt"
-	"google.golang.org/genai"
 	"strings"
 	"time"
+
+	"google.golang.org/genai"
 )
 
 type gemini struct {
@@ -20,10 +21,15 @@ type geminiResponse struct {
 	response *genai.GenerateContentResponse
 }
 
-func NewGemini(client *genai.Client) AI {
-	return &gemini{
-		client: client,
+func NewGemini(apiKey string) (AI, error) {
+	ctx := context.Background()
+	cli, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey: apiKey,
+	})
+	if err != nil {
+		return nil, err
 	}
+	return &gemini{client: cli}, nil
 }
 
 func (g *geminiResponse) Usage() interface{} {
@@ -66,6 +72,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	if g.chat == nil {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
+
 	resp, err := g.chat.SendMessage(ctx, genai.Part{Text: input})
 	result := &geminiResponse{response: resp}
 	if err != nil {
@@ -78,7 +85,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 		}
 		return result, err
 	}
-	if resp == nil || len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+	if result.Text() == "" {
 		err = fmt.Errorf("no candidates found in response")
 		if strings.Contains(fmt.Sprintf("%s", utils.AsJson(resp)), "PROHIBITED_CONTENT") {
 			err = fmt.Errorf("PROHIBITED_CONTENT")

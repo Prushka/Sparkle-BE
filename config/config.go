@@ -54,10 +54,10 @@ type Config struct {
 	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"4h"`
 
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
-	OpenAI                   string   `env:"OPENAI" envDefault:""`
+	OpenAI                   []string `env:"OPENAI" envDefault:""`
 	Gemini                   []string `env:"GEMINI" envDefault:""`
-	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"`
-	OpenAIModel              string   `env:"OPENAI_MODEL" envDefault:"o4-mini"`
+	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"` // gemini or openai
+	OpenAIModel              string   `env:"OPENAI_MODEL" envDefault:"gpt-5"`
 	GeminiModel              string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese;chi,Turkish;tur"` // Turkish;tur,Spanish;spa
 	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.99"`

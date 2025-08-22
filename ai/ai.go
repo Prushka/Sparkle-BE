@@ -6,9 +6,6 @@ import (
 	"Sparkle/utils"
 	"context"
 	"fmt"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
-	"google.golang.org/genai"
 	"time"
 )
 
@@ -23,37 +20,41 @@ type Result interface {
 	Response() interface{}
 }
 
-var OpenAICli openai.Client
+var OpenAIClis []*GenAIWrapper
 var GeminiClis []*GenAIWrapper
 
 type GenAIWrapper struct {
-	gemini        *genai.Client
+	ai            AI
 	LastExhausted time.Time
 }
 
 func Init() {
 	discord.Infof("Initializing AI clients")
-	if config.TheConfig.OpenAI != "" {
-		discord.Infof("Initializing OpenAI")
-		OpenAICli = openai.NewClient(
-			option.WithAPIKey(config.TheConfig.OpenAI),
-		)
-	}
-	if len(config.TheConfig.Gemini) > 0 {
-		for _, g := range config.TheConfig.Gemini {
-			discord.Infof("Initializing Gemini")
-			ctx := context.Background()
-			cli, err := genai.NewClient(ctx, &genai.ClientConfig{
-				APIKey: g,
-			})
-			if err != nil {
-				discord.Errorf("Unable to initialize gemini: %v", err)
-				continue
+	switch config.TheConfig.AiProvider {
+	case "openai":
+		if len(config.TheConfig.OpenAI) > 0 {
+			discord.Infof("Initializing OpenAI %d clients", len(config.TheConfig.OpenAI))
+			for _, key := range config.TheConfig.OpenAI {
+				OpenAIClis = append(OpenAIClis, &GenAIWrapper{
+					ai:            NewGPT(key),
+					LastExhausted: time.Time{}},
+				)
 			}
-			GeminiClis = append(GeminiClis, &GenAIWrapper{
-				gemini:        cli,
-				LastExhausted: time.Time{},
-			})
+		}
+	case "gemini":
+		if len(config.TheConfig.Gemini) > 0 {
+			discord.Infof("Initializing Gemini %d clients", len(config.TheConfig.Gemini))
+			for _, key := range config.TheConfig.Gemini {
+				g, err := NewGemini(key)
+				if err != nil {
+					discord.Errorf("Unable to initialize gemini: %v", err)
+					continue
+				}
+				GeminiClis = append(GeminiClis, &GenAIWrapper{
+					ai:            g,
+					LastExhausted: time.Time{},
+				})
+			}
 		}
 	}
 }
@@ -96,21 +97,25 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	}
 
 	exhausted := 0
-	for i, cliWrapper := range GeminiClis {
-		if time.Since(cliWrapper.LastExhausted) < AfterExhausted {
+	runners := GeminiClis
+	if config.TheConfig.AiProvider == "openai" {
+		runners = OpenAIClis
+	}
+	for i, runner := range runners {
+		if time.Since(runner.LastExhausted) < AfterExhausted {
 			exhausted++
 			continue
 		}
 		discord.Infof("Running on client: %d", i)
 		var res []string
-		res, err = run(NewGemini(cliWrapper.gemini))
+		res, err = run(runner.ai)
 		if err == nil {
 			return res, nil
 		}
 		discord.Errorf("Client %d failed with error: %+v", i, err)
 		if isErrorExhausted(err) {
 			exhausted++
-			cliWrapper.LastExhausted = time.Now()
+			runner.LastExhausted = time.Now()
 		}
 		if isErrorProhibitedContent(err) {
 			discord.Errorf("Detected prohibited content, skipping...")
