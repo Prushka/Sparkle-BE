@@ -292,6 +292,7 @@ func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 			return false
 		}
 	}
+	// TODO: what about japanese moving animation (room label) translatable, very long text
 	return true
 }
 
