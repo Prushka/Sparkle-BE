@@ -298,8 +298,8 @@ func isTranslatableText(dialogueLine string, pos FormatPositions, counts map[str
 		}
 	}
 
-	// The line repeats itself more than 5 times, and is short
-	if counts[dialogueLine] > 5 && (len(cleanText) < 6 || wordCount < 2) {
+	// The line repeats itself more than 4 times, and is short
+	if counts[dialogueLine] > 4 && (len(cleanText) < 6 || wordCount < 2) {
 		return false
 	}
 
