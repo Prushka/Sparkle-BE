@@ -52,8 +52,7 @@ func Init() {
 
 func limit(input []string, limit int) error {
 	if len(input) > limit {
-		discord.Errorf("Too many inputs, limit is %v", limit)
-		return fmt.Errorf("too many split segments")
+		return fmt.Errorf("too many split segments: %d/%d", len(input), limit)
 	}
 	return nil
 }
