@@ -27,7 +27,7 @@ func findInputLang(languages map[string]string) (string, string) {
 }
 
 func Translate(media, inputDir, mediaFile, dest, languageWithCode, subtitleSuffix string, convertToVTT bool) error {
-	ss := strings.Split(languageWithCode, ";")
+	ss := strings.Split(languageWithCode, "/")
 	language := ss[0]
 	languageCode := ss[1]
 
