@@ -52,6 +52,7 @@ func Init() {
 
 func limit(input []string, limit int) error {
 	if len(input) > limit {
+		discord.Errorf("Too many inputs, limit is %v", limit)
 		return fmt.Errorf("too many split segments")
 	}
 	return nil
@@ -60,7 +61,7 @@ func limit(input []string, limit int) error {
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,
 	postProcessor func(input, output string) string) ([]string, error) {
-	err := limit(inputs, 15)
+	err := limit(inputs, 6)
 	if err != nil {
 		return nil, err
 	}
