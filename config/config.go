@@ -54,6 +54,7 @@ type Config struct {
 	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"4h"`
 
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
+	NoHistory                bool     `env:"NO_HISTORY" envDefault:"false"`
 	OpenAI                   []string `env:"OPENAI" envDefault:""`
 	Gemini                   []string `env:"GEMINI" envDefault:""`
 	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"` // gemini or openai

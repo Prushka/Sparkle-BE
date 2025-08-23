@@ -72,6 +72,10 @@ func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
 
+	if config.TheConfig.NoHistory {
+		o.messages = o.messages[:1]
+	}
+
 	o.messages = append(o.messages, openai.UserMessage(input))
 
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
