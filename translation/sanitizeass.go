@@ -304,7 +304,6 @@ func isTranslatableText(dialogueLine string, pos FormatPositions, counts map[str
 	}
 
 	if likelySign(cleanText) {
-		discord.Infof(cleanText)
 		return false
 	}
 
