@@ -9,8 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"os"
@@ -18,6 +16,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
+
+	mapset "github.com/deckarep/golang-set/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 // WebvttTimeRangeRegex Matches lines like "00:00:01.000 --> 00:00:05.000", "00:01.000 --> 00:05.000"
@@ -38,7 +40,7 @@ func CountVTTTimeLines(input string) int {
 	return count
 }
 
-func PanicOnSec(a interface{}, err error) {
+func PanicOnSec(_ interface{}, err error) {
 	if err != nil {
 		panic(err)
 	}
@@ -245,4 +247,14 @@ func ReplaceExtension(filename, newExt string) string {
 	}
 
 	return filename[:extIndex] + newExt
+}
+
+func MakeUpSleep(prev time.Time) {
+	since := time.Since(prev)
+	if since < config.TheConfig.DelayBeforeNextSend {
+		sleepFor := config.TheConfig.DelayBeforeNextSend - since
+		discord.Infof("Only %v elapsed after prev request, Sleeping for %v",
+			since, sleepFor)
+		time.Sleep(sleepFor)
+	}
 }

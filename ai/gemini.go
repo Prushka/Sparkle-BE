@@ -76,6 +76,10 @@ func isErrorProhibitedContent(err error) bool {
 }
 
 func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
+	now := time.Now()
+	defer func() {
+		utils.MakeUpSleep(now)
+	}()
 	discord.Infof("Sending to Gemini %s", config.TheConfig.GeminiModel)
 
 	if g.chat == nil {

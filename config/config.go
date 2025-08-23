@@ -68,6 +68,7 @@ type Config struct {
 	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
 	SleepAfterExhausted time.Duration `env:"SLEEP_ATTEMPTS" envDefault:"2h"`
+	DelayBeforeNextSend time.Duration `env:"DELAY_BEFORE_NEXT_SEND" envDefault:"2m"` // one request every 2 minutes
 
 	OverSeerrURL     string `env:"OVERSEERR_URL" envDefault:"http://localhost"`
 	OverSeerrAPI     string `env:"OVERSEERR_API" envDefault:""`
