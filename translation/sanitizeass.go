@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"unicode"
 )
 
 type FormatPositions struct {
@@ -316,10 +315,7 @@ func likelySign(input string) bool {
 		return false
 	}
 	for _, r := range input {
-		if !unicode.IsLetter(r) || r > unicode.MaxASCII {
-			return false
-		}
-		if !unicode.IsLower(r) {
+		if r < 'a' || r > 'z' {
 			return false
 		}
 	}
