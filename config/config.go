@@ -67,6 +67,8 @@ type Config struct {
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
 	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
+	SleepAfterExhausted time.Duration `env:"SLEEP_ATTEMPTS" envDefault:"2h"`
+
 	OverSeerrURL     string `env:"OVERSEERR_URL" envDefault:"http://localhost"`
 	OverSeerrAPI     string `env:"OVERSEERR_API" envDefault:""`
 	OverSeerrUserIds []int  `env:"OVERSEERR_USER_IDS" envDefault:""`

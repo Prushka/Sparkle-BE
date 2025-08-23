@@ -57,8 +57,6 @@ func limit(input []string, limit int) error {
 	return nil
 }
 
-const AfterExhausted = 4 * time.Hour
-
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,
 	postProcessor func(input, output string) string) ([]string, error) {
@@ -93,7 +91,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		runners = OpenAIClis
 	}
 	for i, runner := range runners {
-		if time.Since(runner.GetLastExhausted()) < AfterExhausted {
+		if time.Since(runner.GetLastExhausted()) < config.TheConfig.SleepAfterExhausted {
 			exhausted++
 			continue
 		}
@@ -114,8 +112,8 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		}
 	}
 	if exhausted == len(runners) {
-		discord.Errorf("All clients exhausted, sleeping for %v", AfterExhausted)
-		time.Sleep(AfterExhausted)
+		discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
+		time.Sleep(config.TheConfig.SleepAfterExhausted)
 	}
 	return nil, err
 }
