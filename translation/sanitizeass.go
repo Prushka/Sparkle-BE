@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type FormatPositions struct {
@@ -49,8 +50,12 @@ func sanitizeInputASS(input string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	counts := make(map[string]int)
 	for _, line := range lines {
-		if isDialogueLine(line) && isTranslatableText(line, pos) {
+		counts[line]++
+	}
+	for _, line := range lines {
+		if isDialogueLine(line) && isTranslatableText(line, pos, counts) {
 			dialogueLines = append(dialogueLines, RemoveComments(sanitizeDialogueLineTime(line, pos.Start, pos.End)))
 		} else {
 			resultLines = append(resultLines, line)
@@ -210,7 +215,7 @@ var weakAnimationTags = []*regexp.Regexp{
 
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
 // It returns false for drawing commands, visual effects, or lines with very short durations.
-func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
+func isTranslatableText(dialogueLine string, pos FormatPositions, counts map[string]int) bool {
 
 	textPart := extractDialogueField(dialogueLine, pos.Text, true)
 	startTimeStr := extractDialogueField(dialogueLine, pos.Start, false)
@@ -292,7 +297,33 @@ func isTranslatableText(dialogueLine string, pos FormatPositions) bool {
 			return false
 		}
 	}
+
+	// The line repeats itself more than 5 times, and is short
+	if counts[dialogueLine] > 5 && (len(cleanText) < 6 || wordCount < 2) {
+		return false
+	}
+
+	if likelySign(cleanText) {
+		discord.Infof(cleanText)
+		return false
+	}
+
 	// TODO: what about japanese moving animation (room label) translatable, very long text
+	return true
+}
+
+func likelySign(input string) bool {
+	if len(input) > 4 {
+		return false
+	}
+	for _, r := range input {
+		if !unicode.IsLetter(r) || r > unicode.MaxASCII {
+			return false
+		}
+		if !unicode.IsLower(r) {
+			return false
+		}
+	}
 	return true
 }
 
