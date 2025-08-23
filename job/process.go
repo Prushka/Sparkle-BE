@@ -244,7 +244,7 @@ func (job *Job) translateFlow() error {
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			languageCode := strings.Split(languageWithCode, ";")[1]
+			languageCode := strings.Split(languageWithCode, "/")[1]
 			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
 			translationRunProduct := job.InputJoin(utils.ReplaceExtension(job.Input, fmt.Sprintf(".%s.%s", languageCode, subtitleType)))

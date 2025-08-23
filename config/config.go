@@ -60,7 +60,7 @@ type Config struct {
 	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"` // gemini or openai
 	OpenAIModel              string   `env:"OPENAI_MODEL" envDefault:"gpt-5"`
 	GeminiModel              string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
-	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese;chi,Turkish;tur"` // Turkish;tur,Spanish;spa
+	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa
 	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.99"`
 	TranslationSubtitleTypes []string `env:"TRANSLATION_SUBTITLE_TYPES" envDefault:"ass"`
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`

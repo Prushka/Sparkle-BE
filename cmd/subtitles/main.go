@@ -10,13 +10,14 @@ import (
 	"Sparkle/translation"
 	"Sparkle/utils"
 	"fmt"
-	"github.com/go-co-op/gocron"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/go-co-op/gocron"
+	log "github.com/sirupsen/logrus"
 )
 
 func process() {
@@ -60,7 +61,7 @@ func process() {
 func skip(j job.Job) bool {
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			ss := strings.Split(languageWithCode, ";")
+			ss := strings.Split(languageWithCode, "/")
 			languageCode := ss[1]
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
@@ -107,7 +108,7 @@ func pipeline(j job.Job) error {
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			languageCode := strings.Split(languageWithCode, ";")[1]
+			languageCode := strings.Split(languageWithCode, "/")[1]
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
