@@ -17,7 +17,7 @@ type Config struct {
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
-	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"21"`
+	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"20"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
 	Encoder                string `env:"ENCODER" envDefault:"av1"`
