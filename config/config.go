@@ -17,12 +17,14 @@ type Config struct {
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
-	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"20"`
+	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"16"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
 	Encoder                string `env:"ENCODER" envDefault:"av1"`
+	Av1NvencEncoder        string `env:"AV1_NVENC_ENCODER" envDefault:"nvenc_av1_10bit"`
+	Av1NvencPreset         string `env:"AV1_NVENC_PRESET" envDefault:"slowest"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"`
-	Av1Preset              string `env:"AV1_PRESET" envDefault:"6"`
+	Av1Preset              string `env:"AV1_PRESET" envDefault:"4"`
 	HevcEncoder            string `env:"HEVC_ENCODER" envDefault:"nvenc_h265_10bit"`
 	HevcPreset             string `env:"HEVC_PRESET" envDefault:"slowest"`
 	H26410BitEncoder       string `env:"H264_ENCODER" envDefault:"x264_10bit"`
