@@ -188,6 +188,7 @@ func (job *Job) handbrakeTranscode() error {
 			"--color-range", "auto",
 			"--subtitle", "none",
 			"--aencoder", "opus",
+			"--ab", "160",
 			"--audio-lang-list", "any",
 			"--all-audio",
 			"--optimize", // web optimized
@@ -212,8 +213,6 @@ func (job *Job) handbrakeTranscode() error {
 	}
 	for _, encoder := range encoders {
 		switch encoder {
-		case "av1-nvenc":
-			runEncoder(encoder, config.TheConfig.Av1NvencEncoder, config.TheConfig.Av1NvencPreset, "", "")
 		case "av1":
 			runEncoder(encoder, config.TheConfig.Av1Encoder, config.TheConfig.Av1Preset, "", "")
 		case "hevc":
