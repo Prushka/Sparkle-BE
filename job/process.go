@@ -5,6 +5,7 @@ import (
 	"Sparkle/discord"
 	"Sparkle/translation"
 	"Sparkle/utils"
+	"context"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/cenkalti/dominantcolor"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 func (job *Job) extractChapters() error {
@@ -501,18 +503,21 @@ func (job *Job) probe() (err error) {
 	gridSize := int(math.Ceil(math.Sqrt(float64(numThumbnailsPerChunk))))
 
 	vttContent := "WEBVTT\n\n"
+	g, _ := errgroup.WithContext(context.Background())
 	for i := 0; i < numChunks; i++ {
-		chunkStartTime := i * chunkInterval
-		spriteFile := job.OutputJoin(fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
-		cmd := exec.Command(config.TheConfig.Ffmpeg, "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
-			"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
-		discord.Infof("Command: %s", cmd.String())
-		_, err = utils.RunCommand(cmd)
-		if err != nil {
-			discord.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
-			return
-		}
-
+		g.Go(func() error {
+			chunkStartTime := i * chunkInterval
+			spriteFile := job.OutputJoin(fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension))
+			cmd := exec.Command(config.TheConfig.Ffmpeg, "-i", videoFile, "-ss", fmt.Sprintf("%d", chunkStartTime), "-t", fmt.Sprintf("%d", chunkInterval),
+				"-vf", fmt.Sprintf("fps=1/%d,scale=%d:%d,tile=%dx%d", thumbnailInterval, thumbnailWidth, thumbnailHeight, gridSize, gridSize), spriteFile)
+			discord.Infof("Command: %s", cmd.String())
+			_, err := utils.RunCommand(cmd)
+			if err != nil {
+				discord.Errorf("Error generating sprite sheet for chunk %d: %v\n", i+1, err)
+				return err
+			}
+			return nil
+		})
 		for j := 0; j < numThumbnailsPerChunk; j++ {
 			thumbnailTime := i*chunkInterval + j*thumbnailInterval
 			startHour := thumbnailTime / 3600
@@ -531,6 +536,10 @@ func (job *Job) probe() (err error) {
 			thumbnailCoords := fmt.Sprintf("%d,%d,%d,%d", col*thumbnailWidth, row*thumbnailHeight, thumbnailWidth, thumbnailHeight)
 			vttContent += fmt.Sprintf("%s --> %s\n%s#xywh=%s\n\n", startTime, endTime, fmt.Sprintf("%s_%d%s", SpritePrefix, i+1, SpriteExtension), thumbnailCoords)
 		}
+	}
+	err = g.Wait()
+	if err != nil {
+		return
 	}
 
 	err = os.WriteFile(vttFile, []byte(vttContent), 0644)
