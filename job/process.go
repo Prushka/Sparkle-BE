@@ -100,7 +100,11 @@ func (job *Job) ExtractStreams(path, t string) error {
 				} else if cs == "webvttFromASS" {
 					err = translation.AssToVTT(job.OutputJoin(fmt.Sprintf("%s.ass", id)))
 				} else {
-					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
+					csFlag := "-c:s"
+					if stream.CodecType == AudioType {
+						csFlag = "-c:a"
+					}
+					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, csFlag, cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
 				}
 				if cmd != nil {
 					_, err = utils.RunCommand(cmd)
@@ -163,6 +167,7 @@ func (job *Job) ffmpegCopyOnly() error {
 		"-map", "0:a",
 		"-c:a", "libopus",
 		"-ac", "2",
+		"-b:a", fmt.Sprintf("%dk", config.TheConfig.AudioKbps),
 		"-map", "-0:s",
 		outputFile,
 	}
@@ -192,7 +197,7 @@ func (job *Job) handbrakeTranscode() error {
 			"--color-range", "auto",
 			"--subtitle", "none",
 			"--aencoder", "opus",
-			"--ab", "160",
+			"--ab", fmt.Sprintf("%d", config.TheConfig.AudioKbps),
 			"--audio-lang-list", "any",
 			"--all-audio",
 			"--optimize", // web optimized
@@ -495,7 +500,7 @@ func (job *Job) probe() (err error) {
 	aspectRatio := float64(job.Width) / float64(job.Height)
 	discord.Infof("Width: %d, Height: %d, Duration: %f, Aspect Ratio: %f", job.Width, job.Height, job.Duration, aspectRatio)
 
-	if !config.TheConfig.EnableSprite || job.Fast {
+	if !config.TheConfig.EnableSprite {
 		return
 	}
 
