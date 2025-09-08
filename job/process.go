@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"math"
 	"os"
 	"os/exec"
