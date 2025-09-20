@@ -62,6 +62,7 @@ type Config struct {
 	Gemini                   []string `env:"GEMINI" envDefault:""`
 	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"` // gemini or openai
 	OpenAIModel              string   `env:"OPENAI_MODEL" envDefault:"gpt-5"`
+	OpenAIUrl                string   `env:"OPENAI_URL" envDefault:""`
 	GeminiModel              string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa
 	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.99"`

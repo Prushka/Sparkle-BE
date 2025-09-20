@@ -23,10 +23,16 @@ type gptResponse struct {
 }
 
 func NewGPT(apiKey string) AI {
+	options := []option.RequestOption{
+		option.WithAPIKey(apiKey),
+	}
+	if config.TheConfig.OpenAIUrl != "" {
+		options = append(options, option.WithBaseURL(config.TheConfig.OpenAIUrl))
+	}
 	return &gpt{
 		messages: make([]openai.ChatCompletionMessageParamUnion, 0),
 		client: openai.NewClient(
-			option.WithAPIKey(apiKey),
+			options...,
 		),
 	}
 }
