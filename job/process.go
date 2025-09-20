@@ -41,7 +41,7 @@ func (job *Job) extractChapters() error {
 	return nil
 }
 
-func ContainsTranslatableSubtitles(path string) (bool, error) {
+func ContainsSubtitles(path string) (bool, error) {
 	// Run ffprobe command to get subtitle codec names
 	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "s", "-show_entries", "stream=codec_name", "-of", "csv=p=0", path)
 	output, err := utils.RunCommand(cmd)
@@ -53,8 +53,8 @@ func ContainsTranslatableSubtitles(path string) (bool, error) {
 
 	for _, codec := range codecs {
 		codec = strings.ToLower(codec)
-		if isCodecNameText(codec) {
-			return true, nil // Found a translatable subtitle
+		if codec != "" {
+			return true, nil // Found a subtitle
 		}
 	}
 	return false, nil
@@ -264,6 +264,13 @@ func (job *Job) translateFlow() error {
 	}
 
 	source := job.InputJoin(job.Input)
+	translatable, err := ContainsSubtitles(source)
+	if err != nil {
+		return err
+	}
+	if !translatable {
+		return fmt.Errorf("%s doesn't contain translatable subtitle", job.Input)
+	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {

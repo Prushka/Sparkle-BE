@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	Debug bool `env:"DEBUG" envDefault:"true"`
+	Debug bool `env:"DEBUG" envDefault:"false"`
 
 	MatchEverything bool `env:"MATCH_EVERYTHING" envDefault:"false"`
 	ReverseOrder    bool `env:"REVERSE_ORDER" envDefault:"false"`
