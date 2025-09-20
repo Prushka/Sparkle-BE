@@ -7,7 +7,7 @@ import (
 
 func main() {
 	config.Configure()
-	err := sup.Convert("0-eng.sup", config.TheConfig.OCRVLMModel+".srt")
+	err := sup.Convert("0-eng.sup")
 	if err != nil {
 		panic(err)
 	}

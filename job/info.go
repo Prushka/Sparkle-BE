@@ -42,6 +42,7 @@ type FFProbeOutput struct {
 
 var codecMap = map[string]string{
 	"hdmv_pgs_subtitle": "sup",
+	"dvd_subtitle":      "sub",
 	"subrip":            "srt",
 	"webvtt":            "vtt",
 }

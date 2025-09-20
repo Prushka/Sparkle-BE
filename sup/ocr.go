@@ -35,12 +35,12 @@ type ImageSubtitle struct {
 	EndTime   time.Duration
 }
 
-func OCR(imgSubs []ImageSubtitle) (SRTSubtitles, error) {
+func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 	var (
 		totalPromptTokens     int64
 		totalCompletionTokens int64
 	)
-	txtSubs := make(SRTSubtitles, len(imgSubs))
+	txtSubs := make(VTTSubtitles, len(imgSubs))
 	defer func() {
 		discord.Infof("%s model tokens used: prompt=%d, completion=%d", config.TheConfig.OCRVLMModel, totalPromptTokens, totalCompletionTokens)
 	}()
@@ -53,9 +53,9 @@ func OCR(imgSubs []ImageSubtitle) (SRTSubtitles, error) {
 		totalCompletionTokens += completionTokens
 
 		log.Debugf("#%d %s --> %s %s", index+1, pg.StartTime, pg.EndTime, text)
-		txtSubs[index] = SRTSubtitle{
-			Start: SRTTimestamp(pg.StartTime),
-			End:   SRTTimestamp(pg.EndTime),
+		txtSubs[index] = VTTSubtitle{
+			Start: VTTTimestamp(pg.StartTime),
+			End:   VTTTimestamp(pg.EndTime),
 			Text:  text,
 		}
 	}

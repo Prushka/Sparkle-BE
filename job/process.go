@@ -3,6 +3,7 @@ package job
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/sup"
 	"Sparkle/translation"
 	"Sparkle/utils"
 	"context"
@@ -123,12 +124,20 @@ func (job *Job) ExtractStreams(path, t string) error {
 					if !ok {
 						toCodec = stream.CodecName
 					}
-					err = convert(toCodec, "copy", fmt.Sprintf("%s.%s", id, toCodec))
+					filename := fmt.Sprintf("%s.%s", id, toCodec)
+					err = convert(toCodec, "copy", filename)
+					if err == nil && (toCodec == "sup" || toCodec == "sub") {
+						err = sup.Convert(job.OutputJoin(filename))
+						if err == nil {
+							// TODO: convert to ass
+						}
+					}
 				}
 				if !isCodecNameText(stream.CodecName) {
 					copySubtitle()
 					break
 				}
+				// for any text-based subtitle, it always tries to produce .ass and .vtt
 				errAss := convert("ass", "ass", fmt.Sprintf("%s.ass", id))
 				var errVtt error
 				if errAss == nil {
@@ -244,13 +253,6 @@ func (job *Job) translateFlow() error {
 	}
 
 	source := job.InputJoin(job.Input)
-	translatable, err := ContainsTranslatableSubtitles(source)
-	if err != nil {
-		return err
-	}
-	if !translatable {
-		return fmt.Errorf("%s doesn't contain translatable subtitle", job.Input)
-	}
 
 	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
 		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
@@ -258,7 +260,7 @@ func (job *Job) translateFlow() error {
 			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
 
 			translationRunProduct := job.InputJoin(utils.ReplaceExtension(job.Input, fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
-			if _, err = os.Stat(translationRunProduct); err == nil {
+			if _, err := os.Stat(translationRunProduct); err == nil {
 				discord.Infof("Copying translation product to encoder folder: %s -> %s", translationRunProduct, dest)
 				_, err = utils.CopyFile(translationRunProduct, dest)
 				if err != nil {
@@ -271,8 +273,7 @@ func (job *Job) translateFlow() error {
 				}
 			}
 
-			err = translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, subtitleType, true)
-			if err != nil {
+			if err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, subtitleType, true); err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err
 			}

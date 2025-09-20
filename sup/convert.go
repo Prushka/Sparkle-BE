@@ -3,6 +3,7 @@ package sup
 import (
 	"Sparkle/config"
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,8 +53,9 @@ func processSubsImages(imgSubs []ImageSubtitle, outputPath string) error {
 	return nil
 }
 
-func Convert(inputPath, outputPath string) error {
+func Convert(inputPath string) error {
 	initOpenAIClient()
+	outputPath := utils.ReplaceExtension(inputPath, ".vtt")
 	// Step 1 - Parse subtitle file
 	var subs map[int][]ImageSubtitle
 	if strings.HasSuffix(inputPath, ".sup") {
