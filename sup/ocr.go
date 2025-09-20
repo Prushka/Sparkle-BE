@@ -42,12 +42,12 @@ func OCR(imgSubs []ImageSubtitle) (SRTSubtitles, error) {
 	)
 	txtSubs := make(SRTSubtitles, len(imgSubs))
 	defer func() {
-		discord.Infof("%s model tokens used: prompt=%d, completion=%d\n", config.TheConfig.OCRVLMModel, totalPromptTokens, totalCompletionTokens)
+		discord.Infof("%s model tokens used: prompt=%d, completion=%d", config.TheConfig.OCRVLMModel, totalPromptTokens, totalCompletionTokens)
 	}()
 	for index, pg := range imgSubs {
 		text, promptTokens, completionTokens, err := ExtractText(pg.Image)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract text from image #%d: %s\n", index+1, err)
+			return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
 		}
 		totalPromptTokens += promptTokens
 		totalCompletionTokens += completionTokens
