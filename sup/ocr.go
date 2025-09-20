@@ -23,7 +23,6 @@ Task:
 1.  Perform OCR on the input image to identify all text.
 2.  Transcribe the text with 100% accuracy, matching the source exactly WITHOUT modification.
 3.  Preserve the original structure, preserve all line breaks.
-4.  Wrap any italic text in <i>...</i> tags.
 Output: A plain text transcription of the subtitle. There should be no markdown, no comments, and no content other than the text extracted from the image.`
 
 	temperature = 0.1
