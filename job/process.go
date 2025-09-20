@@ -100,6 +100,8 @@ func (job *Job) ExtractStreams(path, t string) error {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", fmt.Sprintf("-dump_attachment:%d", stream.Index), job.OutputJoin(filename), "-i", path, "-t", "0", "-f", "null", "null")
 				} else if cs == "webvttFromASS" {
 					err = translation.AssToVTT(job.OutputJoin(fmt.Sprintf("%s.ass", id)))
+				} else if cs == "assFromWebvtt" {
+					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", cs, job.OutputJoin(filename))
 				} else {
 					csFlag := "-c:s"
 					if stream.CodecType == AudioType {
@@ -129,8 +131,15 @@ func (job *Job) ExtractStreams(path, t string) error {
 					if err == nil && (toCodec == "sup" || toCodec == "sub") {
 						err = sup.Convert(job.OutputJoin(filename))
 						if err == nil {
-							// TODO: convert to ass
+							err = convert("ass", "assFromWebvtt", fmt.Sprintf("%s.ass", id))
+							if err != nil {
+								discord.Errorf("VLM image based subtitle conversion (vtt -> ass): %s: %v", t, err)
+							}
+						} else {
+							discord.Errorf("VLM image based subtitle conversion: %s: %v", t, err)
 						}
+					} else {
+						discord.Errorf("Found an unsupported codec: %+v", stream)
 					}
 				}
 				if !isCodecNameText(stream.CodecName) {
