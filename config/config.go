@@ -9,6 +9,8 @@ import (
 )
 
 type Config struct {
+	Debug bool `env:"DEBUG" envDefault:"true"`
+
 	MatchEverything bool `env:"MATCH_EVERYTHING" envDefault:"false"`
 	ReverseOrder    bool `env:"REVERSE_ORDER" envDefault:"false"`
 
@@ -74,6 +76,9 @@ type Config struct {
 	OverSeerrURL     string `env:"OVERSEERR_URL" envDefault:"http://localhost"`
 	OverSeerrAPI     string `env:"OVERSEERR_API" envDefault:""`
 	OverSeerrUserIds []int  `env:"OVERSEERR_USER_IDS" envDefault:""`
+
+	OCRVLMUrl   string `env:"OCRVLM_URL" envDefault:"http://192.168.1.244:11434/v1"` // ollama or openai compatible
+	OCRVLMModel string `env:"OCRVLM_MODEL" envDefault:"mistral-small3.2:24b"`
 }
 
 var TheConfig = &Config{}
@@ -90,4 +95,8 @@ func Configure() {
 		TheConfig.TranslationSubtitleTypes[i] = strings.ToLower(t)
 	}
 	log.Infof("Running: %s, %s", gitVersion, gitHash)
+	if TheConfig.Debug {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug mode enabled")
+	}
 }
