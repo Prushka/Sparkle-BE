@@ -101,7 +101,9 @@ func (job *Job) ExtractStreams(path, t string) error {
 				} else if cs == "webvttFromASS" {
 					err = translation.AssToVTT(job.OutputJoin(fmt.Sprintf("%s.ass", id)))
 				} else if cs == "assFromWebvtt" {
-					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, "-c:s", "ass", job.OutputJoin(filename))
+					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i",
+						job.OutputJoin(utils.ReplaceExtension(filename, ".vtt")),
+						"-c:s", "ass", job.OutputJoin(filename))
 				} else {
 					csFlag := "-c:s"
 					if stream.CodecType == AudioType {
