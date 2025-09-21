@@ -128,7 +128,7 @@ func pipeline(j job.Job) error {
 
 func processFile(file os.DirEntry, parent string, _ target.ToEncode) bool {
 	ext := filepath.Ext(file.Name())
-	if slices.Contains(job.ValidExtensions, ext[1:]) {
+	if len(ext) > 0 && slices.Contains(job.ValidExtensions, ext[1:]) {
 		j := job.Job{
 			Id:          target.NewRandomString(5),
 			InputParent: parent,

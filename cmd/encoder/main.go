@@ -21,7 +21,7 @@ import (
 
 func processFile(file os.DirEntry, parent string, te target.ToEncode) bool {
 	ext := filepath.Ext(file.Name())
-	if slices.Contains(job.ValidExtensions, ext[1:]) {
+	if len(ext) > 0 && slices.Contains(job.ValidExtensions, ext[1:]) {
 		jobs, err := job.JobsCache.Get(false)
 		if err != nil {
 			discord.Errorf("error getting all jobs: %v", err)
