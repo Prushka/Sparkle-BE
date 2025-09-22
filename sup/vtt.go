@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"time"
 
 	"golang.org/x/text/encoding/unicode"
@@ -49,6 +50,8 @@ func (subtitles VTTSubtitles) Marshal(output io.Writer) (err error) {
 var newLineRegex = regexp.MustCompile(`(\r?\n){2,}`)
 
 func sanitizeNewLines(s string) string {
+	s = strings.ReplaceAll(s, string(rune(0)), "") // Remove null characters
+	s = strings.ReplaceAll(s, "\r", "")            // Remove carriage returns
 	return newLineRegex.ReplaceAllString(s, "\n")
 }
 
