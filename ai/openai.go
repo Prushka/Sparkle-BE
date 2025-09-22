@@ -16,6 +16,7 @@ type gpt struct {
 	messages      []openai.ChatCompletionMessageParamUnion
 	client        openai.Client
 	LastExhausted time.Time
+	isCustom      bool
 }
 
 type gptResponse struct {
@@ -26,14 +27,17 @@ func NewGPT(apiKey string) AI {
 	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 	}
+	isCustom := false
 	if config.TheConfig.OpenAIUrl != "" {
 		options = append(options, option.WithBaseURL(config.TheConfig.OpenAIUrl))
+		isCustom = true
 	}
 	return &gpt{
 		messages: make([]openai.ChatCompletionMessageParamUnion, 0),
 		client: openai.NewClient(
 			options...,
 		),
+		isCustom: isCustom,
 	}
 }
 
@@ -73,7 +77,9 @@ func (o *gpt) StartChat(_ context.Context, systemInstruction string) error {
 func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 	now := time.Now()
 	defer func() {
-		utils.MakeUpSleep(now)
+		if !o.isCustom {
+			utils.MakeUpSleep(now)
+		}
 	}()
 	discord.Infof("Sending to OpenAI %s", config.TheConfig.OpenAIModel)
 
