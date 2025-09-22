@@ -34,6 +34,9 @@ func Init() {
 			for _, key := range config.TheConfig.OpenAI {
 				OpenAIClis = append(OpenAIClis, NewGPT(key))
 			}
+		} else if config.TheConfig.OpenAIUrl != "" {
+			discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
+			OpenAIClis = append(OpenAIClis, NewGPT(""))
 		}
 	case "gemini":
 		if len(config.TheConfig.Gemini) > 0 {
