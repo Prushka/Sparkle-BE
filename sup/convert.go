@@ -77,8 +77,6 @@ func Convert(inputPath string) error {
 			0: imgSubs,
 		}
 	} else {
-		discord.Errorf("Found non-.sup file extension, assuming VobSub")
-		time.Sleep(200 * time.Hour)
 		discord.Infof("Parsing VobSub file %v", filepath.Base(inputPath))
 		var err error
 		subs, err = ParseVobSubFile(inputPath)

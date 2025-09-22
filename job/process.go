@@ -104,6 +104,8 @@ func (job *Job) ExtractStreams(path, t string) error {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i",
 						job.OutputJoin(utils.ReplaceExtension(filename, ".vtt")),
 						"-c:s", "ass", job.OutputJoin(filename))
+				} else if cs == "mkvextract" {
+					cmd = exec.Command("mkvextract", "tracks", path, fmt.Sprintf("%d:%s", stream.Index, job.OutputJoin(filename)))
 				} else {
 					csFlag := "-c:s"
 					if stream.CodecType == AudioType {
@@ -129,8 +131,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 						toCodec = stream.CodecName
 					}
 					filename := fmt.Sprintf("%s.%s", id, toCodec)
-					err = convert(toCodec, "copy", filename)
-					if err == nil && (toCodec == "sup" || toCodec == "sub") {
+					success := func() {
 						err = sup.Convert(job.OutputJoin(filename))
 						if err == nil {
 							err = convert("ass", "assFromWebvtt", fmt.Sprintf("%s.ass", id))
@@ -140,9 +141,22 @@ func (job *Job) ExtractStreams(path, t string) error {
 						} else {
 							discord.Errorf("VLM image based subtitle conversion: %s: %v", t, err)
 						}
-					} else {
-						discord.Errorf("Found an unsupported codec: %+v", stream)
 					}
+					switch toCodec {
+					case "sup":
+						err = convert(toCodec, "copy", filename)
+						if err == nil {
+							success()
+						}
+					case "sub":
+						err = convert(toCodec, "mkvextract", filename)
+						if err == nil {
+							success()
+						}
+					default:
+						discord.Errorf("unknown subtitle codec: %s", stream.CodecType)
+					}
+
 				}
 				if !isCodecNameText(stream.CodecName) {
 					copySubtitle()

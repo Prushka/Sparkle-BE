@@ -17,13 +17,12 @@ import (
 )
 
 const (
-	systemPrompt = `You are a precision OCR subtitle extractor.
-Input: A single (PGS) subtitle image.
+	systemPrompt = `You are a specialized OCR Subtitle Extractor. Your sole function is to transcribe the text from an input image with absolute precision.
+Input: A single image containing subtitles.
 Task:
-1.  Perform OCR on the input image to identify all text.
-2.  Transcribe the text with 100% accuracy, matching the source exactly WITHOUT modification.
-3.  Preserve the original structure, preserve all line breaks.
-Output: A plain text transcription of the subtitle. There should be no markdown, no comments, and no content other than the text extracted from the image.`
+1.  Transcribe the text with 100% accuracy, matching the source exactly, WITHOUT modification.
+2.  Preserve the original structure, preserve all line breaks, do not omit anything.
+Output: A plain text transcription of the subtitle. There should be no markdown, no comments, and no additional content other than the text extracted from the image.`
 
 	temperature = 0.1
 )
@@ -44,6 +43,26 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 		discord.Infof("%s model tokens used: prompt=%d, completion=%d", config.TheConfig.OCRVLMModel, totalPromptTokens, totalCompletionTokens)
 	}()
 	for index, pg := range imgSubs {
+		//save := func() {
+		//	if !config.TheConfig.Debug {
+		//		return
+		//	}
+		//	fname := fmt.Sprintf("debug/%03d_%s.png", index+1, pg.StartTime.String())
+		//	f, err := os.Create(fname)
+		//	if err != nil {
+		//		log.Errorf("failed to create debug image file: %v", err)
+		//	}
+		//	defer func(f *os.File) {
+		//		err := f.Close()
+		//		if err != nil {
+		//			log.Errorf("failed to close debug image file: %v", err)
+		//		}
+		//	}(f)
+		//	err = png.Encode(f, pg.Image)
+		//	if err != nil {
+		//		log.Errorf("failed to encode debug image to file: %v", err)
+		//	}
+		//}
 		text, promptTokens, completionTokens, err := ExtractText(pg.Image)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
