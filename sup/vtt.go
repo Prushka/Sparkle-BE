@@ -3,8 +3,6 @@ package sup
 import (
 	"fmt"
 	"io"
-	"regexp"
-	"strings"
 	"time"
 
 	"golang.org/x/text/encoding/unicode"
@@ -34,7 +32,7 @@ func (subtitles VTTSubtitles) Marshal(output io.Writer) (err error) {
 			return
 		}
 		// Text
-		if _, err = encoder.Write(fmt.Appendf(nil, "%s\n", sanitizeNewLines(sub.Text))); err != nil {
+		if _, err = encoder.Write(fmt.Appendf(nil, "%s\n", sub.Text)); err != nil {
 			return
 		}
 		// Blank line
@@ -43,16 +41,6 @@ func (subtitles VTTSubtitles) Marshal(output io.Writer) (err error) {
 		}
 	}
 	return nil
-}
-
-// This regular expression matches two or more consecutive newline characters.
-// It handles both \n (Unix-style) and \r\n (Windows-style) newlines.
-var newLineRegex = regexp.MustCompile(`(\r?\n){2,}`)
-
-func sanitizeNewLines(s string) string {
-	s = strings.ReplaceAll(s, string(rune(0)), "") // Remove null characters
-	s = strings.ReplaceAll(s, "\r", "")            // Remove carriage returns
-	return newLineRegex.ReplaceAllString(s, "\n")
 }
 
 type VTTTimestamp time.Duration
