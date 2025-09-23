@@ -10,7 +10,7 @@ type VT map[string]int
 
 func (vt VT) majorityVote() (string, bool) {
 	for text, votes := range vt {
-		if float64(votes) >= float64(len(config.TheConfig.OCRVLMModels))/2 {
+		if votes >= config.TheConfig.OCRVLMVotes {
 			return text, true
 		}
 	}
