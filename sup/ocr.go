@@ -114,7 +114,6 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 	}
 	for _, model := range config.TheConfig.OCRVLMModels {
 		discord.Infof("Starting OCR with model: %s", model)
-		var history []string
 		for index, pg := range imgSubs {
 			if txtSubs[index] != nil {
 				if _, ok := txtSubs[index].Texts.majorityVote(); ok {
@@ -124,11 +123,10 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 					//log.Debugf("Continuing undecided subtitle #%d %v", index+1, txtSubs[index].Texts)
 				}
 			}
-			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image, history)
+			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
 			}
-			history = append(history, text)
 			text = lightProcess(text)
 			totalPromptTokens[model] += promptTokens
 			totalCompletionTokens[model] += completionTokens
@@ -160,7 +158,7 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 	return results, nil
 }
 
-func ExtractText(model string, img image.Image, history []string) (text string, promptTokens, completionTokens int64, err error) {
+func ExtractText(model string, img image.Image) (text string, promptTokens, completionTokens int64, err error) {
 	encodedImage, err := encodeImageToDataURL(img)
 	if err != nil {
 		err = fmt.Errorf("failed to encode image: %w", err)
@@ -168,25 +166,16 @@ func ExtractText(model string, img image.Image, history []string) (text string, 
 	}
 	messages := []openai.ChatCompletionMessageParamUnion{
 		openai.SystemMessage(systemPrompt),
-	}
-	//if len(history) > 40 {
-	//	history = history[len(history)-40:]
-	//}
-	//
-	//if len(history) > 0 {
-	//	m := fmt.Sprintf("Previously transcribed subtitles:\n%s", strings.Join(history, "\n---\n"))
-	//	//fmt.Println(m)
-	//	messages = append(messages, openai.AssistantMessage(m))
-	//}
-	messages = append(messages, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{
-		{
-			OfImageURL: &openai.ChatCompletionContentPartImageParam{
-				ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
-					URL: encodedImage,
+		openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{
+			{
+				OfImageURL: &openai.ChatCompletionContentPartImageParam{
+					ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
+						URL: encodedImage,
+					},
 				},
 			},
-		},
-	}))
+		}),
+	}
 	chatCompletion, err := oaiClient.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Model: model,
 		Temperature: param.Opt[float64]{
