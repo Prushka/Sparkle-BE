@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/openai/openai-go"
@@ -33,61 +36,118 @@ type ImageSubtitle struct {
 	EndTime   time.Duration
 }
 
-func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
-	var (
-		totalPromptTokens     int64
-		totalCompletionTokens int64
-	)
-	txtSubs := make(VTTSubtitles, len(imgSubs))
-	defer func() {
-		discord.Infof("%s model tokens used: prompt=%d, completion=%d", config.TheConfig.OCRVLMModel, totalPromptTokens, totalCompletionTokens)
-	}()
-	for index, pg := range imgSubs {
-		//save := func() {
-		//	if !config.TheConfig.Debug {
-		//		return
-		//	}
-		//	fname := fmt.Sprintf("debug/%03d_%s.png", index+1, pg.StartTime.String())
-		//	f, err := os.Create(fname)
-		//	if err != nil {
-		//		log.Errorf("failed to create debug image file: %v", err)
-		//	}
-		//	defer func(f *os.File) {
-		//		err := f.Close()
-		//		if err != nil {
-		//			log.Errorf("failed to close debug image file: %v", err)
-		//		}
-		//	}(f)
-		//	err = png.Encode(f, pg.Image)
-		//	if err != nil {
-		//		log.Errorf("failed to encode debug image to file: %v", err)
-		//	}
-		//}
-		text, promptTokens, completionTokens, err := ExtractText(pg.Image)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
-		}
-		totalPromptTokens += promptTokens
-		totalCompletionTokens += completionTokens
-
-		log.Debugf("#%d %s --> %s %s", index+1, pg.StartTime, pg.EndTime, text)
-		txtSubs[index] = VTTSubtitle{
-			Start: VTTTimestamp(pg.StartTime),
-			End:   VTTTimestamp(pg.EndTime),
-			Text:  text,
-		}
-	}
-	return txtSubs, nil
+type Voting struct {
+	Start VTTTimestamp
+	End   VTTTimestamp
+	Texts VT
 }
 
-func ExtractText(img image.Image) (text string, promptTokens, completionTokens int64, err error) {
+var replacer = strings.NewReplacer(
+	"’", "'",
+	"“", "\"",
+	"”", "\"",
+	"‘", "'",
+	"—", "-",
+	"–", "-",
+	"…", "...",
+	" ", " ", // non-breaking space to regular space
+	string(rune(0)), "", // remove null characters
+	"\r", "", // remove carriage returns
+)
+
+// This regular expression matches two or more consecutive newline characters.
+// It handles both \n (Unix-style) and \r\n (Windows-style) newlines.
+var newLineRegex = regexp.MustCompile(`(\r?\n){2,}`)
+
+func lightProcess(input string) string {
+	return newLineRegex.ReplaceAllString(replacer.Replace(input), "\n")
+}
+
+func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
+	totalPromptTokens := make(map[string]int64)
+	totalCompletionTokens := make(map[string]int64)
+	txtSubs := make([]*Voting, len(imgSubs))
+	defer func() {
+		discord.Infof("prompt=%v, completion=%v", totalPromptTokens, totalCompletionTokens)
+	}()
+	for index, pg := range imgSubs {
+		imgSubs[index].Image = TrimTransparentColumns(TrimTransparentRows(pg.Image))
+		save := func() {
+			if !config.TheConfig.Debug {
+				return
+			}
+			fname := fmt.Sprintf("debug/%03d.png", index+1)
+			f, err := os.Create(fname)
+			if err != nil {
+				log.Errorf("failed to create debug image file: %v", err)
+			}
+			defer func(f *os.File) {
+				err := f.Close()
+				if err != nil {
+					log.Errorf("failed to close debug image file: %v", err)
+				}
+			}(f)
+			err = png.Encode(f, imgSubs[index].Image)
+			if err != nil {
+				log.Errorf("failed to encode debug image to file: %v", err)
+			}
+		}
+		save()
+	}
+	for _, model := range config.TheConfig.OCRVLMModels {
+		discord.Infof("Starting OCR with model: %s", model)
+		for index, pg := range imgSubs {
+			if txtSubs[index] != nil {
+				if t, ok := txtSubs[index].Texts.majorityVote(); ok {
+					log.Debugf("Skipping already decided subtitle #%d %v", index+1, t)
+					continue
+				} else {
+					log.Debugf("Continuing undecided subtitle #%d %v", index+1, txtSubs[index].Texts)
+				}
+			}
+			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image)
+			text = lightProcess(text)
+			if err != nil {
+				return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
+			}
+			totalPromptTokens[model] += promptTokens
+			totalCompletionTokens[model] += completionTokens
+
+			log.Debugf("%s #%d %s --> %s %s, %d -> %d", model, index+1, pg.StartTime, pg.EndTime, text, promptTokens, completionTokens)
+			if txtSubs[index] == nil {
+				txtSubs[index] = &Voting{
+					Start: VTTTimestamp(pg.StartTime),
+					End:   VTTTimestamp(pg.EndTime),
+					Texts: VT{},
+				}
+			}
+			txtSubs[index].Texts[text]++
+			txtSubs[index].Texts = txtSubs[index].Texts.converge()
+		}
+	}
+	results := make(VTTSubtitles, len(imgSubs))
+	for i, v := range txtSubs {
+		if t, ok := v.Texts.majorityVote(); ok {
+			results[i] = VTTSubtitle{
+				Start: v.Start,
+				End:   v.End,
+				Text:  t,
+			}
+		} else {
+			log.Warnf("OCR subtitle has no majority votes %v", v)
+		}
+	}
+	return results, nil
+}
+
+func ExtractText(model string, img image.Image) (text string, promptTokens, completionTokens int64, err error) {
 	encodedImage, err := encodeImageToDataURL(img)
 	if err != nil {
 		err = fmt.Errorf("failed to encode image: %w", err)
 		return
 	}
 	chatCompletion, err := oaiClient.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
-		Model: config.TheConfig.OCRVLMModel,
+		Model: model,
 		Temperature: param.Opt[float64]{
 			Value: temperature,
 		},

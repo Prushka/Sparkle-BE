@@ -29,9 +29,12 @@ func (vt VT) converge() VT {
 		if existingKey, ok := normalizedKeys[normalizedKey]; ok {
 			// A key with the same normalized form exists, decide which one to keep.
 			if shouldReplace(key, existingKey) {
+				oldVal := result[existingKey]
 				delete(result, existingKey)
-				result[key] = value
+				result[key] = value + oldVal
 				normalizedKeys[normalizedKey] = key
+			} else {
+				result[existingKey] += value
 			}
 		} else {
 			// This is the first time we see this normalized key.
