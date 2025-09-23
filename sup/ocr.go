@@ -106,10 +106,10 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 				}
 			}
 			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image)
-			text = lightProcess(text)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
 			}
+			text = lightProcess(text)
 			totalPromptTokens[model] += promptTokens
 			totalCompletionTokens[model] += completionTokens
 
