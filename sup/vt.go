@@ -9,10 +9,16 @@ import (
 type VT map[string]int
 
 func (vt VT) majorityVote() (string, bool) {
-	for text, votes := range vt {
-		if votes >= config.TheConfig.OCRVLMVotes {
-			return text, true
+	var mostVoted string
+	maxVotes := 0
+	for key, votes := range vt {
+		if votes > maxVotes {
+			maxVotes = votes
+			mostVoted = key
 		}
+	}
+	if maxVotes >= config.TheConfig.OCRVLMVotes {
+		return mostVoted, true
 	}
 	return "", false
 }

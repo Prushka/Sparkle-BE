@@ -116,11 +116,11 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 		discord.Infof("Starting OCR with model: %s", model)
 		for index, pg := range imgSubs {
 			if txtSubs[index] != nil {
-				if _, ok := txtSubs[index].Texts.majorityVote(); ok {
-					//log.Debugf("Skipping already decided subtitle #%d %v", index+1, t)
+				if t, ok := txtSubs[index].Texts.majorityVote(); ok {
+					log.Debugf("Skipping already decided subtitle #%d %v", index+1, t)
 					continue
 				} else {
-					//log.Debugf("Continuing undecided subtitle #%d %v", index+1, txtSubs[index].Texts)
+					log.Debugf("Continuing undecided subtitle #%d %v", index+1, txtSubs[index].Texts)
 				}
 			}
 			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image)
