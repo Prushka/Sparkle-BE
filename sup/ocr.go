@@ -58,9 +58,29 @@ var replacer = strings.NewReplacer(
 // This regular expression matches two or more consecutive newline characters.
 // It handles both \n (Unix-style) and \r\n (Windows-style) newlines.
 var newLineRegex = regexp.MustCompile(`(\r?\n){2,}`)
+var extraDashRegex = regexp.MustCompile("-+")
+
+// replaceExactDoubleDash replaces all occurrences of exactly "--" with "-".
+// It does not modify any sequences of dashes that are shorter or longer than two.
+func replaceExactDoubleDash(s string) string {
+	// This regular expression finds all sequences of one or more dashes.
+
+	// ReplaceAllStringFunc finds all matches of the regular expression and
+	// calls the provided function for each match. The return value of the
+	// function is then used as the replacement.
+	return extraDashRegex.ReplaceAllStringFunc(s, func(match string) string {
+		// If the matched sequence of dashes is exactly two characters long...
+		if len(match) == 2 {
+			// ...replace it with a single dash.
+			return "-"
+		}
+		// Otherwise, return the original match without any changes.
+		return match
+	})
+}
 
 func lightProcess(input string) string {
-	return newLineRegex.ReplaceAllString(replacer.Replace(input), "\n")
+	return newLineRegex.ReplaceAllString(replaceExactDoubleDash(replacer.Replace(input)), "\n")
 }
 
 func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
