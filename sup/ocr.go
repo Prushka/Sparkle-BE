@@ -59,21 +59,26 @@ var replacer = strings.NewReplacer(
 // It handles both \n (Unix-style) and \r\n (Windows-style) newlines.
 var newLineRegex = regexp.MustCompile(`(\r?\n){2,}`)
 
-// replaceLeadingDoubleDash replaces a double dash with a single dash only if it
-// appears at the very beginning of the string. It ignores longer sequences like "---".
-func replaceLeadingDoubleDash(s string) string {
-	// Check if the string starts with "--" but not with "---".
-	if strings.HasPrefix(s, "--") && !strings.HasPrefix(s, "---") {
-		// If it does, return a single dash followed by the rest of the string.
-		// s[2:] creates a slice of the string starting from the third character.
-		return "-" + s[2:]
+// replaceTargetedDoubleDashes replaces "--" with "-" at the beginning and end of any new line.
+// It ignores sequences of more than two dashes and dashes in the middle of a line.
+func replaceTargetedDoubleDashes(s string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		processedLine := line
+		if strings.HasPrefix(processedLine, "--") && !strings.HasPrefix(processedLine, "---") {
+			processedLine = "-" + processedLine[2:]
+		}
+
+		if strings.HasSuffix(processedLine, "--") && !strings.HasSuffix(processedLine, "---") {
+			processedLine = processedLine[:len(processedLine)-2] + "-"
+		}
+		lines[i] = processedLine
 	}
-	// Otherwise, return the original string without modification.
-	return s
+	return strings.Join(lines, "\n")
 }
 
 func lightProcess(input string) string {
-	return newLineRegex.ReplaceAllString(replaceLeadingDoubleDash(replacer.Replace(input)), "\n")
+	return newLineRegex.ReplaceAllString(replaceTargetedDoubleDashes(replacer.Replace(input)), "\n")
 }
 
 func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
@@ -109,19 +114,21 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 	}
 	for _, model := range config.TheConfig.OCRVLMModels {
 		discord.Infof("Starting OCR with model: %s", model)
+		var history []string
 		for index, pg := range imgSubs {
 			if txtSubs[index] != nil {
-				if t, ok := txtSubs[index].Texts.majorityVote(); ok {
-					log.Debugf("Skipping already decided subtitle #%d %v", index+1, t)
+				if _, ok := txtSubs[index].Texts.majorityVote(); ok {
+					//log.Debugf("Skipping already decided subtitle #%d %v", index+1, t)
 					continue
 				} else {
-					log.Debugf("Continuing undecided subtitle #%d %v", index+1, txtSubs[index].Texts)
+					//log.Debugf("Continuing undecided subtitle #%d %v", index+1, txtSubs[index].Texts)
 				}
 			}
-			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image)
+			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image, history)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
 			}
+			history = append(history, text)
 			text = lightProcess(text)
 			totalPromptTokens[model] += promptTokens
 			totalCompletionTokens[model] += completionTokens
@@ -153,35 +160,39 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 	return results, nil
 }
 
-func ExtractText(model string, img image.Image) (text string, promptTokens, completionTokens int64, err error) {
+func ExtractText(model string, img image.Image, history []string) (text string, promptTokens, completionTokens int64, err error) {
 	encodedImage, err := encodeImageToDataURL(img)
 	if err != nil {
 		err = fmt.Errorf("failed to encode image: %w", err)
 		return
 	}
+	messages := []openai.ChatCompletionMessageParamUnion{
+		openai.SystemMessage(systemPrompt),
+	}
+	//if len(history) > 40 {
+	//	history = history[len(history)-40:]
+	//}
+	//
+	//if len(history) > 0 {
+	//	m := fmt.Sprintf("Previously transcribed subtitles:\n%s", strings.Join(history, "\n---\n"))
+	//	//fmt.Println(m)
+	//	messages = append(messages, openai.AssistantMessage(m))
+	//}
+	messages = append(messages, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{
+		{
+			OfImageURL: &openai.ChatCompletionContentPartImageParam{
+				ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
+					URL: encodedImage,
+				},
+			},
+		},
+	}))
 	chatCompletion, err := oaiClient.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Model: model,
 		Temperature: param.Opt[float64]{
 			Value: temperature,
 		},
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(systemPrompt),
-			{
-				OfUser: &openai.ChatCompletionUserMessageParam{
-					Content: openai.ChatCompletionUserMessageParamContentUnion{
-						OfArrayOfContentParts: []openai.ChatCompletionContentPartUnionParam{
-							{
-								OfImageURL: &openai.ChatCompletionContentPartImageParam{
-									ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
-										URL: encodedImage,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		Messages: messages,
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to get OCR chat completion: %w", err)
