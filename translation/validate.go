@@ -3,10 +3,11 @@ package translation
 import (
 	"Sparkle/discord"
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
 	"os"
 	"strings"
 	"time"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 const ASSTimeFormat = "15:04:05.00"
@@ -104,6 +105,7 @@ func isASSOutputValid(headers string, output []string) bool {
 		}
 		duration := endTime.Sub(startTime)
 		if duration > 2*time.Minute {
+			// TODO: match input duration (if long durations exist in input)
 			discord.Errorf("Subtitle duration is too long: %s, %+v", line, duration)
 			return false
 		}

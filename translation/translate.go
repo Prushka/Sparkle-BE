@@ -133,10 +133,11 @@ func TranslateSubtitlesASS(headers string, inputs []string, language, systemMess
 	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, inputs, func(input string, result ai.Result) bool {
 		t := correctTimestamps(headers, input, result.Text())
 		outputLines := len(t)
-		discord.Infof("Output length: %d, Output lines: %d",
+		inputLines := len(strings.Split(input, "\n"))
+		discord.Infof("Output length: %d, Output lines: %d, Input lines: %d",
 			len(strings.Join(t, "\n")),
-			outputLines)
-		return outputLines == len(strings.Split(input, "\n")) &&
+			outputLines, inputLines)
+		return outputLines == inputLines &&
 			isASSOutputValid(headers, t)
 	}, func(input string) int {
 		return len(strings.Split(input, "\n"))
