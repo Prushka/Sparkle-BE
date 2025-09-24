@@ -161,16 +161,16 @@ func (job *Job) ExtractStreams(path, t string) error {
 					if err := copySubtitle(); err != nil {
 						return err
 					}
-					break
+				} else {
+					// for any text-based subtitle, it always tries to produce .ass and .vtt
+					if err := convert("ass", "ass", fmt.Sprintf("%s.ass", id)); err != nil {
+						return fmt.Errorf("failed to convert %s to ass, %w", id, err)
+					}
+					if err := convert("webvtt", "webvttFromASS", fmt.Sprintf("%s.vtt", id)); err != nil {
+						return fmt.Errorf("failed to convert %s to webvtt, %w", id, err)
+					}
+					// errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
 				}
-				// for any text-based subtitle, it always tries to produce .ass and .vtt
-				if err := convert("ass", "ass", fmt.Sprintf("%s.ass", id)); err != nil {
-					return fmt.Errorf("failed to convert %s to ass, %w", id, err)
-				}
-				if err := convert("webvtt", "webvttFromASS", fmt.Sprintf("%s.vtt", id)); err != nil {
-					return fmt.Errorf("failed to convert %s to webvtt, %w", id, err)
-				}
-				// errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
 			case AudioType:
 				if err := convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName)); err != nil {
 					return err
