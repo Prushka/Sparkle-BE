@@ -39,12 +39,10 @@ type Config struct {
 	ThumbnailInterval      int    `env:"THUMBNAIL_INTERVAL" envDefault:"2"`
 	ThumbnailChunkInterval int    `env:"THUMBNAIL_CHUNK_INTERVAL" envDefault:"1152"`
 
-	EnableEncode               bool `env:"ENABLE_ENCODE" envDefault:"true"`
-	EnableSprite               bool `env:"ENABLE_SPRITE" envDefault:"true"`
-	EnableAudioExtraction      bool `env:"ENABLE_AUDIO_EXTRACTION" envDefault:"true"`
-	EnableAttachmentExtraction bool `env:"ENABLE_ATTACHMENT_EXTRACTION" envDefault:"true"`
-	EnableLowPriority          bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
-	EnableCleanup              bool `env:"ENABLE_CLEANUP" envDefault:"true"`
+	EnableEncode      bool `env:"ENABLE_ENCODE" envDefault:"true"`
+	EnableSprite      bool `env:"ENABLE_SPRITE" envDefault:"true"`
+	EnableLowPriority bool `env:"ENABLE_LOW_PRIORITY" envDefault:"true"`
+	EnableCleanup     bool `env:"ENABLE_CLEANUP" envDefault:"true"`
 
 	DiscordName         string   `env:"DISCORD_NAME" envDefault:"Encoding"`
 	DiscordWebhookError string   `env:"DISCORD_WEBHOOK_ERROR" envDefault:""`

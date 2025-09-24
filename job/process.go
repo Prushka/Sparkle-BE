@@ -160,30 +160,20 @@ func (job *Job) ExtractStreams(path, t string) error {
 					break
 				}
 				// for any text-based subtitle, it always tries to produce .ass and .vtt
-				errAss := convert("ass", "ass", fmt.Sprintf("%s.ass", id))
-				var errVtt error
-				if errAss == nil {
-					errVtt = convert("webvtt", "webvttFromASS", fmt.Sprintf("%s.vtt", id))
-				} else {
-					errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
+				if err := convert("ass", "ass", fmt.Sprintf("%s.ass", id)); err != nil {
+					return fmt.Errorf("failed to convert %s to ass, %w", id, err)
 				}
-				if errAss != nil && errVtt != nil {
-					discord.Errorf("Found an unsupported codec: %+v", stream)
-					if err := copySubtitle(); err != nil {
-						return err
-					}
+				if err := convert("webvtt", "webvttFromASS", fmt.Sprintf("%s.vtt", id)); err != nil {
+					return fmt.Errorf("failed to convert %s to webvtt, %w", id, err)
 				}
+				// errVtt = convert("webvtt", "webvtt", fmt.Sprintf("%s.vtt", id))
 			case AudioType:
-				if config.TheConfig.EnableAudioExtraction {
-					if err := convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName)); err != nil {
-						return err
-					}
+				if err := convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName)); err != nil {
+					return err
 				}
 			case AttachmentType:
-				if config.TheConfig.EnableAttachmentExtraction {
-					if err := convert(stream.Tags.MimeType, "copy", stream.Tags.Filename); err != nil {
-						return err
-					}
+				if err := convert(stream.Tags.MimeType, "copy", stream.Tags.Filename); err != nil {
+					return err
 				}
 			}
 		}
