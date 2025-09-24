@@ -106,10 +106,14 @@ func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 		return result, err
 	}
 
-	if result.Text() == "" {
+	resultText := result.Text()
+	if resultText == "" {
 		return result, fmt.Errorf("no choices found in response")
 	}
-	o.messages = append(o.messages, openai.AssistantMessage(resp.Choices[0].Message.Content))
+	if config.TheConfig.Debug {
+		fmt.Println(resultText)
+	}
+	o.messages = append(o.messages, openai.AssistantMessage(resultText))
 
 	if result.Usage() != nil {
 		fmt.Printf("%v\n", utils.AsJson(result.Usage()))
