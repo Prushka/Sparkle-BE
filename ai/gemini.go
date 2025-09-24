@@ -51,6 +51,10 @@ func (g *geminiResponse) Response() interface{} {
 	return g.response
 }
 
+func (g *gemini) IsLocal() bool {
+	return false
+}
+
 func (g *gemini) GetLastExhausted() time.Time {
 	return g.LastExhausted
 }

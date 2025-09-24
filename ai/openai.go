@@ -16,7 +16,7 @@ type gpt struct {
 	messages      []openai.ChatCompletionMessageParamUnion
 	client        openai.Client
 	LastExhausted time.Time
-	isCustom      bool
+	isLocal       bool
 }
 
 type gptResponse struct {
@@ -37,7 +37,7 @@ func NewGPT(apiKey string) AI {
 		client: openai.NewClient(
 			options...,
 		),
-		isCustom: isCustom,
+		isLocal: isCustom,
 	}
 }
 
@@ -59,6 +59,10 @@ func (r *gptResponse) Response() interface{} {
 	return r.response
 }
 
+func (o *gpt) IsLocal() bool {
+	return o.isLocal
+}
+
 func (o *gpt) GetLastExhausted() time.Time {
 	return o.LastExhausted
 }
@@ -77,7 +81,7 @@ func (o *gpt) StartChat(_ context.Context, systemInstruction string) error {
 func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 	now := time.Now()
 	defer func() {
-		if !o.isCustom {
+		if !o.isLocal {
 			utils.MakeUpSleep(now)
 		}
 	}()

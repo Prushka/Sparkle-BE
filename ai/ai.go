@@ -14,6 +14,7 @@ type AI interface {
 	Send(ctx context.Context, input string) (Result, error)
 	GetLastExhausted() time.Time
 	SetLastExhausted()
+	IsLocal() bool
 }
 
 type Result interface {
@@ -63,12 +64,17 @@ func limit(input []string, limit int) error {
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,
 	postProcessor func(input, output string) string) ([]string, error) {
-	err := limit(inputs, 6)
-	if err != nil {
-		return nil, err
-	}
 
 	run := func(a AI) ([]string, error) {
+		defaultLimit := 8
+		if a.IsLocal() {
+			defaultLimit = 120
+		}
+		err := limit(inputs, defaultLimit)
+		if err != nil {
+			return nil, err
+		}
+
 		var translated []string
 
 		err = a.StartChat(ctx, systemMessage)
@@ -100,7 +106,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		}
 		discord.Infof("Running on client: %d", i)
 		var res []string
-		res, err = run(runner)
+		res, err := run(runner)
 		if err == nil {
 			return res, nil
 		}
@@ -118,7 +124,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
 		time.Sleep(config.TheConfig.SleepAfterExhausted)
 	}
-	return nil, err
+	return nil, fmt.Errorf("all clients failed or exhausted")
 }
 
 func SendWithRetry(ctx context.Context, a AI, input string, pass func(input string, result Result) bool) (Result, error) {
