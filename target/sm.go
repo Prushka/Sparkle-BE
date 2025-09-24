@@ -7,7 +7,6 @@ import (
 	"Sparkle/utils"
 	"encoding/json"
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 func loop(matches func(s string) bool, te ToEncode, runner func(file os.DirEntry, parent string, te ToEncode) bool) error {
@@ -55,6 +56,7 @@ func LoopShows(root string, shows []Show, runner func(file os.DirEntry, parent s
 		slices.Reverse(files)
 		slices.Reverse(shows)
 	}
+	// also in a ShowDirs loop, meaning anything defined earlier in ShowDirs takes precedence
 	for _, show := range shows {
 		for _, file := range files {
 			if file.IsDir() {
