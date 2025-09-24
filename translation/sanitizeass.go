@@ -371,8 +371,8 @@ func AssToVTT(file string) error {
 	dest := utils.ReplaceExtension(file, ".vtt")
 	cmd := exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", tmp, "-c:s", "webvtt",
 		dest)
-	_, err = utils.RunCommand(cmd)
-	if err != nil {
+
+	if _, err := utils.RunCommand(cmd); err != nil {
 		return err
 	}
 
