@@ -71,8 +71,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 		return err
 	}
 	var probeOutput FFProbeOutput
-	err = json.Unmarshal(out, &probeOutput)
-	if err != nil {
+	if err := json.Unmarshal(out, &probeOutput); err != nil {
 		return err
 	}
 	meaningful := false
@@ -83,7 +82,6 @@ func (job *Job) ExtractStreams(path, t string) error {
 			id := fmt.Sprintf("%d-%s", stream.Index, stream.Tags.Language)
 			convert := func(codec, cs, filename string) error {
 				var cmd *exec.Cmd
-				var err error
 				log.Debugf("Handling %s stream #%d (%s)", stream.CodecType, stream.Index, stream.CodecName)
 				s := Stream{
 					CodecName: codec,
@@ -99,7 +97,9 @@ func (job *Job) ExtractStreams(path, t string) error {
 				if stream.CodecType == AttachmentType {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", fmt.Sprintf("-dump_attachment:%d", stream.Index), job.OutputJoin(filename), "-i", path, "-t", "0", "-f", "null", "null")
 				} else if cs == "webvttFromASS" {
-					err = translation.AssToVTT(job.OutputJoin(fmt.Sprintf("%s.ass", id)))
+					if err := translation.AssToVTT(job.OutputJoin(fmt.Sprintf("%s.ass", id))); err != nil {
+						return err
+					}
 				} else if cs == "assFromWebvtt" {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i",
 						job.OutputJoin(utils.ReplaceExtension(filename, ".vtt")),
@@ -114,52 +114,49 @@ func (job *Job) ExtractStreams(path, t string) error {
 					cmd = exec.Command(config.TheConfig.Ffmpeg, "-y", "-i", path, csFlag, cs, "-map", fmt.Sprintf("0:%d", stream.Index), job.OutputJoin(filename))
 				}
 				if cmd != nil {
-					_, err = utils.RunCommand(cmd)
+					if _, err := utils.RunCommand(cmd); err != nil {
+						return fmt.Errorf("error extracting %s stream #%d (%s): %v", stream.CodecType, stream.Index, stream.CodecName, err)
+					}
 				}
-				if err == nil {
-					job.Streams = append(job.Streams, s)
-				} else {
-					discord.Errorf("error converting %s: %v", t, err)
-				}
-				return err
+				job.Streams = append(job.Streams, s)
+				return nil
 			}
 			switch stream.CodecType {
 			case SubtitlesType:
-				copySubtitle := func() {
+				copySubtitle := func() error {
 					toCodec, ok := codecMap[stream.CodecName]
 					if !ok {
 						toCodec = stream.CodecName
 					}
 					filename := fmt.Sprintf("%s.%s", id, toCodec)
-					success := func() {
-						err = sup.Convert(job.OutputJoin(filename))
-						if err == nil {
-							err = convert("ass", "assFromWebvtt", fmt.Sprintf("%s.ass", id))
-							if err != nil {
-								discord.Errorf("VLM image based subtitle conversion (vtt -> ass): %s: %v", t, err)
-							}
-						} else {
-							discord.Errorf("VLM image based subtitle conversion: %s: %v", t, err)
+					success := func() error {
+						if err := sup.Convert(job.OutputJoin(filename)); err != nil {
+							return fmt.Errorf("VLM image based convert: %v", err)
 						}
+						if err := convert("ass", "assFromWebvtt", fmt.Sprintf("%s.ass", id)); err != nil {
+							return fmt.Errorf("VLM image based subtitle conversion (vtt -> ass): %s: %v", t, err)
+						}
+						return nil
 					}
 					switch toCodec {
 					case "sup":
-						err = convert(toCodec, "copy", filename)
-						if err == nil {
-							success()
+						if err := convert(toCodec, "copy", filename); err != nil {
+							return err
 						}
+						return success()
 					case "sub":
-						err = convert(toCodec, "mkvextract", filename)
-						if err == nil {
-							success()
+						if err := convert(toCodec, "mkvextract", filename); err == nil {
+							return err
 						}
+						return success()
 					default:
-						discord.Errorf("unknown subtitle codec: %s", stream.CodecType)
+						return fmt.Errorf("unknown codec: %s", stream.CodecType)
 					}
-
 				}
 				if !isCodecNameText(stream.CodecName) {
-					copySubtitle()
+					if err := copySubtitle(); err != nil {
+						return err
+					}
 					break
 				}
 				// for any text-based subtitle, it always tries to produce .ass and .vtt
@@ -172,15 +169,21 @@ func (job *Job) ExtractStreams(path, t string) error {
 				}
 				if errAss != nil && errVtt != nil {
 					discord.Errorf("Found an unsupported codec: %+v", stream)
-					copySubtitle()
+					if err := copySubtitle(); err != nil {
+						return err
+					}
 				}
 			case AudioType:
 				if config.TheConfig.EnableAudioExtraction {
-					err = convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName))
+					if err := convert(stream.CodecName, "copy", fmt.Sprintf("%s.%s", id, stream.CodecName)); err != nil {
+						return err
+					}
 				}
 			case AttachmentType:
 				if config.TheConfig.EnableAttachmentExtraction {
-					err = convert(stream.Tags.MimeType, "copy", stream.Tags.Filename)
+					if err := convert(stream.Tags.MimeType, "copy", stream.Tags.Filename); err != nil {
+						return err
+					}
 				}
 			}
 		}
