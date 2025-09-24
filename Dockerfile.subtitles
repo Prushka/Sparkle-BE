@@ -32,4 +32,5 @@ WORKDIR /app
 COPY --from=build /app/main ./
 COPY --from=mwader/static-ffmpeg:7.1.1 /ffmpeg /usr/local/bin/
 COPY --from=mwader/static-ffmpeg:7.1.1 /ffprobe /usr/local/bin/
+COPY --from=jlesage/mkvtoolnix /usr/bin/mkvextract /usr/local/bin/
 CMD [ "./main" ]
