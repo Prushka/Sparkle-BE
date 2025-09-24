@@ -56,7 +56,7 @@ type Config struct {
 	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"4h"`
 
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
-	NoHistory                bool     `env:"NO_HISTORY" envDefault:"false"`
+	HistoryCount             int      `env:"HISTORY_COUNT" envDefault:"99999"` // 5 means we keep 5 user + assistant messages, 0 disables any history
 	OpenAI                   []string `env:"OPENAI" envDefault:""`
 	Gemini                   []string `env:"GEMINI" envDefault:""`
 	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"` // gemini or openai

@@ -72,7 +72,45 @@ func correctTimestamps(headers, inputStr, outputStr string) []string {
 	return output
 }
 
-func isASSOutputValid(headers string, output []string) bool {
+func matchStartEndTimes(headers string, input []string, output []string) bool {
+	if len(input) != len(output) {
+		discord.Errorf("Subtitle line count mismatch with input: expected %d, got %d", len(input), len(output))
+		return false
+	}
+	pos, _ := findFormatPositions(headers)
+	for i := range output {
+		inputLine := input[i]
+		outputLine := output[i]
+		inputStartTimeStr := extractDialogueField(inputLine, pos.Start, false)
+		inputEndTimeStr := extractDialogueField(inputLine, pos.End, false)
+		_, err1 := time.Parse(ASSTimeFormat, inputStartTimeStr)
+		_, err2 := time.Parse(ASSTimeFormat, inputEndTimeStr)
+		if err1 != nil || err2 != nil {
+			discord.Errorf("Input subtitle time is malformed: %s", inputLine)
+			return false
+		}
+
+		outputStartTimeStr := extractDialogueField(outputLine, pos.Start, false)
+		outputEndTimeStr := extractDialogueField(outputLine, pos.End, false)
+		_, err1 = time.Parse(ASSTimeFormat, outputStartTimeStr)
+		_, err2 = time.Parse(ASSTimeFormat, outputEndTimeStr)
+		if err1 != nil || err2 != nil {
+			discord.Errorf("Output subtitle time is malformed: %s", outputLine)
+			return false
+		}
+		if inputStartTimeStr != outputStartTimeStr {
+			discord.Errorf("Subtitle start time mismatch with input: expected %s, got %s", inputStartTimeStr, outputStartTimeStr)
+			return false
+		}
+		if inputEndTimeStr != outputEndTimeStr {
+			discord.Errorf("Subtitle end time mismatch with input: expected %s, got %s", inputEndTimeStr, outputEndTimeStr)
+			return false
+		}
+	}
+	return true
+}
+
+func isASSOutputValid(headers string, input []string, output []string) bool {
 	pos, err := findFormatPositions(headers)
 	if err != nil {
 		discord.Errorf("Unable to process format line when validating ASS: %+v", err)
@@ -90,23 +128,14 @@ func isASSOutputValid(headers string, output []string) bool {
 				line, pos.TotalCommas, commas)
 			return false
 		}
-		startTimeStr := extractDialogueField(line, pos.Start, false)
-		endTimeStr := extractDialogueField(line, pos.End, false)
 		textStr := strings.TrimSpace(extractDialogueField(line, pos.Text, true))
 		if len(textStr) == 0 {
 			discord.Errorf("Subtitle dialogue line has no text: %s", line)
 			return false
 		}
-		startTime, err1 := time.Parse(ASSTimeFormat, startTimeStr)
-		endTime, err2 := time.Parse(ASSTimeFormat, endTimeStr)
-		if err1 != nil || err2 != nil {
-			discord.Errorf("Subtitle is malformed: %s", line)
-			return false
-		}
-		duration := endTime.Sub(startTime)
-		if duration > 2*time.Minute {
-			// TODO: match input duration (if long durations exist in input)
-			discord.Errorf("Subtitle duration is too long: %s, %+v", line, duration)
+	}
+	if len(input) > 0 {
+		if !matchStartEndTimes(headers, input, normalizedOutput) {
 			return false
 		}
 	}
@@ -129,7 +158,7 @@ func isASSFileValid(filePath string) error {
 		fmt.Printf("subtitle doesn't contain any dialogue (%d lines): %s\n", dialogueLines, filePath)
 		return nil
 	}
-	valid := isASSOutputValid(headers, strings.Split(dialogue, "\n"))
+	valid := isASSOutputValid(headers, nil, strings.Split(dialogue, "\n"))
 	if !valid {
 		fmt.Printf("%s is invalid\n", filePath)
 	}
