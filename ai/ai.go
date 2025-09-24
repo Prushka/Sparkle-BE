@@ -70,15 +70,13 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		if a.IsLocal() {
 			defaultLimit = 120
 		}
-		err := limit(inputs, defaultLimit)
-		if err != nil {
+		if err := limit(inputs, defaultLimit); err != nil {
 			return nil, err
 		}
 
 		var translated []string
 
-		err = a.StartChat(ctx, systemMessage)
-		if err != nil {
+		if err := a.StartChat(ctx, systemMessage); err != nil {
 			return nil, err
 		}
 		for idx, input := range inputs {

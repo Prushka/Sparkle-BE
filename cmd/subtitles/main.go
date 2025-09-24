@@ -112,9 +112,8 @@ func pipeline(j job.Job) error {
 			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
 				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
 
-			err = translation.Translate(j.Input, j.OutputJoin(), source,
-				dest, languageWithCode, subtitleType, false)
-			if err != nil {
+			if err := translation.Translate(j.Input, j.OutputJoin(), source,
+				dest, languageWithCode, subtitleType, false); err != nil {
 				discord.Errorf("Error translating: %v", err)
 				return err
 			}
