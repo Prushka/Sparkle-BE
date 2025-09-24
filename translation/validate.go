@@ -100,10 +100,14 @@ func matchStartEndTimes(headers string, input []string, output []string) bool {
 		}
 		if inputStartTimeStr != outputStartTimeStr {
 			discord.Errorf("Subtitle start time mismatch with input: expected %s, got %s", inputStartTimeStr, outputStartTimeStr)
+			discord.Errorf(inputLine)
+			discord.Errorf(outputLine)
 			return false
 		}
 		if inputEndTimeStr != outputEndTimeStr {
 			discord.Errorf("Subtitle end time mismatch with input: expected %s, got %s", inputEndTimeStr, outputEndTimeStr)
+			discord.Errorf(inputLine)
+			discord.Errorf(outputLine)
 			return false
 		}
 	}
