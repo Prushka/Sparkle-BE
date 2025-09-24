@@ -66,10 +66,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	postProcessor func(input, output string) string) ([]string, error) {
 
 	run := func(a AI) ([]string, error) {
-		defaultLimit := 8
-		if a.IsLocal() {
-			defaultLimit = 120
-		}
+		defaultLimit := 360000 / config.TheConfig.TranslationBatchLength
 		if err := limit(inputs, defaultLimit); err != nil {
 			return nil, err
 		}

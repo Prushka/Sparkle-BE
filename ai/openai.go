@@ -91,8 +91,9 @@ func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
 	}
 
-	if config.TheConfig.NoHistory {
-		o.messages = o.messages[:1]
+	systemMessage := o.messages[0]
+	if len(o.messages)-1 > config.TheConfig.HistoryCount*2 {
+		o.messages = append([]openai.ChatCompletionMessageParamUnion{systemMessage}, o.messages[len(o.messages)-config.TheConfig.HistoryCount*2:]...)
 	}
 
 	o.messages = append(o.messages, openai.UserMessage(input))
