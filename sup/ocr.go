@@ -139,7 +139,7 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 					Texts: VT{},
 				}
 			}
-			txtSubs[index].Texts[text]++
+			txtSubs[index].Texts[text] = append(txtSubs[index].Texts[text], model)
 			txtSubs[index].Texts = txtSubs[index].Texts.converge()
 		}
 	}
@@ -153,6 +153,12 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 			}
 		} else {
 			log.Warnf("OCR subtitle has no majority votes %v", v)
+			results[i] = VTTSubtitle{
+				Start: v.Start,
+				End:   v.End,
+				Text:  v.Texts.resultByLastModel(),
+			}
+			log.Warnf("Using last model result: %s", results[i].Text)
 		}
 	}
 	return results, nil

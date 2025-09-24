@@ -2,18 +2,27 @@ package sup
 
 import (
 	"Sparkle/config"
+	"slices"
 	"strings"
 )
 
-// VT is a map from string to int.
-type VT map[string]int
+type VT map[string][]string
+
+func (vt VT) resultByLastModel() string {
+	for key, values := range vt {
+		if slices.Contains(values, config.TheConfig.OCRVLMModels[len(config.TheConfig.OCRVLMModels)-1]) {
+			return key
+		}
+	}
+	return ""
+}
 
 func (vt VT) majorityVote() (string, bool) {
 	var mostVoted string
 	maxVotes := 0
 	for key, votes := range vt {
-		if votes > maxVotes {
-			maxVotes = votes
+		if len(votes) > maxVotes {
+			maxVotes = len(votes)
 			mostVoted = key
 		}
 	}
@@ -37,10 +46,10 @@ func (vt VT) converge() VT {
 			if shouldReplace(key, existingKey) {
 				oldVal := result[existingKey]
 				delete(result, existingKey)
-				result[key] = value + oldVal
+				result[key] = append(oldVal, value...)
 				normalizedKeys[normalizedKey] = key
 			} else {
-				result[existingKey] += value
+				result[existingKey] = append(result[existingKey], value...)
 			}
 		} else {
 			// This is the first time we see this normalized key.
