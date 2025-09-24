@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -90,27 +89,26 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 	}()
 	for index, pg := range imgSubs {
 		imgSubs[index].Image = TrimTransparentColumns(TrimTransparentRows(pg.Image))
-		save := func() {
-			if !config.TheConfig.Debug {
-				return
-			}
-			fname := fmt.Sprintf("debug/%03d.png", index+1)
-			f, err := os.Create(fname)
-			if err != nil {
-				log.Errorf("failed to create debug image file: %v", err)
-			}
-			defer func(f *os.File) {
-				err := f.Close()
-				if err != nil {
-					log.Errorf("failed to close debug image file: %v", err)
-				}
-			}(f)
-			err = png.Encode(f, imgSubs[index].Image)
-			if err != nil {
-				log.Errorf("failed to encode debug image to file: %v", err)
-			}
-		}
-		save()
+		//save := func() {
+		//	if !config.TheConfig.Debug {
+		//		return
+		//	}
+		//	fname := fmt.Sprintf("debug/%03d.png", index+1)
+		//	f, err := os.Create(fname)
+		//	if err != nil {
+		//		log.Errorf("failed to create debug image file: %v", err)
+		//	}
+		//	defer func(f *os.File) {
+		//		err := f.Close()
+		//		if err != nil {
+		//			log.Errorf("failed to close debug image file: %v", err)
+		//		}
+		//	}(f)
+		//	err = png.Encode(f, imgSubs[index].Image)
+		//	if err != nil {
+		//		log.Errorf("failed to encode debug image to file: %v", err)
+		//	}
+		//}
 	}
 	for _, model := range config.TheConfig.OCRVLMModels {
 		discord.Infof("Starting OCR with model: %s", model)
