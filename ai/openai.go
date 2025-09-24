@@ -21,6 +21,7 @@ type gpt struct {
 
 type gptResponse struct {
 	response *openai.ChatCompletion
+	isLocal  bool
 }
 
 func NewGPT(apiKey string) AI {
@@ -52,7 +53,11 @@ func (r *gptResponse) Text() string {
 	if r.response == nil || len(r.response.Choices) == 0 {
 		return ""
 	}
-	return r.response.Choices[0].Message.Content
+	t := r.response.Choices[0].Message.Content
+	if r.isLocal {
+		return stripThoughts(t)
+	}
+	return t
 }
 
 func (r *gptResponse) Response() interface{} {
@@ -102,7 +107,7 @@ func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 		Model:    config.TheConfig.OpenAIModel,
 		Messages: o.messages,
 	})
-	result := &gptResponse{response: resp}
+	result := &gptResponse{response: resp, isLocal: o.isLocal}
 	if err != nil {
 		return result, err
 	}
