@@ -125,7 +125,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 			case SubtitlesType:
 				copySubtitle := func() error {
 					if stream.Tags.Language != "eng" {
-						return fmt.Errorf("non-eng subtitle, skipping: %s", stream.Tags.Language)
+						return fmt.Errorf("non-eng image subtitle, skipping: %s", stream.Tags.Language)
 					}
 					toCodec, ok := codecMap[stream.CodecName]
 					if !ok {
