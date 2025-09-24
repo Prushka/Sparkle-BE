@@ -105,7 +105,7 @@ func (job *Job) ExtractStreams(path, t string) error {
 						job.OutputJoin(utils.ReplaceExtension(filename, ".vtt")),
 						"-c:s", "ass", job.OutputJoin(filename))
 				} else if cs == "mkvextract" {
-					cmd = exec.Command("mkvextract", "tracks", path, fmt.Sprintf("%d:%s", stream.Index, job.OutputJoin(filename)))
+					cmd = exec.Command(config.TheConfig.MKVExtract, "tracks", path, fmt.Sprintf("%d:%s", stream.Index, job.OutputJoin(filename)))
 				} else {
 					csFlag := "-c:s"
 					if stream.CodecType == AudioType {

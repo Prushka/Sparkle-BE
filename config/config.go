@@ -18,6 +18,7 @@ type Config struct {
 	Input                  string `env:"INPUT" envDefault:"./input"`
 	Ffmpeg                 string `env:"FFMPEG" envDefault:"ffmpeg"`
 	Ffprobe                string `env:"FFPROBE" envDefault:"ffprobe"`
+	MKVExtract             string `env:"MKVEXTRACT" envDefault:"mkvextract"`
 	HandbrakeCli           string `env:"HANDBRAKE_CLI" envDefault:"HandBrakeCLI"`
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"18"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
