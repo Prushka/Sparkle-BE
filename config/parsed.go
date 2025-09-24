@@ -35,7 +35,5 @@ func GetSystemMessage(inputLang, translationLanguage, media string, whichOne int
 	} else {
 		panic(fmt.Errorf("unknown subtitle type: %d", whichOne))
 	}
-	fmt.Println(fmt.Sprintf(systemMessageASS, inputLang, translationLanguage, inputLang, media, translationLanguage, translationLanguage))
-	fmt.Println(fmt.Sprintf(systemMessageWEBVTT, inputLang, translationLanguage, inputLang, media, translationLanguage, translationLanguage))
 	return fmt.Sprintf(msg, inputLang, translationLanguage, inputLang, media, translationLanguage, translationLanguage)
 }

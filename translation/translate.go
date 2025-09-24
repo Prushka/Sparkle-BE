@@ -136,7 +136,7 @@ func TranslateSubtitlesASS(headers string, inputs []string, language, systemMess
 		discord.Infof("Output length: %d, Output lines: %d",
 			len(strings.Join(t, "\n")),
 			outputLines)
-		return float64(outputLines)/float64(len(strings.Split(input, "\n"))) >= config.TheConfig.TranslationOutputCutoff &&
+		return outputLines == len(strings.Split(input, "\n")) &&
 			isASSOutputValid(headers, t)
 	}, func(input string) int {
 		return len(strings.Split(input, "\n"))
@@ -169,7 +169,7 @@ func TranslateSubtitlesWebVTT(input []string, language, systemMessage string) (s
 			len(sanitized),
 			len(strings.Split(sanitized, "\n")),
 			sanitizedTimeLines)
-		return float64(sanitizedTimeLines)/float64(inputTimeLines) >= config.TheConfig.TranslationOutputCutoff
+		return sanitizedTimeLines == inputTimeLines
 	}, func(input string) int {
 		return utils.CountVTTTimeLines(input)
 	}, func(input, output string) string {

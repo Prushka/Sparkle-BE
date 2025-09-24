@@ -64,9 +64,8 @@ type Config struct {
 	OpenAIUrl                string   `env:"OPENAI_URL" envDefault:""`
 	GeminiModel              string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa
-	TranslationOutputCutoff  float64  `env:"TRANSLATION_OUTPUT_CUTOFF" envDefault:"0.99"`
 	TranslationSubtitleTypes []string `env:"TRANSLATION_SUBTITLE_TYPES" envDefault:"ass"`
-	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
+	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"3000"`
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
 	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
