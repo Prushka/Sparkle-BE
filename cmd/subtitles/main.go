@@ -59,25 +59,23 @@ func process() {
 }
 
 func skip(j job.Job) bool {
-	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
-		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			ss := strings.Split(languageWithCode, "/")
-			languageCode := ss[1]
-			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
-				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
-			stat, err := os.Stat(dest)
-			if err != nil {
-				return false
-			}
-			statInput, err := os.Stat(j.InputJoin(j.Input))
-			if err != nil {
-				discord.Errorf("Error getting stat for input: %v", err)
-				return false
-			}
-			if statInput.ModTime().After(stat.ModTime()) {
-				// If the input file is newer than the subtitle file, we need to process it again
-				return false
-			}
+	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+		ss := strings.Split(languageWithCode, "/")
+		languageCode := ss[1]
+		dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
+			fmt.Sprintf(".%s.ass", languageCode)))
+		stat, err := os.Stat(dest)
+		if err != nil {
+			return false
+		}
+		statInput, err := os.Stat(j.InputJoin(j.Input))
+		if err != nil {
+			discord.Errorf("Error getting stat for input: %v", err)
+			return false
+		}
+		if statInput.ModTime().After(stat.ModTime()) {
+			// If the input file is newer than the subtitle file, we need to process it again
+			return false
 		}
 	}
 	return true
@@ -106,20 +104,18 @@ func pipeline(j job.Job) error {
 		return err
 	}
 
-	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
-		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			languageCode := strings.Split(languageWithCode, "/")[1]
-			dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
-				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
+	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+		languageCode := strings.Split(languageWithCode, "/")[1]
+		dest := j.InputJoin(strings.ReplaceAll(j.Input, ".mkv",
+			fmt.Sprintf(".%s.ass", languageCode)))
 
-			if err := translation.Translate(j.Input, j.OutputJoin(), source,
-				dest, languageWithCode, subtitleType, false); err != nil {
-				discord.Errorf("Error translating: %v", err)
-				return err
-			}
-
-			discord.Infof("Translated: %s", dest)
+		if err := translation.Translate(j.Input, j.OutputJoin(), source,
+			dest, languageWithCode, false); err != nil {
+			discord.Errorf("Error translating: %v", err)
+			return err
 		}
+
+		discord.Infof("Translated: %s", dest)
 	}
 
 	return nil

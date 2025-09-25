@@ -6,6 +6,7 @@ import (
 	"Sparkle/utils"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -54,21 +55,13 @@ func Init() {
 	}
 }
 
-func limit(input []string, limit int) error {
-	if len(input) > limit {
-		return fmt.Errorf("too many split segments: %d/%d", len(input), limit)
-	}
-	return nil
-}
-
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
-	inputs []string, pass func(input string, result Result) bool, timelinesCounter func(input string) int,
-	postProcessor func(input, output string) string) ([]string, error) {
+	inputPairSlices []utils.PairSlice[string, int], processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error)) ([]string, error) {
 
 	run := func(a AI) ([]string, error) {
 		defaultLimit := 360000 / config.TheConfig.TranslationBatchLength
-		if err := limit(inputs, defaultLimit); err != nil {
-			return nil, err
+		if len(inputPairSlices) > defaultLimit {
+			return nil, fmt.Errorf("too many split segments: %d/%d", len(inputPairSlices), defaultLimit)
 		}
 
 		var translated []string
@@ -76,15 +69,23 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		if err := a.StartChat(ctx, systemMessage); err != nil {
 			return nil, err
 		}
-		for idx, input := range inputs {
-			inputLines := timelinesCounter(input)
-			discord.Infof("Processing index: %d/%d, Input length: %d, Input timelines: %d",
-				idx, len(inputs)-1, len(input), inputLines)
-			result, err := SendWithRetry(ctx, a, input, pass)
+		for idx, inputSlice := range inputPairSlices {
+			discord.Infof("Processing index: %d/%d",
+				idx+1, len(inputSlice))
+			fmt.Println(strings.Join(inputSlice.LeftSlice(), "\n"))
+			result, err := SendWithRetry(ctx, a, strings.Join(inputSlice.LeftSlice(), "\n"),
+				func(output string) bool {
+					_, err := processor(inputSlice, output)
+					return err == nil
+				})
 			if err != nil || result == nil {
 				return nil, err
 			}
-			translated = append(translated, postProcessor(input, result.Text()))
+			post, err := processor(inputSlice, result.Text())
+			if err != nil {
+				return nil, err
+			}
+			translated = append(translated, post)
 		}
 		return translated, nil
 	}
@@ -122,7 +123,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	return nil, fmt.Errorf("all clients failed or exhausted")
 }
 
-func SendWithRetry(ctx context.Context, a AI, input string, pass func(input string, result Result) bool) (Result, error) {
+func SendWithRetry(ctx context.Context, a AI, input string, pass func(output string) bool) (Result, error) {
 	var err error
 	var attempted []Result
 	attempts := config.TheConfig.TranslationAttempts
@@ -139,7 +140,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(input stri
 			}
 		} else {
 			attempted = append(attempted, result)
-			if pass(input, result) {
+			if pass(result.Text()) {
 				return result, nil
 			}
 		}

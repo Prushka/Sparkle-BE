@@ -283,38 +283,34 @@ func (job *Job) translateFlow() error {
 		return fmt.Errorf("%s doesn't contain translatable subtitle", job.Input)
 	}
 
-	for _, subtitleType := range config.TheConfig.TranslationSubtitleTypes {
-		for _, languageWithCode := range config.TheConfig.TranslationLanguages {
-			languageCode := strings.Split(languageWithCode, "/")[1]
-			dest := job.OutputJoin(fmt.Sprintf("%s.%s", languageCode, subtitleType))
+	for _, languageWithCode := range config.TheConfig.TranslationLanguages {
+		languageCode := strings.Split(languageWithCode, "/")[1]
+		dest := job.OutputJoin(fmt.Sprintf("%s.ass", languageCode))
 
-			translationRunProduct := job.InputJoin(utils.ReplaceExtension(job.Input, fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
-			if _, err := os.Stat(translationRunProduct); err == nil {
-				discord.Infof("Copying translation product to encoder folder: %s -> %s", translationRunProduct, dest)
-				_, err = utils.CopyFile(translationRunProduct, dest)
-				if err != nil {
-					discord.Errorf("Error copying translation product: %v", err)
-				} else if subtitleType == "ass" {
-					err = translation.AssToVTT(dest)
-					if err != nil {
-						discord.Errorf("Unable to convert translation product from ass to vtt: %v", err)
-					}
-				}
+		translationRunProduct := job.InputJoin(utils.ReplaceExtension(job.Input, fmt.Sprintf(".%s.ass", languageCode)))
+		if _, err := os.Stat(translationRunProduct); err == nil {
+			discord.Infof("Copying translation product to encoder folder: %s -> %s", translationRunProduct, dest)
+			_, err = utils.CopyFile(translationRunProduct, dest)
+			if err != nil {
+				return fmt.Errorf("error copying translation product: %v", err)
 			}
-
-			if err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, subtitleType, true); err != nil {
-				discord.Errorf("Error translating: %v", err)
-				return err
+			err = translation.AssToVTT(dest)
+			if err != nil {
+				return fmt.Errorf("unable to convert translation product from ass to vtt: %v", err)
 			}
-
-			sourceDest := job.InputJoin(strings.ReplaceAll(job.Input, ".mkv",
-				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
-			discord.Infof("Copying encoder translation %s to %s", dest, sourceDest)
-			if _, err := utils.CopyFile(dest, sourceDest); err != nil {
-				return err
-			}
-			discord.Infof("Translated: %s", dest)
 		}
+
+		if err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, true); err != nil {
+			return fmt.Errorf("error translating: %v", err)
+		}
+
+		sourceDest := job.InputJoin(strings.ReplaceAll(job.Input, ".mkv",
+			fmt.Sprintf(".%s.ass", languageCode)))
+		discord.Infof("Copying encoder translation %s to %s", dest, sourceDest)
+		if _, err := utils.CopyFile(dest, sourceDest); err != nil {
+			return err
+		}
+		discord.Infof("Translated: %s", dest)
 	}
 
 	return nil
@@ -379,12 +375,14 @@ func (job *Job) Pipeline() error {
 			if err != nil {
 				return err
 			}
-			job.mapAudioTracks()
+			if err := job.mapAudioTracks(); err != nil {
+				return err
+			}
 			for _, audio := range job.Streams {
 				if audio.CodecType == AudioType {
 					err = os.Remove(job.OutputJoin(audio.Location))
 					if err != nil {
-						discord.Errorf("error removing file: %v", err)
+						return fmt.Errorf("error removing file: %v", err)
 					}
 				}
 			}
@@ -407,7 +405,7 @@ func (job *Job) Pipeline() error {
 	return nil
 }
 
-func (job *Job) mapAudioTracks() {
+func (job *Job) mapAudioTracks() error {
 	job.MappedAudio = make(map[string][]Stream)
 	for _, audio := range job.Streams {
 		if audio.CodecType != AudioType {
@@ -420,16 +418,15 @@ func (job *Job) mapAudioTracks() {
 			discord.Infof("Command: %s", cmd.String())
 			_, err := utils.RunCommand(cmd)
 			if err != nil {
-				discord.Errorf("error mapping audio tracks: %v", err)
-			} else {
-				if _, ok := job.MappedAudio[codec]; !ok {
-					job.MappedAudio[codec] = make([]Stream, 0)
-				}
-				job.MappedAudio[codec] = append(job.MappedAudio[codec], audio)
+				return fmt.Errorf("error mapping audio tracks: %v", err)
 			}
+			if _, ok := job.MappedAudio[codec]; !ok {
+				job.MappedAudio[codec] = make([]Stream, 0)
+			}
+			job.MappedAudio[codec] = append(job.MappedAudio[codec], audio)
 		}
 	}
-	return
+	return nil
 }
 
 func (job *Job) renameAndMove(source string, dest string) {
@@ -465,13 +462,11 @@ func (job *Job) extractDominantColor() (err error) {
 		}
 	}(f)
 	if err != nil {
-		discord.Errorf("Poster not found: " + job.OutputJoin("poster.jpg"))
-		return err
+		return fmt.Errorf("poster not found: " + job.OutputJoin("poster.jpg"))
 	}
 	img, _, err := image.Decode(f)
 	if err != nil {
-		discord.Errorf("Error decoding image: %v", err)
-		return err
+		return fmt.Errorf("error decoding image: %v", err)
 	}
 	color := dominantcolor.Hex(dominantcolor.Find(img))
 	job.DominantColors = append(job.DominantColors, color)
@@ -599,13 +594,11 @@ func (job *Job) updateState(newState string) error {
 	job.State = newState
 	jobStr, err := json.Marshal(job)
 	if err != nil {
-		discord.Errorf("error persisting job: %v", err)
-		return err
+		return fmt.Errorf("error persisting job: %v", err)
 	}
 	err = os.WriteFile(job.OutputJoin(JobFile), jobStr, 0644)
 	if err != nil {
-		discord.Errorf("error persisting job: %v", err)
-		return err
+		return fmt.Errorf("error persisting job: %v", err)
 	}
 	return nil
 }
