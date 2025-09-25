@@ -16,6 +16,7 @@ type AI interface {
 	GetLastExhausted() time.Time
 	SetLastExhausted()
 	IsLocal() bool
+	ClearPreviousRun()
 }
 
 type Result interface {
@@ -144,6 +145,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(output str
 				return result, nil
 			}
 		}
+		a.ClearPreviousRun()
 	}
 	longest := 0
 	var longestResult Result

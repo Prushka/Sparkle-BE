@@ -79,6 +79,10 @@ func isErrorProhibitedContent(err error) bool {
 	return strings.Contains(err.Error(), "PROHIBITED_CONTENT")
 }
 
+func (g *gemini) ClearPreviousRun() {
+
+}
+
 func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 	now := time.Now()
 	defer func() {

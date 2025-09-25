@@ -83,6 +83,13 @@ func (o *gpt) StartChat(_ context.Context, systemInstruction string) error {
 	return nil
 }
 
+func (o *gpt) ClearPreviousRun() {
+	if len(o.messages) > 1 {
+		// remove the last two messages (user and assistant)
+		o.messages = o.messages[:len(o.messages)-2]
+	}
+}
+
 func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 	now := time.Now()
 	defer func() {
