@@ -307,6 +307,12 @@ func (job *Job) translateFlow() error {
 				return err
 			}
 
+			sourceDest := job.InputJoin(strings.ReplaceAll(job.Input, ".mkv",
+				fmt.Sprintf(".%s.%s", languageCode, subtitleType)))
+			discord.Infof("Copying encoder translation %s to %s", dest, sourceDest)
+			if _, err := utils.CopyFile(dest, sourceDest); err != nil {
+				return err
+			}
 			discord.Infof("Translated: %s", dest)
 		}
 	}
