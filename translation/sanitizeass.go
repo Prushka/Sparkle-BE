@@ -41,26 +41,49 @@ func findFormatPositions(input string) (pos FormatPositions, err error) {
 	return
 }
 
-func sanitizeInputASS(input string) (string, string, error) {
+type ASSSubtitle struct {
+	headers                  []string
+	dialogues                []string
+	distilledDialogues       []string
+	nonTranslatableDialogues []string
+	pos                      FormatPositions
+	sanitizedASS             []string // everything from input, except dialogues lines that are not translatable
+}
+
+// sanitizeInputASS returns headers, translatable dialogue lines, and error if any.
+// If distillDialogue is true, only the start time, end time, and text fields are kept in the dialogue lines.
+func sanitizeInputASS(input string) (*ASSSubtitle, error) {
+	sub := &ASSSubtitle{}
 	lines := strings.Split(strings.ReplaceAll(input, string(rune(0)), ""), "\n")
-	var resultLines []string
-	var dialogueLines []string
 	pos, err := findFormatPositions(input)
 	if err != nil {
-		return "", "", err
+		return sub, err
 	}
+	sub.pos = pos
 	counts := make(map[string]int)
 	for _, line := range lines {
 		counts[line]++
 	}
 	for _, line := range lines {
-		if isDialogueLine(line) && isTranslatableText(line, pos, counts) {
-			dialogueLines = append(dialogueLines, RemoveComments(sanitizeDialogueLineTime(line, pos.Start, pos.End)))
+		if isDialogueLine(line) {
+			if sub.isTranslatableText(line, counts) {
+				subtitleLine := RemoveComments(sanitizeDialogueLineTime(line, pos.Start, pos.End))
+				startTimeStr := extractDialogueField(subtitleLine, pos.Start, false)
+				endTimeStr := extractDialogueField(subtitleLine, pos.End, false)
+				textStr := strings.TrimSpace(extractDialogueField(subtitleLine, pos.Text, true))
+				distilledSubtitleLine := fmt.Sprintf("%s,%s,%s", startTimeStr, endTimeStr, textStr)
+				sub.dialogues = append(sub.dialogues, subtitleLine)
+				sub.distilledDialogues = append(sub.distilledDialogues, distilledSubtitleLine)
+				sub.sanitizedASS = append(sub.sanitizedASS, subtitleLine)
+			} else {
+				sub.nonTranslatableDialogues = append(sub.nonTranslatableDialogues, line)
+			}
 		} else {
-			resultLines = append(resultLines, line)
+			sub.headers = append(sub.headers, line)
+			sub.sanitizedASS = append(sub.sanitizedASS, line)
 		}
 	}
-	return strings.Join(resultLines, "\n"), strings.Join(dialogueLines, "\n"), nil
+	return sub, nil
 }
 
 func isDialogueLine(input string) bool {
@@ -77,11 +100,9 @@ func isFormatLine(input string) bool {
 		strings.Contains(strings.ToLower(input), "text")
 }
 
-func sanitizeOutputASS(headers, translated string) string {
-	headerLines := strings.Split(headers, "\n")
-	translatedLines := normalizeBlock(strings.Split(
-		removeSingleFullStops(removeSingleFullStops(translated, '。'), '，'), "\n"),
-		false)
+func (sub *ASSSubtitle) sanitizeOutput(translated string) string {
+	translatedLines := removeEmptyLinesAndTrimSpaces(strings.Split(
+		removeSingleFullStops(removeSingleFullStops(translated, '。'), '，'), "\n"))
 	for i, l := range translatedLines {
 		runes := []rune(l)
 		n := len(runes)
@@ -99,12 +120,8 @@ func sanitizeOutputASS(headers, translated string) string {
 			}
 		}
 	}
-	for i, line := range headerLines {
-		if isFormatLine(line) {
-			headerLines[i] = line + "\n" + strings.Join(translatedLines, "\n")
-		}
-	}
-	return strings.Join(headerLines, "\n")
+	return strings.Join(append(sub.headers, append(translatedLines, sub.nonTranslatableDialogues...)...),
+		"\n")
 }
 
 func findField(input, field string) int {
@@ -214,11 +231,10 @@ var weakAnimationTags = []*regexp.Regexp{
 
 // isTranslatableText checks if an ASS dialogue line contains meaningful, translatable text.
 // It returns false for drawing commands, visual effects, or lines with very short durations.
-func isTranslatableText(dialogueLine string, pos FormatPositions, counts map[string]int) bool {
-
-	textPart := extractDialogueField(dialogueLine, pos.Text, true)
-	startTimeStr := extractDialogueField(dialogueLine, pos.Start, false)
-	endTimeStr := extractDialogueField(dialogueLine, pos.End, false)
+func (sub *ASSSubtitle) isTranslatableText(dialogueLine string, counts map[string]int) bool {
+	textPart := extractDialogueField(dialogueLine, sub.pos.Text, true)
+	startTimeStr := extractDialogueField(dialogueLine, sub.pos.Start, false)
+	endTimeStr := extractDialogueField(dialogueLine, sub.pos.End, false)
 
 	// Heuristic 1: Check for drawing commands, clipping, or animation within the override block.
 	if hardVisualEffectRegex.MatchString(textPart) {
@@ -344,21 +360,12 @@ func AssToVTT(file string) error {
 	if err != nil {
 		return err
 	}
-	headers, translatable, err := sanitizeInputASS(string(fBytes))
+	sub, err := sanitizeInputASS(string(fBytes))
 	if err != nil {
 		return err
 	}
-	var resultLines []string
-	for _, h := range strings.Split(headers, "\n") {
-		if !isDialogueLine(h) {
-			resultLines = append(resultLines, h)
-		} else {
-			break
-		}
-	}
-	out := strings.Join(resultLines, "\n") + "\n" + translatable
 	tmp := addTempSuffix(file)
-	if err := os.WriteFile(tmp, []byte(out), 0644); err != nil {
+	if err := os.WriteFile(tmp, []byte(strings.Join(sub.sanitizedASS, "\n")), 0644); err != nil {
 		return fmt.Errorf("failed to write converted file: %w", err)
 	}
 

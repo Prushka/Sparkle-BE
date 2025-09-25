@@ -2,148 +2,70 @@ package translation
 
 import (
 	"Sparkle/discord"
+	"Sparkle/utils"
 	"fmt"
 	"os"
 	"strings"
 	"time"
-
-	mapset "github.com/deckarep/golang-set/v2"
 )
 
 const ASSTimeFormat = "15:04:05.00"
 
-func correctTimestamps(headers, inputStr, outputStr string) []string {
-	input := normalizeBlock(strings.Split(inputStr, "\n"), false)
-	output := normalizeBlock(strings.Split(outputStr, "\n"), false)
-
-	pos, err := findFormatPositions(headers)
-	if err != nil {
-		discord.Errorf("Unable to process format line when correcting timestamps: %+v", err)
-		return output
+func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out []string) (string, error) {
+	output := removeEmptyLinesAndTrimSpaces(out)
+	if len(output) == 0 {
+		return "", fmt.Errorf("subtitle contains no dialogues")
 	}
-	inputStarts := make(map[string]mapset.Set[string])
-	inputEnds := make(map[string]mapset.Set[string])
-	for _, line := range input {
-		startTimeStr := extractDialogueField(line, pos.Start, false)
-		endTimeStr := extractDialogueField(line, pos.End, false)
-		_, err1 := time.Parse(ASSTimeFormat, startTimeStr)
-		_, err2 := time.Parse(ASSTimeFormat, endTimeStr)
-		if err1 != nil || err2 != nil {
-			discord.Errorf("Input subtitle is malformed: %s", line)
-			return output
-		}
-		if _, ok := inputStarts[startTimeStr]; !ok {
-			inputStarts[startTimeStr] = mapset.NewSet[string]()
-		}
-		if _, ok := inputEnds[endTimeStr]; !ok {
-			inputEnds[endTimeStr] = mapset.NewSet[string]()
-		}
-		inputStarts[startTimeStr].Add(endTimeStr)
-		inputEnds[endTimeStr].Add(startTimeStr)
+	if len(inputPairSlice) != len(output) {
+		return "", fmt.Errorf("subtitle line count mismatch with input: expected %d, got %d", len(inputPairSlice), len(output))
 	}
-
-	for i, line := range output {
-		startTimeStr := extractDialogueField(line, pos.Start, false)
-		endTimeStr := extractDialogueField(line, pos.End, false)
-		_, err1 := time.Parse(ASSTimeFormat, startTimeStr)
-		_, err2 := time.Parse(ASSTimeFormat, endTimeStr)
-		if err1 != nil && err2 != nil {
-			discord.Errorf("Unable to correct malformed subtitle due to malformed start and end time: %s", line)
-			continue
-		}
-		if err1 != nil { // only start time malformed
-			corrStartTime, ok := inputEnds[endTimeStr]
-			if !ok || corrStartTime == nil || corrStartTime.Cardinality() != 1 {
-				discord.Errorf("Malformed start time but can't find correct start time: %s, %+v", line, corrStartTime)
-				continue
-			}
-			output[i] = strings.ReplaceAll(line, startTimeStr, corrStartTime.ToSlice()[0])
-			discord.Infof("Corrected: %s -> %s", line, output[i])
-		} else if err2 != nil { // only end time malformed
-			corrEndTime, ok := inputStarts[startTimeStr]
-			if !ok || corrEndTime == nil || corrEndTime.Cardinality() != 1 {
-				discord.Errorf("Malformed end time but can't find correct end time: %s, %+v", line, corrEndTime)
-				continue
-			}
-			output[i] = strings.ReplaceAll(line, endTimeStr, corrEndTime.ToSlice()[0])
-			discord.Infof("Corrected: %s -> %s", line, output[i])
-		}
-	}
-	return output
-}
-
-func matchStartEndTimes(headers string, input []string, output []string) bool {
-	if len(input) != len(output) {
-		discord.Errorf("Subtitle line count mismatch with input: expected %d, got %d", len(input), len(output))
-		return false
-	}
-	pos, _ := findFormatPositions(headers)
+	res := make([]string, len(output))
 	for i := range output {
-		inputLine := input[i]
+		inputLinePair := inputPairSlice[i]
+		inputLine := inputLinePair.Left
 		outputLine := output[i]
-		inputStartTimeStr := extractDialogueField(inputLine, pos.Start, false)
-		inputEndTimeStr := extractDialogueField(inputLine, pos.End, false)
+		inputParts := strings.SplitN(inputLine, ",", 3)
+		outputParts := strings.SplitN(outputLine, ",", 3)
+		if len(inputParts) != 3 || len(outputParts) != 3 {
+			return "", fmt.Errorf("subtitle line has less commas than expected, input: %s, output: %s", inputLine, outputLine)
+		}
+		inputStartTimeStr := inputParts[0]
+		inputEndTimeStr := inputParts[1]
 		_, err1 := time.Parse(ASSTimeFormat, inputStartTimeStr)
 		_, err2 := time.Parse(ASSTimeFormat, inputEndTimeStr)
 		if err1 != nil || err2 != nil {
-			discord.Errorf("Input subtitle time is malformed: %s", inputLine)
-			return false
+			return "", fmt.Errorf("input subtitle time is malformed: %s", inputLine)
 		}
-
-		outputStartTimeStr := extractDialogueField(outputLine, pos.Start, false)
-		outputEndTimeStr := extractDialogueField(outputLine, pos.End, false)
+		outputStartTimeStr := outputParts[0]
+		outputEndTimeStr := outputParts[1]
+		outputTextStr := strings.TrimSpace(outputParts[2])
+		if len(outputTextStr) == 0 {
+			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputTextStr)
+		}
 		_, err1 = time.Parse(ASSTimeFormat, outputStartTimeStr)
 		_, err2 = time.Parse(ASSTimeFormat, outputEndTimeStr)
 		if err1 != nil || err2 != nil {
-			discord.Errorf("Output subtitle time is malformed: %s", outputLine)
-			return false
+			return "", fmt.Errorf("output subtitle time is malformed: %s", outputLine)
 		}
 		if inputStartTimeStr != outputStartTimeStr {
-			discord.Errorf("Subtitle start time mismatch with input: expected %s, got %s", inputStartTimeStr, outputStartTimeStr)
-			discord.Errorf(inputLine)
-			discord.Errorf(outputLine)
-			return false
+			discord.Errorf("%s", inputLine)
+			discord.Errorf("%s", outputLine)
+			return "", fmt.Errorf("subtitle start time mismatch with input: expected %s, got %s", inputStartTimeStr, outputStartTimeStr)
 		}
 		if inputEndTimeStr != outputEndTimeStr {
-			discord.Errorf("Subtitle end time mismatch with input: expected %s, got %s", inputEndTimeStr, outputEndTimeStr)
-			discord.Errorf(inputLine)
-			discord.Errorf(outputLine)
-			return false
+			discord.Errorf("%s", inputLine)
+			discord.Errorf("%s", outputLine)
+			return "", fmt.Errorf("subtitle end time mismatch with input: expected %s, got %s", inputEndTimeStr, outputEndTimeStr)
 		}
-	}
-	return true
-}
 
-func isASSOutputValid(headers string, input []string, output []string) bool {
-	pos, err := findFormatPositions(headers)
-	if err != nil {
-		discord.Errorf("Unable to process format line when validating ASS: %+v", err)
-		return false
-	}
-	normalizedOutput := normalizeBlock(output, false)
-	if len(normalizedOutput) == 0 {
-		discord.Errorf("Subtitle contains no dialogues")
-		return false
-	}
-	for _, line := range normalizedOutput {
-		commas := strings.Count(line, ",")
-		if commas < pos.TotalCommas {
-			discord.Errorf("Subtitle contains less commas than format line: %s, expected: %d, got: %d",
-				line, pos.TotalCommas, commas)
-			return false
+		oriInput := sub.dialogues[inputLinePair.Right]
+		inputLineSplit := strings.Split(oriInput, ",")
+		if len(inputLineSplit) <= sub.pos.Text {
+			return "", fmt.Errorf("unable to find text field in input line: %s", inputLine)
 		}
-		textStr := strings.TrimSpace(extractDialogueField(line, pos.Text, true))
-		if len(textStr) == 0 {
-			discord.Errorf("Subtitle dialogue line has no text: %s", line)
-			return false
-		}
+		res[i] = strings.Join(append(inputLineSplit[:sub.pos.Text], outputTextStr), ",")
 	}
-	if len(input) > 0 {
-		if !matchStartEndTimes(headers, input, normalizedOutput) {
-			return false
-		}
-	}
-	return true
+	return strings.Join(res, "\n"), nil
 }
 
 func isASSFileValid(filePath string) error {
@@ -152,19 +74,28 @@ func isASSFileValid(filePath string) error {
 	if err != nil {
 		return err
 	}
-	// Call the Validate function with the file content
-	headers, dialogue, err := sanitizeInputASS(string(content))
+	sub, err := sanitizeInputASS(string(content))
 	if err != nil {
 		return err
 	}
-	dialogueLines := len(normalizeBlock(strings.Split(dialogue, "\n"), false))
-	if dialogueLines < 2 {
-		fmt.Printf("subtitle doesn't contain any dialogue (%d lines): %s\n", dialogueLines, filePath)
+	if len(sub.dialogues) < 2 {
+		fmt.Printf("subtitle doesn't contain any dialogue (%d lines): %s\n", len(sub.dialogues), filePath)
 		return nil
 	}
-	valid := isASSOutputValid(headers, nil, strings.Split(dialogue, "\n"))
-	if !valid {
-		fmt.Printf("%s is invalid\n", filePath)
+	normalizedOutput := removeEmptyLinesAndTrimSpaces(sub.dialogues)
+	if len(normalizedOutput) == 0 {
+		return fmt.Errorf("subtitle contains no dialogues")
+	}
+	for _, line := range normalizedOutput {
+		commas := strings.Count(line, ",")
+		if commas < sub.pos.TotalCommas {
+			return fmt.Errorf("subtitle contains less commas than format line: %s, expected: %d, got: %d",
+				line, sub.pos.TotalCommas, commas)
+		}
+		textStr := strings.TrimSpace(extractDialogueField(line, sub.pos.Text, true))
+		if len(textStr) == 0 {
+			return fmt.Errorf("subtitle dialogue line has no text: %s", line)
+		}
 	}
 	return nil
 }

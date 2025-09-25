@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO: send only time and text
 func main() {
 	config.Configure()
 	ai.Init()

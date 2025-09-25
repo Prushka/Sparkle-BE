@@ -22,22 +22,28 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// WebvttTimeRangeRegex Matches lines like "00:00:01.000 --> 00:00:05.000", "00:01.000 --> 00:05.000"
-var WebvttTimeRangeRegex = regexp.MustCompile(`^((?:\d{1,2}:){0,2}\d{1,2}\.\d{1,3})(\s*-->\s*)((?:\d{1,2}:){0,2}\d{1,2}\.\d{1,3})$`)
-
-func IsWebVTTTimeRangeLine(input string) bool {
-	return WebvttTimeRangeRegex.MatchString(input)
+// Pair is a generic struct that holds two values of any type.
+type Pair[T any, U any] struct {
+	Left  T
+	Right U
 }
 
-func CountVTTTimeLines(input string) int {
-	lines := strings.Split(input, "\n")
-	count := 0
-	for _, s := range lines {
-		if IsWebVTTTimeRangeLine(s) {
-			count++
-		}
+type PairSlice[T any, U any] []Pair[T, U]
+
+func (ps *PairSlice[T, U]) LeftSlice() []T {
+	result := make([]T, len(*ps))
+	for i, pair := range *ps {
+		result[i] = pair.Left
 	}
-	return count
+	return result
+}
+
+func (ps *PairSlice[T, U]) RightSlice() []U {
+	result := make([]U, len(*ps))
+	for i, pair := range *ps {
+		result[i] = pair.Right
+	}
+	return result
 }
 
 func PanicOnSec(_ interface{}, err error) {
@@ -229,15 +235,6 @@ func RemoveEmptyStrings(arr []string) []string {
 
 func SlicesSetEqual(a []string, b []string) bool {
 	return mapset.NewSet[string](a...).Equal(mapset.NewSet[string](b...))
-}
-
-func InsertBeforeExtension(filename, insert string) string {
-	extIndex := strings.LastIndex(filename, ".")
-	if extIndex == -1 {
-		return filename + insert
-	}
-
-	return filename[:extIndex] + insert + filename[extIndex:]
 }
 
 func ReplaceExtension(filename, newExt string) string {

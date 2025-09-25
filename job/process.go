@@ -290,12 +290,10 @@ func (job *Job) translateFlow() error {
 		translationRunProduct := job.InputJoin(utils.ReplaceExtension(job.Input, fmt.Sprintf(".%s.ass", languageCode)))
 		if _, err := os.Stat(translationRunProduct); err == nil {
 			discord.Infof("Copying translation product to encoder folder: %s -> %s", translationRunProduct, dest)
-			_, err = utils.CopyFile(translationRunProduct, dest)
-			if err != nil {
+			if _, err := utils.CopyFile(translationRunProduct, dest); err != nil {
 				return fmt.Errorf("error copying translation product: %v", err)
 			}
-			err = translation.AssToVTT(dest)
-			if err != nil {
+			if err := translation.AssToVTT(dest); err != nil {
 				return fmt.Errorf("unable to convert translation product from ass to vtt: %v", err)
 			}
 		}
