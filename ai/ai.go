@@ -73,20 +73,15 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		for idx, inputSlice := range inputPairSlices {
 			discord.Infof("Processing index: %d/%d",
 				idx+1, len(inputSlice))
-			fmt.Println(strings.Join(inputSlice.LeftSlice(), "\n"))
 			result, err := SendWithRetry(ctx, a, strings.Join(inputSlice.LeftSlice(), "\n"),
-				func(output string) bool {
-					_, err := processor(inputSlice, output)
-					return err == nil
+				func(output string) (string, error) {
+					processed, err := processor(inputSlice, output)
+					return processed, err
 				})
-			if err != nil || result == nil {
-				return nil, err
-			}
-			post, err := processor(inputSlice, result.Text())
 			if err != nil {
 				return nil, err
 			}
-			translated = append(translated, post)
+			translated = append(translated, result)
 		}
 		return translated, nil
 	}
@@ -124,9 +119,8 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	return nil, fmt.Errorf("all clients failed or exhausted")
 }
 
-func SendWithRetry(ctx context.Context, a AI, input string, pass func(output string) bool) (Result, error) {
+func SendWithRetry(ctx context.Context, a AI, input string, processor func(output string) (string, error)) (string, error) {
 	var err error
-	var attempted []Result
 	attempts := config.TheConfig.TranslationAttempts
 	for i := 1; i < attempts+1; i++ {
 		discord.Infof("Attempt: %d", i)
@@ -137,23 +131,15 @@ func SendWithRetry(ctx context.Context, a AI, input string, pass func(output str
 				fmt.Println(utils.AsJson(result.Response()))
 			}
 			if isErrorExhausted(err) || isErrorProhibitedContent(err) {
-				return result, err
+				return "", err
 			}
 		} else {
-			attempted = append(attempted, result)
-			if pass(result.Text()) {
-				return result, nil
+			processed, err := processor(result.Text())
+			if err == nil {
+				return processed, nil
 			}
 		}
 		a.ClearPreviousRun()
 	}
-	longest := 0
-	var longestResult Result
-	for _, a := range attempted {
-		if len(a.Text()) > longest {
-			longest = len(a.Text())
-			longestResult = a
-		}
-	}
-	return longestResult, fmt.Errorf("failed after %d attempts | %v", attempts, err)
+	return "", fmt.Errorf("failed after %d attempts | %v", attempts, err)
 }
