@@ -349,7 +349,10 @@ func RemoveComments(dialogueText string) string {
 			return ""
 		}
 		// The first character is not \ and the string contains no \ after removing \n
-		noNewLines := strings.ReplaceAll(block, "\n", "")
+		replacer := strings.NewReplacer("\n", "",
+			`\n`, "",
+			`\N`, "")
+		noNewLines := replacer.Replace(block)
 		if !strings.HasPrefix(block, "{\\") && !strings.Contains(noNewLines, `\`) {
 			return ""
 		}
