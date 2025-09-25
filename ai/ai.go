@@ -73,6 +73,9 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		for idx, inputSlice := range inputPairSlices {
 			discord.Infof("Processing index: %d/%d",
 				idx+1, len(inputPairSlices))
+			if config.TheConfig.Debug {
+				fmt.Println(strings.Join(inputSlice.LeftSlice(), "\n"))
+			}
 			result, err := SendWithRetry(ctx, a, strings.Join(inputSlice.LeftSlice(), "\n"),
 				func(output string) (string, error) {
 					processed, err := processor(inputSlice, output)

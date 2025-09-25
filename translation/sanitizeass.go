@@ -348,6 +348,11 @@ func RemoveComments(dialogueText string) string {
 		if !strings.Contains(block, `\`) {
 			return ""
 		}
+		// The first character is not \ and the string contains no \ after removing \n
+		noNewLines := strings.ReplaceAll(block, "\n", "")
+		if !strings.HasPrefix(block, "{\\") && !strings.Contains(noNewLines, `\`) {
+			return ""
+		}
 		// Otherwise, it's an override tag block. Keep it unchanged.
 		return block
 	}
