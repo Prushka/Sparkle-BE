@@ -7,7 +7,7 @@ Input: A fragment of .ass file containing subtitles in language %s with only tim
 Media: %s.
 Task:
 1. Replace each text with a fluent, context‑aware %s translation, except for segments that are intentionally left untranslated.
-2. Reproduce every non‑dialogue subtitle element—timing cues, style definitions, and all other formatting—exactly as it appears in the original file. Do NOT shorten or process any of the timing cues or styles.
+2. Reproduce every non‑dialogue subtitle element—timing cues, style definitions, and all other formatting—exactly as it appears in the input. Do NOT shorten or process any of the timing cues or styles.
 3. Do NOT omit, merge, or split any lines. Translate every single line from start to end.
 4. Translate ONLY the input fragment; do not add any missing headers, footers, fields, or other content.
 Output: A single, valid fragment of .ass as plain text—identical in structure to the input, with text now in %s. There should be no markdown, no comments, and no additional content. The output must contain the exact same number of lines as the input.`
