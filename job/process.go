@@ -298,7 +298,7 @@ func (job *Job) translateFlow() error {
 			}
 		}
 
-		if err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, true); err != nil {
+		if _, err := translation.Translate(job.Input, job.OutputJoin(), source, dest, languageWithCode, true); err != nil {
 			return fmt.Errorf("error translating: %v", err)
 		}
 
@@ -308,7 +308,6 @@ func (job *Job) translateFlow() error {
 		if _, err := utils.CopyFile(dest, sourceDest); err != nil {
 			return err
 		}
-		discord.Infof("Translated: %s", dest)
 	}
 
 	return nil

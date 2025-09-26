@@ -26,7 +26,7 @@ func findInputLang(languages map[string]*ASSSubtitle) (*ASSSubtitle, string) {
 	return nil, ""
 }
 
-func Translate(media, inputDir, mediaFile, dest, languageWithCode string, convertToVTT bool) error {
+func Translate(media, inputDir, mediaFile, dest, languageWithCode string, convertToVTT bool) (int, error) {
 	ss := strings.Split(languageWithCode, "/")
 	language := ss[0]
 	languageCode := ss[1]
@@ -35,11 +35,11 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 	statInput, _ := os.Stat(mediaFile)
 	if err == nil && statInput.ModTime().Before(stat.ModTime()) {
 		discord.Infof("SKIPPING: File already exists: %s", dest)
-		return nil
+		return 0, nil
 	}
 	files, err := os.ReadDir(inputDir)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	langLengths := make(map[string]int)
 	languages := make(map[string]*ASSSubtitle)
@@ -54,7 +54,7 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 						language,
 						dest)
 					_, err = utils.CopyFile(source, dest)
-					return err
+					return 0, err
 				}
 			} else {
 				// when language is unknown, subtitle becomes format: 3-.ext
@@ -81,37 +81,38 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 	}
 	discord.Infof("%v", langLengths)
 	if len(languages) == 0 {
-		return fmt.Errorf("unable to find any .ass subtitle")
+		return 0, fmt.Errorf("unable to find any .ass subtitle")
 	}
 	chosenSub, chosenLanguage := findInputLang(languages)
-	var translated string
-	translated, err = TranslateSubtitlesASS(chosenSub,
+	translated, attempts, err := TranslateSubtitlesASS(chosenSub,
 		language, config.GetSystemMessage(chosenLanguage, language, media))
 	if err != nil {
-		return err
+		return attempts, err
 	}
 	translated = chosenSub.sanitizeOutput(translated)
 
 	err = os.WriteFile(dest, []byte(translated), 0755)
 	if err != nil {
-		return err
+		return attempts, err
 	}
 
 	if convertToVTT {
 		err = AssToVTT(dest)
 		if err != nil {
-			return err
+			return attempts, err
 		}
 	}
-	return nil
+
+	discord.Infof("Translated (%d attempts): %s", attempts, dest)
+	return attempts, nil
 }
 
-func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (string, error) {
+func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (string, int, error) {
 	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
 	inputsPairs := splitByCharacters(sub.distilledDialogues, config.TheConfig.TranslationBatchLength)
-	translated, err := ai.SendWithRetrySplit(ctx, systemMessage, inputsPairs,
+	translated, attempts, err := ai.SendWithRetrySplit(ctx, systemMessage, inputsPairs,
 		func(inputPairSlice utils.PairSlice[string, int], output string) (string, error) {
 			t := strings.Split(output, "\n")
 			outputLinesCount := len(t)
@@ -125,10 +126,10 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 			return post, nil
 		})
 	if err != nil {
-		return "", err
+		return "", attempts, err
 	}
 	if len(translated) == 0 {
-		return "", fmt.Errorf("unable to find any translation results")
+		return "", attempts, fmt.Errorf("unable to find any translation results")
 	}
-	return strings.Join(translated, "\n"), nil
+	return strings.Join(translated, "\n"), attempts, nil
 }

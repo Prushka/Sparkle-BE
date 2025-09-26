@@ -57,8 +57,10 @@ func Init() {
 }
 
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
-	inputPairSlices []utils.PairSlice[string, int], processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error)) ([]string, error) {
+	inputPairSlices []utils.PairSlice[string, int],
+	processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error)) ([]string, int, error) {
 
+	totalAttempts := 0
 	run := func(a AI) ([]string, error) {
 		defaultLimit := 360000 / config.TheConfig.TranslationBatchLength
 		if len(inputPairSlices) > defaultLimit {
@@ -76,11 +78,12 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 			if config.TheConfig.Debug {
 				fmt.Println(strings.Join(inputSlice.LeftSlice(), "\n"))
 			}
-			result, err := SendWithRetry(ctx, a, strings.Join(inputSlice.LeftSlice(), "\n"),
+			result, attempts, err := SendWithRetry(ctx, a, strings.Join(inputSlice.LeftSlice(), "\n"),
 				func(output string) (string, error) {
 					processed, err := processor(inputSlice, output)
 					return processed, err
 				})
+			totalAttempts += attempts
 			if err != nil {
 				return nil, err
 			}
@@ -103,7 +106,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		var res []string
 		res, err := run(runner)
 		if err == nil {
-			return res, nil
+			return res, totalAttempts, nil
 		}
 		discord.Errorf("Client %d failed with error: %+v", i, err)
 		if isErrorExhausted(err) {
@@ -112,17 +115,17 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		}
 		if isErrorProhibitedContent(err) {
 			discord.Errorf("Detected prohibited content, skipping...")
-			return nil, err
+			return nil, totalAttempts, err
 		}
 	}
 	if exhausted == len(runners) {
 		discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
 		time.Sleep(config.TheConfig.SleepAfterExhausted)
 	}
-	return nil, fmt.Errorf("all clients failed or exhausted")
+	return nil, totalAttempts, fmt.Errorf("all clients failed or exhausted")
 }
 
-func SendWithRetry(ctx context.Context, a AI, input string, processor func(output string) (string, error)) (string, error) {
+func SendWithRetry(ctx context.Context, a AI, input string, processor func(output string) (string, error)) (string, int, error) {
 	var err error
 	attempts := config.TheConfig.TranslationAttempts
 	for i := 1; i < attempts+1; i++ {
@@ -134,16 +137,16 @@ func SendWithRetry(ctx context.Context, a AI, input string, processor func(outpu
 				fmt.Println(utils.AsJson(result.Response()))
 			}
 			if isErrorExhausted(err) || isErrorProhibitedContent(err) {
-				return "", err
+				return "", i, err
 			}
 		} else {
 			processed, err := processor(result.Text())
 			if err == nil {
-				return processed, nil
+				return processed, i, nil
 			} else {
 				a.ClearPreviousRun()
 			}
 		}
 	}
-	return "", fmt.Errorf("failed after %d attempts | %v", attempts, err)
+	return "", attempts, fmt.Errorf("failed after %d attempts | %v", attempts, err)
 }
