@@ -140,9 +140,10 @@ func SendWithRetry(ctx context.Context, a AI, input string, processor func(outpu
 			processed, err := processor(result.Text())
 			if err == nil {
 				return processed, nil
+			} else {
+				a.ClearPreviousRun()
 			}
 		}
-		a.ClearPreviousRun()
 	}
 	return "", fmt.Errorf("failed after %d attempts | %v", attempts, err)
 }
