@@ -102,7 +102,7 @@ func (g *gemini) Send(ctx context.Context, input string) (Result, error) {
 		}
 		if strings.Contains(err.Error(), "try again later") {
 			discord.Errorf("Gemini unavaialble, sleeping..., %v", err)
-			time.Sleep(7 * time.Minute)
+			time.Sleep(5 * time.Minute)
 		}
 		return result, err
 	}
