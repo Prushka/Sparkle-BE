@@ -23,13 +23,11 @@ func KeepOnlySubtitles(input string) string {
 // HasTimePrefix checks if the input string has a prefix
 // that can be parsed by ASSTimeFormat.
 func HasTimePrefix(s string) bool {
-	// The prefix to be checked must be at least as long as the time format.
-	if len(s) < len(ASSTimeFormat) {
+	split := strings.SplitN(s, ",", 3)
+	if len(split) < 3 {
 		return false
 	}
-
-	// Extract the prefix of the same length as the format.
-	prefix := s[:len(ASSTimeFormat)]
+	prefix := split[0]
 
 	// Attempt to parse the prefix.
 	_, err := time.Parse(ASSTimeFormat, prefix)

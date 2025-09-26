@@ -108,11 +108,9 @@ func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 		o.messages = append([]openai.ChatCompletionMessageParamUnion{systemMessage}, o.messages[len(o.messages)-config.TheConfig.HistoryCount*2:]...)
 	}
 
-	o.messages = append(o.messages, openai.UserMessage(input))
-
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model:    config.TheConfig.OpenAIModel,
-		Messages: o.messages,
+		Messages: append(o.messages, openai.UserMessage(input)),
 	})
 	result := &gptResponse{response: resp, isLocal: o.isLocal}
 	if err != nil {
@@ -126,6 +124,7 @@ func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
 	if config.TheConfig.Debug {
 		fmt.Println(resultText)
 	}
+	o.messages = append(o.messages, openai.UserMessage(input))
 	o.messages = append(o.messages, openai.AssistantMessage(resultText))
 
 	if result.Usage() != nil {
