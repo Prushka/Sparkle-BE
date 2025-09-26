@@ -110,7 +110,7 @@ func isFormatLine(input string) bool {
 }
 
 func (sub *ASSSubtitle) sanitizeOutput(translated string) string {
-	translatedLines := removeEmptyLinesAndTrimSpaces(strings.Split(
+	translatedLines := utils.RemoveEmptyLinesAndTrimSpaces(strings.Split(
 		removeSingleFullStops(removeSingleFullStops(translated, '。'), '，'), "\n"))
 	for i, l := range translatedLines {
 		runes := []rune(l)
@@ -263,8 +263,8 @@ func (sub *ASSSubtitle) isTranslatableText(dialogueLine string, counts map[strin
 	}
 
 	// Heuristic 2: Check the duration. Short durations often indicate visual effects.
-	startTime, err1 := time.Parse(ASSTimeFormat, sanitizeTime(startTimeStr))
-	endTime, err2 := time.Parse(ASSTimeFormat, sanitizeTime(endTimeStr))
+	startTime, err1 := time.Parse(utils.ASSTimeFormat, sanitizeTime(startTimeStr))
+	endTime, err2 := time.Parse(utils.ASSTimeFormat, sanitizeTime(endTimeStr))
 
 	if err1 == nil && err2 == nil {
 		duration := endTime.Sub(startTime)

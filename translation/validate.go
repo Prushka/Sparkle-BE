@@ -9,10 +9,8 @@ import (
 	"time"
 )
 
-const ASSTimeFormat = "15:04:05.00"
-
 func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out []string) (string, error) {
-	output := removeEmptyLinesAndTrimSpaces(out)
+	output := utils.RemoveEmptyLinesAndTrimSpaces(out)
 	if len(output) == 0 {
 		return "", fmt.Errorf("subtitle contains no dialogues")
 	}
@@ -31,8 +29,8 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 		}
 		inputStartTimeStr := inputParts[0]
 		inputEndTimeStr := inputParts[1]
-		_, err1 := time.Parse(ASSTimeFormat, inputStartTimeStr)
-		_, err2 := time.Parse(ASSTimeFormat, inputEndTimeStr)
+		_, err1 := time.Parse(utils.ASSTimeFormat, inputStartTimeStr)
+		_, err2 := time.Parse(utils.ASSTimeFormat, inputEndTimeStr)
 		if err1 != nil || err2 != nil {
 			return "", fmt.Errorf("input subtitle time is malformed: %s", inputLine)
 		}
@@ -42,8 +40,8 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 		if len(outputTextStr) == 0 {
 			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputTextStr)
 		}
-		_, err1 = time.Parse(ASSTimeFormat, outputStartTimeStr)
-		_, err2 = time.Parse(ASSTimeFormat, outputEndTimeStr)
+		_, err1 = time.Parse(utils.ASSTimeFormat, outputStartTimeStr)
+		_, err2 = time.Parse(utils.ASSTimeFormat, outputEndTimeStr)
 		if err1 != nil || err2 != nil {
 			return "", fmt.Errorf("output subtitle time is malformed: %s", outputLine)
 		}
@@ -82,7 +80,7 @@ func isASSFileValid(filePath string) error {
 		fmt.Printf("subtitle doesn't contain any dialogue (%d lines): %s\n", len(sub.dialogues), filePath)
 		return nil
 	}
-	normalizedOutput := removeEmptyLinesAndTrimSpaces(sub.dialogues)
+	normalizedOutput := utils.RemoveEmptyLinesAndTrimSpaces(sub.dialogues)
 	if len(normalizedOutput) == 0 {
 		return fmt.Errorf("subtitle contains no dialogues")
 	}

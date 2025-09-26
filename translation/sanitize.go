@@ -60,14 +60,3 @@ func splitByCharacters(lines []string, atChar int) []utils.PairSlice[string, int
 }
 
 // TODO: context aware seasons
-
-func removeEmptyLinesAndTrimSpaces(block []string) []string {
-	var nonEmptyLines []string
-	for _, line := range block {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" {
-			nonEmptyLines = append(nonEmptyLines, trimmed)
-		}
-	}
-	return nonEmptyLines
-}

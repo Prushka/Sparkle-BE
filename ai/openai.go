@@ -55,7 +55,7 @@ func (r *gptResponse) Text() string {
 	}
 	t := r.response.Choices[0].Message.Content
 	if r.isLocal {
-		return stripThoughts(t)
+		return utils.KeepOnlySubtitles(t)
 	}
 	return t
 }
