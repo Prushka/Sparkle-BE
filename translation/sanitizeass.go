@@ -46,6 +46,7 @@ type ASSSubtitle struct {
 	dialogues                []string
 	distilledDialogues       []string
 	nonTranslatableDialogues []string
+	afterFormatNotDialogues  []string
 	pos                      FormatPositions
 	sanitizedASS             []string // everything from input, except dialogues lines that are not translatable
 }
@@ -64,6 +65,7 @@ func sanitizeInputASS(input string) (*ASSSubtitle, error) {
 	for _, line := range lines {
 		counts[line]++
 	}
+	formatLineReached := false
 	for _, line := range lines {
 		if isDialogueLine(line) {
 			if sub.isTranslatableText(line, counts) {
@@ -79,8 +81,15 @@ func sanitizeInputASS(input string) (*ASSSubtitle, error) {
 				sub.nonTranslatableDialogues = append(sub.nonTranslatableDialogues, line)
 			}
 		} else {
-			sub.headers = append(sub.headers, line)
 			sub.sanitizedASS = append(sub.sanitizedASS, line)
+			if !formatLineReached {
+				sub.headers = append(sub.headers, line)
+			} else {
+				sub.afterFormatNotDialogues = append(sub.afterFormatNotDialogues, line)
+			}
+		}
+		if isFormatLine(line) {
+			formatLineReached = true
 		}
 	}
 	return sub, nil
@@ -120,8 +129,20 @@ func (sub *ASSSubtitle) sanitizeOutput(translated string) string {
 			}
 		}
 	}
-	return strings.Join(append(sub.headers, append(translatedLines, sub.nonTranslatableDialogues...)...),
+	return strings.Join(merge(sub.headers, translatedLines, sub.nonTranslatableDialogues, sub.afterFormatNotDialogues),
 		"\n")
+}
+
+func merge[T any](slices ...[]T) []T {
+	var totalLen int
+	for _, s := range slices {
+		totalLen += len(s)
+	}
+	result := make([]T, 0, totalLen)
+	for _, s := range slices {
+		result = append(result, s...)
+	}
+	return result
 }
 
 func findField(input, field string) int {
