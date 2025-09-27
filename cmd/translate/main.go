@@ -3,6 +3,7 @@ package main
 import (
 	"Sparkle/ai"
 	"Sparkle/config"
+	"Sparkle/discord"
 	"Sparkle/translation"
 	"fmt"
 	"strings"
@@ -13,26 +14,25 @@ import (
 func main() {
 	config.Configure()
 	ai.Init()
-	bench("SIMPLIFIED Chinese", "chi", "ci", "gemma3:27b")
 
 	bench("Spanish", "spa", "sp", "gemma3:27b")
 	bench("Spanish", "spa", "sp", "qwen3:30b")
-	//bench("Spanish", "spa", "sp", "qwen3:235b")
+	bench("Spanish", "spa", "sp", "deepseek-r1:70b")
 	bench("Spanish", "spa", "sp", "gpt-oss:20b")
 	bench("Spanish", "spa", "sp", "gpt-oss:120b")
 	bench("Spanish", "spa", "sp", "llama3.3:70b")
+	bench("Spanish", "spa", "sp", "llama4:16x17b")
 
 	bench("Turkish", "tur", "tr", "gemma3:27b")
 	bench("Turkish", "tur", "tr", "qwen3:30b")
-	//bench("Turkish", "tur", "tr", "qwen3:235b")
 	bench("Turkish", "tur", "tr", "deepseek-r1:70b")
 	bench("Turkish", "tur", "tr", "gpt-oss:20b")
 	bench("Turkish", "tur", "tr", "gpt-oss:120b")
 	bench("Turkish", "tur", "tr", "llama3.3:70b")
 	bench("Turkish", "tur", "tr", "llama4:16x17b")
 
+	bench("SIMPLIFIED Chinese", "chi", "ci", "gemma3:27b")
 	bench("SIMPLIFIED Chinese", "chi", "ci", "qwen3:30b")
-	//bench("SIMPLIFIED Chinese", "chi", "ci", "qwen3:235b")
 	bench("SIMPLIFIED Chinese", "chi", "ci", "deepseek-r1:70b")
 	bench("SIMPLIFIED Chinese", "chi", "ci", "gpt-oss:20b")
 	bench("SIMPLIFIED Chinese", "chi", "ci", "gpt-oss:120b")
@@ -41,7 +41,6 @@ func main() {
 
 	bench("Russian", "rus", "rs", "gemma3:27b")
 	bench("Russian", "rus", "rs", "qwen3:30b")
-	//bench("Russian", "rus", "rs", "qwen3:235b")
 	bench("Russian", "rus", "rs", "deepseek-r1:70b")
 	bench("Russian", "rus", "rs", "gpt-oss:20b")
 	bench("Russian", "rus", "rs", "gpt-oss:120b")
@@ -50,14 +49,15 @@ func main() {
 }
 
 func bench(language, languageCode, id, m string) {
+	discord.Infof("%s, %s", language, languageCode)
 	media := "Junji Ito Collection - S01E04 - Collection No. 034 - Shiver + Collection No. 060 - House of Puppets Bluray-1080p"
 	config.TheConfig.OpenAIModel = m
 	model := strings.ReplaceAll(config.TheConfig.OpenAIModel, ":", "-")
-	err := translation.Translate(
+	_, err := translation.Translate(
 		fmt.Sprintf("%s.mkv", media),
 		"qQLjp",
 		fmt.Sprintf(`R:\\Managed-Videos\\Anime\\Junji Ito Collection\\Season 1\\%s.mkv`, media),
-		fmt.Sprintf(`qQLjp\\%s.%s.ass`, model, fmt.Sprintf("test-%s", id)),
+		fmt.Sprintf(`qQLjp\\%s.%s.ass`, model, fmt.Sprintf("test-%s-{attempts}-{duration}", id)),
 		fmt.Sprintf("%s/%s", language, languageCode),
 		false,
 	)

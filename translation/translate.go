@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func findInputLang(languages map[string]*ASSSubtitle) (*ASSSubtitle, string) {
@@ -27,6 +28,7 @@ func findInputLang(languages map[string]*ASSSubtitle) (*ASSSubtitle, string) {
 }
 
 func Translate(media, inputDir, mediaFile, dest, languageWithCode string, convertToVTT bool) (int, error) {
+	before := time.Now()
 	ss := strings.Split(languageWithCode, "/")
 	language := ss[0]
 	languageCode := ss[1]
@@ -50,7 +52,7 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 			if len(file.Name()) >= 7 {
 				lang = strings.ToLower(file.Name()[len(file.Name())-7 : len(file.Name())-4])
 				if lang == strings.ToLower(languageCode) {
-					discord.Infof("SKIPPING: Subtitle with language %s already exists: %s",
+					discord.Infof("SKIPPING: Subtitle with language %s already exists in job folder: %s",
 						language,
 						dest)
 					_, err = utils.CopyFile(source, dest)
@@ -91,6 +93,9 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 	}
 	translated = chosenSub.sanitizeOutput(translated)
 
+	dest = strings.ReplaceAll(dest, "{attempts}", fmt.Sprintf("%d", attempts))
+	dest = strings.ReplaceAll(dest, "{duration}", fmt.Sprintf("%s", time.Since(before).String()))
+
 	err = os.WriteFile(dest, []byte(translated), 0755)
 	if err != nil {
 		return attempts, err
@@ -110,7 +115,8 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (string, int, error) {
 	discord.Infof("[ASS] Translating to language: %s", language)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	defer cancel()
 	inputsPairs := splitByCharacters(sub.distilledDialogues, config.TheConfig.TranslationBatchLength)
 	translated, attempts, err := ai.SendWithRetrySplit(ctx, systemMessage, inputsPairs,
 		func(inputPairSlice utils.PairSlice[string, int], output string) (string, error) {
