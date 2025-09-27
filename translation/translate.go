@@ -115,7 +115,7 @@ func Translate(media, inputDir, mediaFile, dest, languageWithCode string, conver
 func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (string, int, error) {
 	discord.Infof("[ASS] Translating to language: %s", language)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 	inputsPairs := splitByCharacters(sub.distilledDialogues, config.TheConfig.TranslationBatchLength)
 	translated, attempts, err := ai.SendWithRetrySplit(ctx, systemMessage, inputsPairs,
