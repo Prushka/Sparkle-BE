@@ -15,37 +15,28 @@ func main() {
 	config.Configure()
 	ai.Init()
 
-	bench("Spanish", "spa", "sp", "gemma3:27b")
-	bench("Spanish", "spa", "sp", "qwen3:30b")
-	bench("Spanish", "spa", "sp", "deepseek-r1:70b")
-	bench("Spanish", "spa", "sp", "gpt-oss:20b")
-	bench("Spanish", "spa", "sp", "gpt-oss:120b")
-	bench("Spanish", "spa", "sp", "llama3.3:70b")
-	bench("Spanish", "spa", "sp", "llama4:16x17b")
+	aisToTry := []string{
+		"gemma3:27b",
+		"qwen3:30b",
+		"deepseek-r1:70b",
+		"gpt-oss:20b",
+		"gpt-oss:120b",
+		"llama3.3:70b",
+		"llama4:16x17b",
+	}
 
-	bench("Turkish", "tur", "tr", "gemma3:27b")
-	bench("Turkish", "tur", "tr", "qwen3:30b")
-	bench("Turkish", "tur", "tr", "deepseek-r1:70b")
-	bench("Turkish", "tur", "tr", "gpt-oss:20b")
-	bench("Turkish", "tur", "tr", "gpt-oss:120b")
-	bench("Turkish", "tur", "tr", "llama3.3:70b")
-	bench("Turkish", "tur", "tr", "llama4:16x17b")
+	languagesToTry := [][3]string{
+		{"Spanish", "spa", "sp"},
+		{"Turkish", "tur", "tr"},
+		{"SIMPLIFIED Chinese", "chi", "ci"},
+		{"Russian", "rus", "rs"},
+	}
 
-	bench("SIMPLIFIED Chinese", "chi", "ci", "gemma3:27b")
-	bench("SIMPLIFIED Chinese", "chi", "ci", "qwen3:30b")
-	bench("SIMPLIFIED Chinese", "chi", "ci", "deepseek-r1:70b")
-	bench("SIMPLIFIED Chinese", "chi", "ci", "gpt-oss:20b")
-	bench("SIMPLIFIED Chinese", "chi", "ci", "gpt-oss:120b")
-	bench("SIMPLIFIED Chinese", "chi", "ci", "llama3.3:70b")
-	bench("SIMPLIFIED Chinese", "chi", "ci", "llama4:16x17b")
-
-	bench("Russian", "rus", "rs", "gemma3:27b")
-	bench("Russian", "rus", "rs", "qwen3:30b")
-	bench("Russian", "rus", "rs", "deepseek-r1:70b")
-	bench("Russian", "rus", "rs", "gpt-oss:20b")
-	bench("Russian", "rus", "rs", "gpt-oss:120b")
-	bench("Russian", "rus", "rs", "llama3.3:70b")
-	bench("Russian", "rus", "rs", "llama4:16x17b")
+	for _, aiModel := range aisToTry {
+		for _, lang := range languagesToTry {
+			bench(lang[0], lang[1], lang[2], aiModel)
+		}
+	}
 }
 
 func bench(language, languageCode, id, m string) {
