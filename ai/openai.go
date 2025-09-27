@@ -90,7 +90,9 @@ func (o *gpt) ClearPreviousRun() {
 	}
 }
 
-func (o *gpt) Send(ctx context.Context, input string) (Result, error) {
+func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
+	ctx, cancel := context.WithTimeout(oCtx, time.Minute*25)
+	defer cancel()
 	now := time.Now()
 	defer func() {
 		if !o.isLocal {
