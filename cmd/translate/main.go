@@ -16,13 +16,13 @@ func main() {
 	ai.Init()
 
 	aisToTry := []string{
-		"gemma3:27b",
-		"qwen3:30b",
-		"deepseek-r1:70b",
-		"gpt-oss:20b",
+		//"gemma3:27b", // unstable line count output
+		//"qwen3:30b",  // unstable line count output
+		//"gpt-oss:20b", // works, slightly more attempts than 120b
 		"gpt-oss:120b",
 		"llama3.3:70b",
-		"llama4:16x17b",
+		//"llama4:16x17b", // unstable line count output
+		//"deepseek-r1:70b", // way too slow
 	}
 
 	languagesToTry := [][3]string{
