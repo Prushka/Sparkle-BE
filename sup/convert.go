@@ -47,9 +47,9 @@ func processSubsImages(imgSubs []ImageSubtitle, outputPath string) error {
 	}
 	discord.Infof("OCR completed in %v", time.Since(start))
 	if err = srtSubs.Marshal(fd); err != nil {
-		return fmt.Errorf("failed to write SRT: %s", err)
+		return fmt.Errorf("failed to write VTT: %s", err)
 	}
-	discord.Infof("SRT written to %v", outputPath)
+	discord.Infof("VTT written to %v", outputPath)
 	return nil
 }
 
