@@ -72,10 +72,16 @@ func (g *gemini) StartChat(ctx context.Context, systemInstruction string) error 
 }
 
 func isErrorExhausted(err error) bool {
+	if err == nil {
+		return false
+	}
 	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED")
 }
 
 func isErrorProhibitedContent(err error) bool {
+	if err == nil {
+		return false
+	}
 	return strings.Contains(err.Error(), "PROHIBITED_CONTENT")
 }
 
