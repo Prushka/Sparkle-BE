@@ -87,7 +87,11 @@ func (g *gemini) Send(oCtx context.Context, input string) (Result, error) {
 	ctx, cancel := context.WithTimeout(oCtx, time.Minute*30)
 	defer cancel()
 	now := time.Now()
+	var err error
 	defer func() {
+		if isErrorExhausted(err) {
+			return
+		}
 		utils.MakeUpSleep(now)
 	}()
 	discord.Infof("Sending to Gemini %s", config.TheConfig.GeminiModel)
