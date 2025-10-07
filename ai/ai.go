@@ -145,6 +145,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, processor func(outpu
 				return processed, i, nil
 			} else {
 				a.ClearPreviousRun()
+				discord.Errorf("Attempt %d: %v", i, err)
 			}
 		}
 	}
