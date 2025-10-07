@@ -26,9 +26,9 @@ func main() {
 	}
 
 	languagesToTry := [][3]string{
+		{"SIMPLIFIED Chinese", "chi", "ci"},
 		{"Spanish", "spa", "sp"},
 		{"Turkish", "tur", "tr"},
-		{"SIMPLIFIED Chinese", "chi", "ci"},
 		{"Russian", "rus", "rs"},
 	}
 

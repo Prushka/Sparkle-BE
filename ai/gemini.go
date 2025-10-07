@@ -84,7 +84,7 @@ func (g *gemini) ClearPreviousRun() {
 }
 
 func (g *gemini) Send(oCtx context.Context, input string) (Result, error) {
-	ctx, cancel := context.WithTimeout(oCtx, time.Minute*25)
+	ctx, cancel := context.WithTimeout(oCtx, time.Minute*30)
 	defer cancel()
 	now := time.Now()
 	defer func() {
