@@ -79,6 +79,11 @@ type Config struct {
 	OCRVLMVotes  int      `env:"OCRVLM_VOTES" envDefault:"2"`
 }
 
+// openbmb/minicpm-o2.6:8b too much hallucination
+// openbmb/minicpm-v4.5:8b doesnt run
+// qwen2.5-vl too much hallucination
+// llama3.2-vision:90b random comments and notes, safety filters prevent output
+
 var TheConfig = &Config{}
 
 var gitHash, gitVersion string
