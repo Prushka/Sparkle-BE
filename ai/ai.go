@@ -11,11 +11,10 @@ import (
 )
 
 type AI interface {
-	StartChat(ctx context.Context, systemInstruction string) error
+	StartChat(systemInstruction string) error
 	Send(ctx context.Context, input string) (Result, error)
 	GetLastExhausted() time.Time
 	SetLastExhausted()
-	IsLocal() bool
 	ClearPreviousRun()
 }
 
@@ -26,33 +25,17 @@ type Result interface {
 }
 
 var OpenAIClis []AI
-var GeminiClis []AI
 
 func Init() {
 	discord.Infof("Initializing AI clients")
-	switch config.TheConfig.AiProvider {
-	case "openai":
-		if len(config.TheConfig.OpenAI) > 0 {
-			discord.Infof("Initializing OpenAI %d clients", len(config.TheConfig.OpenAI))
-			for _, key := range config.TheConfig.OpenAI {
-				OpenAIClis = append(OpenAIClis, NewGPT(key))
-			}
-		} else if config.TheConfig.OpenAIUrl != "" {
-			discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
-			OpenAIClis = append(OpenAIClis, NewGPT(""))
+	if len(config.TheConfig.AIKeys) > 0 {
+		discord.Infof("Initializing %d AI clients", len(config.TheConfig.AIKeys))
+		for _, key := range config.TheConfig.AIKeys {
+			OpenAIClis = append(OpenAIClis, NewGPT(key))
 		}
-	case "gemini":
-		if len(config.TheConfig.Gemini) > 0 {
-			discord.Infof("Initializing Gemini %d clients", len(config.TheConfig.Gemini))
-			for _, key := range config.TheConfig.Gemini {
-				g, err := NewGemini(key)
-				if err != nil {
-					discord.Errorf("Unable to initialize gemini: %v", err)
-					continue
-				}
-				GeminiClis = append(GeminiClis, g)
-			}
-		}
+	} else if config.TheConfig.AIUrl != "" {
+		discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
+		OpenAIClis = append(OpenAIClis, NewGPT(""))
 	}
 }
 
@@ -69,7 +52,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 
 		var translated []string
 
-		if err := a.StartChat(ctx, systemMessage); err != nil {
+		if err := a.StartChat(systemMessage); err != nil {
 			return nil, err
 		}
 		for idx, inputSlice := range inputPairSlices {
@@ -93,10 +76,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	}
 
 	exhausted := 0
-	runners := GeminiClis
-	if config.TheConfig.AiProvider == "openai" {
-		runners = OpenAIClis
-	}
+	runners := OpenAIClis
 	for i, runner := range runners {
 		if time.Since(runner.GetLastExhausted()) < config.TheConfig.SleepAfterExhausted {
 			exhausted++
@@ -144,7 +124,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, processor func(outpu
 			if err == nil {
 				return processed, i, nil
 			} else {
-				a.ClearPreviousRun()
+				a.ClearPreviousRun() // only runs when ai succeeds but processing fails
 				discord.Errorf("Attempt %d: %v", i, err)
 			}
 		}

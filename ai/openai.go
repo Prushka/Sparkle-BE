@@ -6,6 +6,7 @@ import (
 	"Sparkle/utils"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/openai/openai-go"
@@ -16,29 +17,24 @@ type gpt struct {
 	messages      []openai.ChatCompletionMessageParamUnion
 	client        openai.Client
 	LastExhausted time.Time
-	isLocal       bool
 }
 
 type gptResponse struct {
 	response *openai.ChatCompletion
-	isLocal  bool
 }
 
 func NewGPT(apiKey string) AI {
 	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 	}
-	isCustom := false
-	if config.TheConfig.OpenAIUrl != "" {
-		options = append(options, option.WithBaseURL(config.TheConfig.OpenAIUrl))
-		isCustom = true
+	if config.TheConfig.AIUrl != "" {
+		options = append(options, option.WithBaseURL(config.TheConfig.AIUrl))
 	}
 	return &gpt{
 		messages: make([]openai.ChatCompletionMessageParamUnion, 0),
 		client: openai.NewClient(
 			options...,
 		),
-		isLocal: isCustom,
 	}
 }
 
@@ -54,18 +50,11 @@ func (r *gptResponse) Text() string {
 		return ""
 	}
 	t := r.response.Choices[0].Message.Content
-	if r.isLocal {
-		return utils.KeepOnlySubtitles(t)
-	}
-	return t
+	return utils.KeepOnlySubtitles(t)
 }
 
 func (r *gptResponse) Response() interface{} {
 	return r.response
-}
-
-func (o *gpt) IsLocal() bool {
-	return o.isLocal
 }
 
 func (o *gpt) GetLastExhausted() time.Time {
@@ -76,7 +65,7 @@ func (o *gpt) SetLastExhausted() {
 	o.LastExhausted = time.Now()
 }
 
-func (o *gpt) StartChat(_ context.Context, systemInstruction string) error {
+func (o *gpt) StartChat(systemInstruction string) error {
 	o.messages = []openai.ChatCompletionMessageParamUnion{
 		openai.SystemMessage(systemInstruction),
 	}
@@ -90,16 +79,42 @@ func (o *gpt) ClearPreviousRun() {
 	}
 }
 
+// isErrorExhausted checks if the error is a gemini key exhausted error
+func isErrorExhausted(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED")
+}
+
+// isErrorProhibitedContent checks if the error is a gemini prohibited content error
+func isErrorProhibitedContent(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "PROHIBITED_CONTENT")
+}
+
+// isErrorModelUnavailable checks if the error is a gemini model unavailable error
+func isErrorModelUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "try again later")
+}
+
 func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	ctx, cancel := context.WithTimeout(oCtx, time.Minute*30)
 	defer cancel()
 	now := time.Now()
+	var err error
 	defer func() {
-		if !o.isLocal {
-			utils.MakeUpSleep(now)
+		if isErrorExhausted(err) {
+			return
 		}
+		utils.MakeUpSleep(now)
 	}()
-	discord.Infof("Sending to OpenAI %s", config.TheConfig.OpenAIModel)
+	discord.Infof("Sending to %s", config.TheConfig.AIModel)
 
 	if len(o.messages) == 0 {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
@@ -111,17 +126,25 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	}
 
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model:    config.TheConfig.OpenAIModel,
+		Model:    config.TheConfig.AIModel,
 		Messages: append(o.messages, openai.UserMessage(input)),
 	})
-	result := &gptResponse{response: resp, isLocal: o.isLocal}
+	result := &gptResponse{response: resp}
 	if err != nil {
+		if isErrorModelUnavailable(err) {
+			discord.Errorf("Gemini unavaialble, sleeping..., %v", err)
+			time.Sleep(5 * time.Minute)
+		}
 		return result, err
 	}
 
 	resultText := result.Text()
 	if resultText == "" {
-		return result, fmt.Errorf("no choices found in response")
+		err = fmt.Errorf("no candidates found in response")
+		if strings.Contains(fmt.Sprintf("%s", utils.AsJson(resp)), "PROHIBITED_CONTENT") {
+			err = fmt.Errorf("PROHIBITED_CONTENT")
+		}
+		return result, err
 	}
 	if config.TheConfig.Debug {
 		fmt.Println(resultText)
