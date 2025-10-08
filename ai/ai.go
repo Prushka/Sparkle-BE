@@ -31,11 +31,11 @@ func Init() {
 	if len(config.TheConfig.AIKeys) > 0 {
 		discord.Infof("Initializing %d AI clients", len(config.TheConfig.AIKeys))
 		for _, key := range config.TheConfig.AIKeys {
-			OpenAIClis = append(OpenAIClis, NewGPT(key))
+			OpenAIClis = append(OpenAIClis, NewOpenAI(key))
 		}
 	} else if config.TheConfig.AIUrl != "" {
 		discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
-		OpenAIClis = append(OpenAIClis, NewGPT(""))
+		OpenAIClis = append(OpenAIClis, NewOpenAI(""))
 	}
 }
 

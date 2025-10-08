@@ -23,7 +23,7 @@ type gptResponse struct {
 	response *openai.ChatCompletion
 }
 
-func NewGPT(apiKey string) AI {
+func NewOpenAI(apiKey string) AI {
 	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 	}
