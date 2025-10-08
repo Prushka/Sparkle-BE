@@ -38,7 +38,7 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 		outputEndTimeStr := outputParts[1]
 		outputTextStr := strings.TrimSpace(outputParts[2])
 		if len(outputTextStr) == 0 {
-			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputTextStr)
+			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputLine)
 		}
 		_, err1 = time.Parse(utils.ASSTimeFormat, outputStartTimeStr)
 		_, err2 = time.Parse(utils.ASSTimeFormat, outputEndTimeStr)
