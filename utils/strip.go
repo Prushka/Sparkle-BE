@@ -13,16 +13,16 @@ func KeepOnlySubtitles(input string) string {
 	inputLines := RemoveEmptyLinesAndTrimSpaces(strings.Split(input, "\n"))
 	var outputLines []string
 	for _, line := range inputLines {
-		if HasTimePrefix(line) {
+		if HasValidTime(line) {
 			outputLines = append(outputLines, line)
 		}
 	}
 	return strings.Join(outputLines, "\n")
 }
 
-// HasTimePrefix checks if the input string has a prefix
+// HasValidTime checks if the input string has a prefix
 // that can be parsed by ASSTimeFormat.
-func HasTimePrefix(s string) bool {
+func HasValidTime(s string) bool {
 	split := strings.SplitN(s, ",", 3)
 	if len(split) < 3 {
 		return false
