@@ -27,13 +27,11 @@ func HasTimePrefix(s string) bool {
 	if len(split) < 3 {
 		return false
 	}
-	prefix := split[0]
-
-	// Attempt to parse the prefix.
-	_, err := time.Parse(ASSTimeFormat, prefix)
-
-	// If there is no error, the prefix is a valid time in the given format.
-	return err == nil
+	start := split[0]
+	end := split[1]
+	_, errStart := time.Parse(ASSTimeFormat, start)
+	_, errEnd := time.Parse(ASSTimeFormat, end)
+	return errStart == nil || errEnd == nil // at least one of them should be valid to be corrected
 }
 
 func RemoveEmptyLinesAndTrimSpaces(block []string) []string {
