@@ -61,7 +61,7 @@ type Config struct {
 	AIUrl                    string   `env:"AI_URL" envDefault:"https://generativelanguage.googleapis.com/v1beta/openai/"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
-	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
+	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"4"`
 	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
 	SleepAfterExhausted time.Duration `env:"SLEEP_ATTEMPTS" envDefault:"2h"`
