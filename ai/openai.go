@@ -100,7 +100,7 @@ func isErrorModelUnavailable(err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.Contains(err.Error(), "try again later")
+	return strings.Contains(err.Error(), "try again later") || strings.Contains(err.Error(), "Service Unavailable")
 }
 
 func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
