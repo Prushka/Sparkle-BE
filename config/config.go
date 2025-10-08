@@ -56,19 +56,16 @@ type Config struct {
 
 	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
 	HistoryCount             int      `env:"HISTORY_COUNT" envDefault:"99999"` // 5 means we keep 5 user + assistant messages, 0 disables any history
-	OpenAI                   []string `env:"OPENAI" envDefault:""`
-	Gemini                   []string `env:"GEMINI" envDefault:""`
-	AiProvider               string   `env:"AI_PROVIDER" envDefault:"gemini"` // gemini or openai
-	OpenAIModel              string   `env:"OPENAI_MODEL" envDefault:"gpt-5"`
-	OpenAIUrl                string   `env:"OPENAI_URL" envDefault:""`
-	GeminiModel              string   `env:"GEMINI_MODEL" envDefault:"gemini-2.5-pro"`
+	AIKeys                   []string `env:"AI_KEYS" envDefault:""`
+	AIModel                  string   `env:"AI_MODEL" envDefault:"gemini-2.5-pro"` // gpt-5
+	AIUrl                    string   `env:"AI_URL" envDefault:"https://generativelanguage.googleapis.com/v1beta/openai/"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"3"`
 	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
 	SleepAfterExhausted time.Duration `env:"SLEEP_ATTEMPTS" envDefault:"2h"`
-	DelayBeforeNextSend time.Duration `env:"DELAY_BEFORE_NEXT_SEND" envDefault:"2m"` // one request every 2 minutes
+	DelayBeforeNextSend time.Duration `env:"DELAY_BEFORE_NEXT_SEND" envDefault:"2m"` // one request every 2 minutes, change to 0 on local ai
 
 	OverSeerrURL     string `env:"OVERSEERR_URL" envDefault:"http://localhost"`
 	OverSeerrAPI     string `env:"OVERSEERR_API" envDefault:""`
