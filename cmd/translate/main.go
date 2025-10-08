@@ -42,8 +42,8 @@ func main() {
 func bench(language, languageCode, id, m string) {
 	discord.Infof("%s, %s", language, languageCode)
 	media := "Junji Ito Collection - S01E04 - Collection No. 034 - Shiver + Collection No. 060 - House of Puppets Bluray-1080p"
-	config.TheConfig.OpenAIModel = m
-	model := strings.ReplaceAll(config.TheConfig.OpenAIModel, ":", "-")
+	config.TheConfig.AIModel = m
+	model := strings.ReplaceAll(config.TheConfig.AIModel, ":", "-")
 	_, err := translation.Translate(
 		fmt.Sprintf("%s.mkv", media),
 		"qQLjp",
