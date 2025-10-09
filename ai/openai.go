@@ -132,8 +132,9 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	result := &gptResponse{response: resp}
 	if err != nil {
 		if isErrorModelUnavailable(err) {
-			discord.Errorf("Gemini unavaialble, sleeping..., %v", err)
-			time.Sleep(5 * time.Minute)
+			sl := 5 * time.Minute
+			discord.Errorf("Gemini unavaialble, sleeping for: %v, %v", sl, err)
+			time.Sleep(sl)
 		}
 		return result, err
 	}
