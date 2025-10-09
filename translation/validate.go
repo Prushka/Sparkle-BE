@@ -18,7 +18,9 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 		return "", fmt.Errorf("subtitle line count mismatch with input: expected %d, got %d", len(inputPairSlice), len(output))
 	}
 	res := make([]string, len(output))
+	lastLineCorrected := false
 	for i := range output {
+		currLineCorrected := false
 		inputLinePair := inputPairSlice[i]
 		inputLine := inputLinePair.Left
 		outputLine := output[i]
@@ -42,19 +44,48 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 		}
 		_, err1 = time.Parse(utils.ASSTimeFormat, outputStartTimeStr)
 		_, err2 = time.Parse(utils.ASSTimeFormat, outputEndTimeStr)
-		if err1 != nil || err2 != nil {
-			return "", fmt.Errorf("output subtitle time is malformed: %s", outputLine)
+		if err1 != nil {
+			discord.Errorf("%s", inputLine)
+			discord.Errorf("%s", outputLine)
+			if lastLineCorrected {
+				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
+			}
+			outputStartTimeStr = inputStartTimeStr
+			discord.Infof("Corrected subtitle start time: %s -> %s", outputParts[0], outputStartTimeStr)
+			currLineCorrected = true
+		}
+		if err2 != nil {
+			discord.Errorf("%s", inputLine)
+			discord.Errorf("%s", outputLine)
+			if currLineCorrected || lastLineCorrected {
+				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
+			}
+			outputEndTimeStr = inputEndTimeStr
+			discord.Infof("Corrected subtitle end time: %s -> %s", outputParts[1], outputEndTimeStr)
+			currLineCorrected = true
 		}
 		if inputStartTimeStr != outputStartTimeStr {
 			discord.Errorf("%s", inputLine)
 			discord.Errorf("%s", outputLine)
-			return "", fmt.Errorf("subtitle start time mismatch with input: expected %s, got %s", inputStartTimeStr, outputStartTimeStr)
+			if currLineCorrected || lastLineCorrected {
+				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
+			}
+			inputStartTimeStr = outputStartTimeStr
+			discord.Infof("Corrected subtitle start time: %s -> %s", outputParts[0], inputStartTimeStr)
+			currLineCorrected = true
 		}
 		if inputEndTimeStr != outputEndTimeStr {
 			discord.Errorf("%s", inputLine)
 			discord.Errorf("%s", outputLine)
-			return "", fmt.Errorf("subtitle end time mismatch with input: expected %s, got %s", inputEndTimeStr, outputEndTimeStr)
+			if currLineCorrected || lastLineCorrected {
+				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
+			}
+			inputEndTimeStr = outputEndTimeStr
+			discord.Infof("Corrected subtitle end time: %s -> %s", outputParts[1], inputEndTimeStr)
+			currLineCorrected = true
 		}
+
+		lastLineCorrected = currLineCorrected
 
 		oriInput := sub.dialogues[inputLinePair.Right]
 		inputLineSplit := strings.Split(oriInput, ",")
