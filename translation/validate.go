@@ -1,6 +1,7 @@
 package translation
 
 import (
+	"Sparkle/config"
 	"Sparkle/discord"
 	"Sparkle/utils"
 	"fmt"
@@ -45,8 +46,10 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 		_, err1 = time.Parse(utils.ASSTimeFormat, outputStartTimeStr)
 		_, err2 = time.Parse(utils.ASSTimeFormat, outputEndTimeStr)
 		if err1 != nil {
-			discord.Errorf("%s", inputLine)
-			discord.Errorf("%s", outputLine)
+			if config.TheConfig.Debug {
+				discord.Infof("%s", inputLine)
+				discord.Infof("%s", outputLine)
+			}
 			if lastLineCorrected {
 				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
 			}
@@ -55,8 +58,10 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 			currLineCorrected = true
 		}
 		if err2 != nil {
-			discord.Errorf("%s", inputLine)
-			discord.Errorf("%s", outputLine)
+			if config.TheConfig.Debug {
+				discord.Infof("%s", inputLine)
+				discord.Infof("%s", outputLine)
+			}
 			if currLineCorrected || lastLineCorrected {
 				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
 			}
@@ -65,8 +70,10 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 			currLineCorrected = true
 		}
 		if inputStartTimeStr != outputStartTimeStr {
-			discord.Errorf("%s", inputLine)
-			discord.Errorf("%s", outputLine)
+			if config.TheConfig.Debug {
+				discord.Infof("%s", inputLine)
+				discord.Infof("%s", outputLine)
+			}
 			if currLineCorrected || lastLineCorrected {
 				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
 			}
@@ -75,8 +82,10 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 			currLineCorrected = true
 		}
 		if inputEndTimeStr != outputEndTimeStr {
-			discord.Errorf("%s", inputLine)
-			discord.Errorf("%s", outputLine)
+			if config.TheConfig.Debug {
+				discord.Infof("%s", inputLine)
+				discord.Infof("%s", outputLine)
+			}
 			if currLineCorrected || lastLineCorrected {
 				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
 			}
