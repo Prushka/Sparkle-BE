@@ -21,10 +21,11 @@ func KeepOnlySubtitles(input string) string {
 	return strings.Join(outputLines, "\n")
 }
 
+var IndexPrefix = regexp.MustCompile(`^\d+,`)
+
 // StartsWithIndex checks if the input string starts with an integer index followed by a comma
 func StartsWithIndex(s string) bool {
-	matched, _ := regexp.MatchString(`^\d+,`, s)
-	return matched
+	return IndexPrefix.MatchString(s)
 }
 
 // HasValidTime checks if the input string has a prefix

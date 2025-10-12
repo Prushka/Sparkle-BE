@@ -22,6 +22,5 @@ Output:
 The translated subtitles in %s. Each line must be structurally identical to the input, prefixed with its original index and containing all original styling tags exactly as they appeared, with all text now in %s.`
 
 func GetSystemMessage(inputLang, translationLanguage, media string) string {
-	fmt.Println(fmt.Sprintf(systemMessageASS, inputLang, translationLanguage, inputLang, media, translationLanguage, translationLanguage, translationLanguage))
 	return fmt.Sprintf(systemMessageASS, inputLang, translationLanguage, inputLang, media, translationLanguage, translationLanguage, translationLanguage)
 }
