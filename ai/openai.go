@@ -84,7 +84,7 @@ func isErrorExhausted(err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED")
+	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") || strings.Contains(err.Error(), "Too Many Requests")
 }
 
 // isErrorProhibitedContent checks if the error is a gemini prohibited content error
