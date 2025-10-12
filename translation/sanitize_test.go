@@ -10,7 +10,7 @@ import (
 )
 
 func TestSanitization(t *testing.T) {
-	fBytes, err := os.ReadFile("3-eng.ass")
+	fBytes, err := os.ReadFile("5-eng.ass")
 	if err != nil {
 		t.Fatalf("Failed to read file: %v", err)
 	}
@@ -20,13 +20,10 @@ func TestSanitization(t *testing.T) {
 		t.Fatalf("Failed to sanitize input: %v", err)
 	}
 
-	if err := os.WriteFile("output_sanitized.ass", []byte(strings.Join(sub.dialogues, "\n")), 0644); err != nil {
+	if err := os.WriteFile("output_distilled.ass", []byte(strings.Join(sub.distilledDialogues, "\n")), 0644); err != nil {
 		t.Fatalf("Failed to write sanitized file: %v", err)
 	}
 	if err := os.WriteFile("output_headers.ass", []byte(strings.Join(sub.headers, "\n")), 0644); err != nil {
-		t.Fatalf("Failed to write sanitized file: %v", err)
-	}
-	if err := os.WriteFile("output.ass", []byte(sub.sanitizeOutput(strings.Join(sub.dialogues, "\n"))), 0644); err != nil {
 		t.Fatalf("Failed to write sanitized file: %v", err)
 	}
 
