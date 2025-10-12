@@ -180,7 +180,9 @@ func ExtractText(model string, img image.Image) (text string, promptTokens, comp
 			},
 		}),
 	}
-	chatCompletion, err := oaiClient.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	defer cancel()
+	chatCompletion, err := oaiClient.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model: model,
 		Temperature: param.Opt[float64]{
 			Value: temperature,
