@@ -9,6 +9,44 @@ import (
 	"time"
 )
 
+func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int], out []string) (string, error) {
+	output := utils.RemoveEmptyLinesAndTrimSpaces(out)
+	if len(output) == 0 {
+		return "", fmt.Errorf("subtitle contains no dialogues")
+	}
+	if len(inputPairSlice) != len(output) {
+		return "", fmt.Errorf("subtitle line count mismatch with input: expected %d, got %d", len(inputPairSlice), len(output))
+	}
+	res := make([]string, len(output))
+	for i := range output {
+		inputLinePair := inputPairSlice[i]
+		inputLine := inputLinePair.Left
+		outputLine := output[i]
+		inputParts := strings.SplitN(inputLine, ",", 2)
+		outputParts := strings.SplitN(outputLine, ",", 2)
+		if len(inputParts) != 2 || len(outputParts) != 2 {
+			return "", fmt.Errorf("subtitle line has less commas than expected, input: %s, output: %s", inputLine, outputLine)
+		}
+		inputIndex := inputParts[0]
+		outputIndex := outputParts[0]
+		if inputIndex != outputIndex {
+			return "", fmt.Errorf("subtitle index mismatch, input: %s, output: %s", inputLine, outputLine)
+		}
+		outputTextStr := strings.TrimSpace(outputParts[1])
+		if len(outputTextStr) == 0 {
+			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputLine)
+		}
+
+		oriInput := sub.dialogues[inputLinePair.Right]
+		inputLineSplit := strings.Split(oriInput, ",")
+		if len(inputLineSplit) <= sub.pos.Text {
+			return "", fmt.Errorf("unable to find text field in input line: %s", inputLine)
+		}
+		res[i] = strings.Join(append(inputLineSplit[:sub.pos.Text], outputTextStr), ",")
+	}
+	return strings.Join(res, "\n"), nil
+}
+
 func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out []string) (string, error) {
 	output := utils.RemoveEmptyLinesAndTrimSpaces(out)
 	if len(output) == 0 {

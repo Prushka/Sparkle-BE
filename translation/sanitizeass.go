@@ -42,13 +42,14 @@ func findFormatPositions(input string) (pos FormatPositions, err error) {
 }
 
 type ASSSubtitle struct {
-	headers                  []string
-	dialogues                []string
-	distilledDialogues       []string
-	nonTranslatableDialogues []string
-	afterFormatNotDialogues  []string
-	pos                      FormatPositions
-	sanitizedASS             []string // everything from input, except dialogues lines that are not translatable
+	headers                     []string
+	dialogues                   []string
+	distilledDialogues          []string
+	distilledDialoguesWithIndex []string
+	nonTranslatableDialogues    []string
+	afterFormatNotDialogues     []string
+	pos                         FormatPositions
+	sanitizedASS                []string // everything from input, except dialogues lines that are not translatable
 }
 
 // sanitizeInputASS returns headers, translatable dialogue lines, and error if any.
@@ -74,8 +75,10 @@ func sanitizeInputASS(input string) (*ASSSubtitle, error) {
 				endTimeStr := extractDialogueField(subtitleLine, pos.End, false)
 				textStr := strings.TrimSpace(extractDialogueField(subtitleLine, pos.Text, true))
 				distilledSubtitleLine := fmt.Sprintf("%s,%s,%s", startTimeStr, endTimeStr, textStr)
+				distilledSubtitleLineWithIndex := fmt.Sprintf("%d,%s", len(sub.distilledDialoguesWithIndex), textStr)
 				sub.dialogues = append(sub.dialogues, subtitleLine)
 				sub.distilledDialogues = append(sub.distilledDialogues, distilledSubtitleLine)
+				sub.distilledDialoguesWithIndex = append(sub.distilledDialoguesWithIndex, distilledSubtitleLineWithIndex)
 				sub.sanitizedASS = append(sub.sanitizedASS, subtitleLine)
 			} else {
 				sub.nonTranslatableDialogues = append(sub.nonTranslatableDialogues, line)

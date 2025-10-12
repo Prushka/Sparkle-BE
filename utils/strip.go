@@ -1,23 +1,30 @@
 package utils
 
 import (
+	"regexp"
 	"strings"
 	"time"
 )
 
 const ASSTimeFormat = "15:04:05.00"
 
-// KeepOnlySubtitles removes the first <think>...</think> tag and its content from the input string only if the string's prefix is <think>
+// KeepOnlySubtitles removes any non-desired content from the input string,
 // it also removes anything that's not a subtitle line
 func KeepOnlySubtitles(input string) string {
 	inputLines := RemoveEmptyLinesAndTrimSpaces(strings.Split(input, "\n"))
 	var outputLines []string
 	for _, line := range inputLines {
-		if HasValidTime(line) {
+		if StartsWithIndex(line) {
 			outputLines = append(outputLines, line)
 		}
 	}
 	return strings.Join(outputLines, "\n")
+}
+
+// StartsWithIndex checks if the input string starts with an integer index followed by a comma
+func StartsWithIndex(s string) bool {
+	matched, _ := regexp.MatchString(`^\d+,`, s)
+	return matched
 }
 
 // HasValidTime checks if the input string has a prefix

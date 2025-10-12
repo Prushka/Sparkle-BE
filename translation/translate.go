@@ -116,7 +116,7 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
-	inputsPairs := splitByCharacters(sub.distilledDialogues, config.TheConfig.TranslationBatchLength)
+	inputsPairs := splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.TranslationBatchLength)
 	translated, attempts, err := ai.SendWithRetrySplit(ctx, systemMessage, inputsPairs,
 		func(inputPairSlice utils.PairSlice[string, int], output string) (string, error) {
 			t := strings.Split(output, "\n")
@@ -124,7 +124,7 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 			discord.Infof("Output length: %d, Output lines: %d, Input lines: %d",
 				len(strings.Join(t, "\n")),
 				outputLinesCount, len(inputPairSlice))
-			post, err := sub.process(inputPairSlice, t)
+			post, err := sub.processIndex(inputPairSlice, t)
 			if err != nil {
 				return "", err
 			}
