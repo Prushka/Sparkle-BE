@@ -77,8 +77,8 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 			if currLineCorrected || lastLineCorrected {
 				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
 			}
-			inputStartTimeStr = outputStartTimeStr
-			discord.Infof("Corrected subtitle start time: %s -> %s", outputParts[0], inputStartTimeStr)
+			outputStartTimeStr = inputStartTimeStr
+			discord.Infof("Corrected subtitle start time: %s -> %s", outputParts[0], outputStartTimeStr)
 			currLineCorrected = true
 		}
 		if inputEndTimeStr != outputEndTimeStr {
@@ -89,8 +89,8 @@ func (sub *ASSSubtitle) process(inputPairSlice utils.PairSlice[string, int], out
 			if currLineCorrected || lastLineCorrected {
 				return "", fmt.Errorf("consecutive subtitle time errors, unable to correct: %s", outputLine)
 			}
-			inputEndTimeStr = outputEndTimeStr
-			discord.Infof("Corrected subtitle end time: %s -> %s", outputParts[1], inputEndTimeStr)
+			outputEndTimeStr = inputEndTimeStr
+			discord.Infof("Corrected subtitle end time: %s -> %s", outputParts[1], outputEndTimeStr)
 			currLineCorrected = true
 		}
 
