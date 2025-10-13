@@ -17,6 +17,7 @@ Critical Rules:
 1. NEVER MERGE OR SPLIT LINES. You must process each indexed line individually. If a single sentence is broken across two or more subtitle lines in the input, it MUST remain broken across the same lines in the output. Translate line-by-line, strictly. The number of output lines must exactly match the number of input lines.
 2. PRESERVE ALL STYLES AND TAGS. Reproduce every non-dialogue element exactly as it appears. This includes all style definitions and formatting tags. Do not add, remove, or modify them in any way.
 3. TRANSLATE TEXT ONLY. Do not add any headers, footers, comments, notes, markdown, or any additional content.
+4. IF AND ONLY IF a subtitle line consists of song lyrics in a language DIFFERENT from the main source language (e.g., Japanese Romaji), you must not translate the lyrics part.
 
 Output:
 The translated subtitles in %s. Each line must be structurally identical to the input, prefixed with its original index and containing all original styling tags exactly as they appeared, with all text now in %s.`

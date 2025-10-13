@@ -18,6 +18,7 @@ func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int]
 		return "", fmt.Errorf("subtitle line count mismatch with input: expected %d, got %d", len(inputPairSlice), len(output))
 	}
 	res := make([]string, len(output))
+	identicalLines := 0
 	for i := range output {
 		inputLinePair := inputPairSlice[i]
 		inputLine := inputLinePair.Left
@@ -36,6 +37,10 @@ func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int]
 		if len(outputTextStr) == 0 {
 			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputLine)
 		}
+		inputTextStr := strings.TrimSpace(inputParts[1])
+		if inputTextStr == outputTextStr {
+			identicalLines++
+		}
 
 		oriInput := sub.dialogues[inputLinePair.Right]
 		inputLineSplit := strings.Split(oriInput, ",")
@@ -43,6 +48,9 @@ func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int]
 			return "", fmt.Errorf("unable to find text field in input line: %s", inputLine)
 		}
 		res[i] = strings.Join(append(inputLineSplit[:sub.pos.Text], outputTextStr), ",")
+	}
+	if float64(identicalLines)/float64(len(output)) > 0.5 && len(output) > 80 {
+		return "", fmt.Errorf("too many identical lines in output: %d/%d", identicalLines, len(output))
 	}
 	return strings.Join(res, "\n"), nil
 }
