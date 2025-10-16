@@ -129,7 +129,7 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 				return "", err
 			}
 			return post, nil
-		})
+		}, false)
 	if err != nil {
 		return "", attempts, err
 	}

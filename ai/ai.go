@@ -25,23 +25,27 @@ type Result interface {
 }
 
 var OpenAIClis []AI
+var FallbackAICli AI
 
 func Init() {
 	discord.Infof("Initializing AI clients")
 	if len(config.TheConfig.AIKeys) > 0 {
 		discord.Infof("Initializing %d AI clients", len(config.TheConfig.AIKeys))
 		for _, key := range config.TheConfig.AIKeys {
-			OpenAIClis = append(OpenAIClis, NewOpenAI(key))
+			OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, key))
 		}
 	} else if config.TheConfig.AIUrl != "" {
 		discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
-		OpenAIClis = append(OpenAIClis, NewOpenAI(""))
+		OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, ""))
+	}
+	if config.TheConfig.FallbackAIUrl != "" && config.TheConfig.FallbackAIModel != "" {
+		FallbackAICli = NewOpenAI(config.TheConfig.FallbackAIUrl, config.TheConfig.FallbackAIModel, "")
 	}
 }
 
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	inputPairSlices []utils.PairSlice[string, int],
-	processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error)) ([]string, int, error) {
+	processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error), isFallback bool) ([]string, int, error) {
 
 	totalAttempts := 0
 	run := func(a AI) ([]string, error) {
@@ -75,32 +79,45 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 		return translated, nil
 	}
 
-	exhausted := 0
-	runners := OpenAIClis
-	for i, runner := range runners {
-		if time.Since(runner.GetLastExhausted()) < config.TheConfig.SleepAfterExhausted {
-			exhausted++
-			continue
+	if isFallback {
+		if FallbackAICli == nil {
+			return nil, 0, fmt.Errorf("fallback AI client not initialized")
+		} else {
+			var res []string
+			res, err := run(FallbackAICli)
+			if err == nil {
+				return res, totalAttempts, nil
+			}
+			discord.Errorf("Fallback client failed with error: %+v", err)
+			return nil, totalAttempts, fmt.Errorf("fallback client failed")
 		}
-		discord.Infof("Running on client: %d", i)
-		var res []string
-		res, err := run(runner)
-		if err == nil {
-			return res, totalAttempts, nil
+	} else {
+		exhausted := 0
+		for i, runner := range OpenAIClis {
+			if time.Since(runner.GetLastExhausted()) < config.TheConfig.SleepAfterExhausted {
+				exhausted++
+				continue
+			}
+			discord.Infof("Running on client: %d", i)
+			var res []string
+			res, err := run(runner)
+			if err == nil {
+				return res, totalAttempts, nil
+			}
+			discord.Errorf("Client %d failed with error: %+v", i, err)
+			if isErrorExhausted(err) {
+				exhausted++
+				runner.SetLastExhausted()
+			}
+			if isErrorProhibitedContent(err) {
+				discord.Errorf("Detected prohibited content, skipping...")
+				return nil, totalAttempts, err
+			}
 		}
-		discord.Errorf("Client %d failed with error: %+v", i, err)
-		if isErrorExhausted(err) {
-			exhausted++
-			runner.SetLastExhausted()
+		if exhausted == len(OpenAIClis) {
+			discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
+			time.Sleep(config.TheConfig.SleepAfterExhausted)
 		}
-		if isErrorProhibitedContent(err) {
-			discord.Errorf("Detected prohibited content, skipping...")
-			return nil, totalAttempts, err
-		}
-	}
-	if exhausted == len(runners) {
-		discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
-		time.Sleep(config.TheConfig.SleepAfterExhausted)
 	}
 	return nil, totalAttempts, fmt.Errorf("all clients failed or exhausted")
 }

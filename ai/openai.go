@@ -17,24 +17,26 @@ type gpt struct {
 	messages      []openai.ChatCompletionMessageParamUnion
 	client        openai.Client
 	LastExhausted time.Time
+	model         string
 }
 
 type gptResponse struct {
 	response *openai.ChatCompletion
 }
 
-func NewOpenAI(apiKey string) AI {
+func NewOpenAI(url, model, apiKey string) AI {
 	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 	}
-	if config.TheConfig.AIUrl != "" {
-		options = append(options, option.WithBaseURL(config.TheConfig.AIUrl))
+	if url != "" {
+		options = append(options, option.WithBaseURL(url))
 	}
 	return &gpt{
 		messages: make([]openai.ChatCompletionMessageParamUnion, 0),
 		client: openai.NewClient(
 			options...,
 		),
+		model: model,
 	}
 }
 
@@ -114,7 +116,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 		}
 		utils.MakeUpSleep(now)
 	}()
-	discord.Infof("Sending to %s", config.TheConfig.AIModel)
+	discord.Infof("Sending to %s", o.model)
 
 	if len(o.messages) == 0 {
 		return nil, fmt.Errorf("chat not started, call StartChat first")
@@ -126,7 +128,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	}
 
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model:    config.TheConfig.AIModel,
+		Model:    o.model,
 		Messages: append(o.messages, openai.UserMessage(input)),
 	})
 	result := &gptResponse{response: resp}
@@ -158,3 +160,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	}
 	return result, nil
 }
+
+// TODO: implement fall back model in case PROHIBITED CONTENT
+// interspecies reviewers s1e2
+// ask sonarr and radarr to mark as failed if contains no subtitles

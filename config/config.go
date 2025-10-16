@@ -59,6 +59,8 @@ type Config struct {
 	AIKeys                   []string `env:"AI_KEYS" envDefault:""`
 	AIModel                  string   `env:"AI_MODEL" envDefault:"gemini-2.5-pro"` // gpt-5
 	AIUrl                    string   `env:"AI_URL" envDefault:"https://generativelanguage.googleapis.com/v1beta/openai/"`
+	FallbackAIModel          string   `env:"FALLBACK_AI_MODEL" envDefault:"gpt-oss:120b"`
+	FallbackAIUrl            string   `env:"FALLBACK_AI_URL" envDefault:"http://192.168.1.244:11434/v1"`
 	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
 	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
 	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"5"`
