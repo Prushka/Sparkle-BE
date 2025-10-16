@@ -110,8 +110,8 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 				runner.SetLastExhausted()
 			}
 			if isErrorProhibitedContent(err) {
-				discord.Errorf("Detected prohibited content, skipping...")
-				return nil, totalAttempts, err
+				discord.Errorf("Detected prohibited content, sending to fallback client...")
+				return SendWithRetrySplit(ctx, systemMessage, inputPairSlices, processor, true)
 			}
 		}
 		if exhausted == len(OpenAIClis) {
