@@ -138,7 +138,7 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 		translated, attempts, err = ai.SendWithRetrySplit(
 			ctx,
 			systemMessage,
-			splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.TranslationBatchLength),
+			splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.FallbackTranslationBatchLength),
 			processor, true)
 		if err != nil {
 			return "", attempts, err

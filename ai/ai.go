@@ -110,7 +110,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 				runner.SetLastExhausted()
 			}
 			if IsErrorProhibitedContent(err) {
-				discord.Errorf("Detected prohibited content, sending to fallback client...")
+				discord.Errorf("Detected prohibited content...")
 				return nil, totalAttempts, err
 			}
 		}
