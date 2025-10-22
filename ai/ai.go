@@ -76,7 +76,6 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	totalAttempts := 0
 	run := func(a AI) ([]string, error) {
 		defaultLimit := 360000 / batchLength
-		// interspecies e3 365
 		if len(inputPairSlices) > defaultLimit {
 			return nil, fmt.Errorf("too many split segments: %d/%d", len(inputPairSlices), defaultLimit)
 		}
