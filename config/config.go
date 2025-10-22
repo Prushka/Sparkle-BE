@@ -54,17 +54,19 @@ type Config struct {
 	ScanConfigInterval time.Duration `env:"SCAN_CONFIG_INTERVAL" envDefault:"2h"`
 	ScanInputInterval  time.Duration `env:"SCAN_INPUT_INTERVAL" envDefault:"4h"`
 
-	PurgeCacheUrl            string   `env:"PURGE_CACHE_URL" envDefault:""`
-	HistoryCount             int      `env:"HISTORY_COUNT" envDefault:"99999"` // 5 means we keep 5 user + assistant messages, 0 disables any history
-	AIKeys                   []string `env:"AI_KEYS" envDefault:""`
-	AIModel                  string   `env:"AI_MODEL" envDefault:"gemini-2.5-pro"` // gpt-5
-	AIUrl                    string   `env:"AI_URL" envDefault:"https://generativelanguage.googleapis.com/v1beta/openai/"`
-	FallbackAIModel          string   `env:"FALLBACK_AI_MODEL" envDefault:"gpt-oss:120b"`
-	FallbackAIUrl            string   `env:"FALLBACK_AI_URL" envDefault:"http://192.168.1.244:11434/v1"`
-	TranslationLanguages     []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
-	TranslationBatchLength   int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
-	TranslationAttempts      int      `env:"TRANSLATION_ATTEMPTS" envDefault:"5"`
-	TranslationInputLanguage []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
+	PurgeCacheUrl                  string   `env:"PURGE_CACHE_URL" envDefault:""`
+	HistoryCount                   int      `env:"HISTORY_COUNT" envDefault:"99999"` // 5 means we keep 5 user + assistant messages, 0 disables any history
+	FallbackHistoryCount           int      `env:"FALLBACK_HISTORY_COUNT" envDefault:"3"`
+	AIKeys                         []string `env:"AI_KEYS" envDefault:""`
+	AIModel                        string   `env:"AI_MODEL" envDefault:"gemini-2.5-pro"` // gpt-5
+	AIUrl                          string   `env:"AI_URL" envDefault:"https://generativelanguage.googleapis.com/v1beta/openai/"`
+	FallbackAIModel                string   `env:"FALLBACK_AI_MODEL" envDefault:"gpt-oss:120b"`
+	FallbackAIUrl                  string   `env:"FALLBACK_AI_URL" envDefault:"http://192.168.1.244:11434/v1"`
+	TranslationLanguages           []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
+	TranslationBatchLength         int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
+	FallbackTranslationBatchLength int      `env:"FALLBACK_TRANSLATION_BATCH_LENGTH" envDefault:"1600"`
+	TranslationAttempts            int      `env:"TRANSLATION_ATTEMPTS" envDefault:"5"`
+	TranslationInputLanguage       []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
 	SleepAfterExhausted time.Duration `env:"SLEEP_ATTEMPTS" envDefault:"2h"`
 	DelayBeforeNextSend time.Duration `env:"DELAY_BEFORE_NEXT_SEND" envDefault:"2m"` // one request every 2 minutes, change to 0 on local ai

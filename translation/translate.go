@@ -116,21 +116,34 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 	discord.Infof("[ASS] Translating to language: %s", language)
 
 	ctx := context.Background()
-	inputsPairs := splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.TranslationBatchLength)
-	translated, attempts, err := ai.SendWithRetrySplit(ctx, systemMessage, inputsPairs,
-		func(inputPairSlice utils.PairSlice[string, int], output string) (string, error) {
-			t := strings.Split(output, "\n")
-			outputLinesCount := len(t)
-			discord.Infof("Output length: %d, Output lines: %d, Input lines: %d",
-				len(strings.Join(t, "\n")),
-				outputLinesCount, len(inputPairSlice))
-			post, err := sub.processIndex(inputPairSlice, t)
-			if err != nil {
-				return "", err
-			}
-			return post, nil
-		}, false)
-	if err != nil {
+	processor := func(inputPairSlice utils.PairSlice[string, int], output string) (string, error) {
+		t := strings.Split(output, "\n")
+		outputLinesCount := len(t)
+		discord.Infof("Output length: %d, Output lines: %d, Input lines: %d",
+			len(strings.Join(t, "\n")),
+			outputLinesCount, len(inputPairSlice))
+		post, err := sub.processIndex(inputPairSlice, t)
+		if err != nil {
+			return "", err
+		}
+		return post, nil
+	}
+	translated, attempts, err := ai.SendWithRetrySplit(
+		ctx,
+		systemMessage,
+		splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.TranslationBatchLength),
+		processor, false)
+	if ai.IsErrorProhibitedContent(err) {
+		discord.Infof("Using fallback client due to prohibited content")
+		translated, attempts, err = ai.SendWithRetrySplit(
+			ctx,
+			systemMessage,
+			splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.TranslationBatchLength),
+			processor, true)
+		if err != nil {
+			return "", attempts, err
+		}
+	} else if err != nil {
 		return "", attempts, err
 	}
 	if len(translated) == 0 {

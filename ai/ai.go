@@ -32,14 +32,14 @@ func Init() {
 	if len(config.TheConfig.AIKeys) > 0 {
 		discord.Infof("Initializing %d AI clients", len(config.TheConfig.AIKeys))
 		for _, key := range config.TheConfig.AIKeys {
-			OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, key))
+			OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, key, config.TheConfig.HistoryCount))
 		}
 	} else if config.TheConfig.AIUrl != "" {
 		discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
-		OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, ""))
+		OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, "", config.TheConfig.HistoryCount))
 	}
 	if config.TheConfig.FallbackAIUrl != "" && config.TheConfig.FallbackAIModel != "" {
-		FallbackAICli = NewOpenAI(config.TheConfig.FallbackAIUrl, config.TheConfig.FallbackAIModel, "")
+		FallbackAICli = NewOpenAI(config.TheConfig.FallbackAIUrl, config.TheConfig.FallbackAIModel, "", config.TheConfig.FallbackHistoryCount)
 	}
 }
 
@@ -105,13 +105,13 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 				return res, totalAttempts, nil
 			}
 			discord.Errorf("Client %d failed with error: %+v", i, err)
-			if isErrorExhausted(err) {
+			if IsErrorExhausted(err) {
 				exhausted++
 				runner.SetLastExhausted()
 			}
-			if isErrorProhibitedContent(err) {
+			if IsErrorProhibitedContent(err) {
 				discord.Errorf("Detected prohibited content, sending to fallback client...")
-				return SendWithRetrySplit(ctx, systemMessage, inputPairSlices, processor, true)
+				return nil, totalAttempts, err
 			}
 		}
 		if exhausted == len(OpenAIClis) {
@@ -133,7 +133,7 @@ func SendWithRetry(ctx context.Context, a AI, input string, processor func(outpu
 			if result != nil && result.Response() != nil && utils.AsJson(result.Response()) != "null" {
 				fmt.Println(utils.AsJson(result.Response()))
 			}
-			if isErrorExhausted(err) || isErrorProhibitedContent(err) {
+			if IsErrorExhausted(err) || IsErrorProhibitedContent(err) {
 				return "", i, err
 			}
 		} else {

@@ -18,13 +18,14 @@ type gpt struct {
 	client        openai.Client
 	LastExhausted time.Time
 	model         string
+	historyCount  int
 }
 
 type gptResponse struct {
 	response *openai.ChatCompletion
 }
 
-func NewOpenAI(url, model, apiKey string) AI {
+func NewOpenAI(url, model, apiKey string, historyCount int) AI {
 	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 	}
@@ -36,7 +37,8 @@ func NewOpenAI(url, model, apiKey string) AI {
 		client: openai.NewClient(
 			options...,
 		),
-		model: model,
+		model:        model,
+		historyCount: historyCount,
 	}
 }
 
@@ -81,24 +83,24 @@ func (o *gpt) ClearPreviousRun() {
 	}
 }
 
-// isErrorExhausted checks if the error is a gemini key exhausted error
-func isErrorExhausted(err error) bool {
+// IsErrorExhausted checks if the error is a gemini key exhausted error
+func IsErrorExhausted(err error) bool {
 	if err == nil {
 		return false
 	}
 	return strings.Contains(err.Error(), "RESOURCE_EXHAUSTED") || strings.Contains(err.Error(), "Too Many Requests")
 }
 
-// isErrorProhibitedContent checks if the error is a gemini prohibited content error
-func isErrorProhibitedContent(err error) bool {
+// IsErrorProhibitedContent checks if the error is a gemini prohibited content error
+func IsErrorProhibitedContent(err error) bool {
 	if err == nil {
 		return false
 	}
 	return strings.Contains(err.Error(), "PROHIBITED_CONTENT")
 }
 
-// isErrorModelUnavailable checks if the error is a gemini model unavailable error
-func isErrorModelUnavailable(err error) bool {
+// IsErrorModelUnavailable checks if the error is a gemini model unavailable error
+func IsErrorModelUnavailable(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -111,7 +113,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	now := time.Now()
 	var err error
 	defer func() {
-		if isErrorExhausted(err) {
+		if IsErrorExhausted(err) || IsErrorProhibitedContent(err) {
 			return
 		}
 		utils.MakeUpSleep(now)
@@ -123,8 +125,8 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	}
 
 	systemMessage := o.messages[0]
-	if len(o.messages)-1 > config.TheConfig.HistoryCount*2 {
-		o.messages = append([]openai.ChatCompletionMessageParamUnion{systemMessage}, o.messages[len(o.messages)-config.TheConfig.HistoryCount*2:]...)
+	if len(o.messages)-1 > o.historyCount*2 {
+		o.messages = append([]openai.ChatCompletionMessageParamUnion{systemMessage}, o.messages[len(o.messages)-o.historyCount*2:]...)
 	}
 
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
@@ -133,7 +135,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	})
 	result := &gptResponse{response: resp}
 	if err != nil {
-		if isErrorModelUnavailable(err) {
+		if IsErrorModelUnavailable(err) {
 			sl := 5 * time.Minute
 			discord.Errorf("Gemini unavaialble, sleeping for: %v, %v", sl, err)
 			time.Sleep(sl)
