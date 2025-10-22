@@ -1,7 +1,6 @@
 package translation
 
 import (
-	"Sparkle/utils"
 	"strings"
 )
 
@@ -33,30 +32,6 @@ func removeSingleFullStops(input string, char rune) string {
 	}
 
 	return b.String()
-}
-
-func splitByCharacters(lines []string, atChar int) []utils.PairSlice[string, int] {
-	var (
-		result       []utils.PairSlice[string, int]
-		currentLines utils.PairSlice[string, int]
-		count        int
-	)
-
-	for i, line := range lines {
-		currentLines = append(currentLines, utils.Pair[string, int]{Left: line, Right: i})
-		count += len(line)
-		if count >= atChar {
-			result = append(result, currentLines)
-			currentLines = nil
-			count = 0
-		}
-	}
-
-	if len(currentLines) > 0 {
-		result = append(result, currentLines)
-	}
-
-	return result
 }
 
 // TODO: context aware seasons

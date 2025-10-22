@@ -43,13 +43,39 @@ func Init() {
 	}
 }
 
+func splitByCharacters(lines []string, atChar int) []utils.PairSlice[string, int] {
+	var (
+		result       []utils.PairSlice[string, int]
+		currentLines utils.PairSlice[string, int]
+		count        int
+	)
+
+	for i, line := range lines {
+		currentLines = append(currentLines, utils.Pair[string, int]{Left: line, Right: i})
+		count += len(line)
+		if count >= atChar {
+			result = append(result, currentLines)
+			currentLines = nil
+			count = 0
+		}
+	}
+
+	if len(currentLines) > 0 {
+		result = append(result, currentLines)
+	}
+
+	return result
+}
+
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
-	inputPairSlices []utils.PairSlice[string, int],
+	batchLength int,
+	distilledDialoguesWithIndex []string,
 	processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error), isFallback bool) ([]string, int, error) {
 
+	inputPairSlices := splitByCharacters(distilledDialoguesWithIndex, batchLength)
 	totalAttempts := 0
 	run := func(a AI) ([]string, error) {
-		defaultLimit := 360000 / config.TheConfig.TranslationBatchLength
+		defaultLimit := 360000 / batchLength
 		if len(inputPairSlices) > defaultLimit {
 			return nil, fmt.Errorf("too many split segments: %d/%d", len(inputPairSlices), defaultLimit)
 		}

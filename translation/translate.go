@@ -131,14 +131,16 @@ func TranslateSubtitlesASS(sub *ASSSubtitle, language, systemMessage string) (st
 	translated, attempts, err := ai.SendWithRetrySplit(
 		ctx,
 		systemMessage,
-		splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.TranslationBatchLength),
+		config.TheConfig.TranslationBatchLength,
+		sub.distilledDialoguesWithIndex,
 		processor, false)
 	if ai.IsErrorProhibitedContent(err) {
 		discord.Infof("Using fallback client due to prohibited content")
 		translated, attempts, err = ai.SendWithRetrySplit(
 			ctx,
 			systemMessage,
-			splitByCharacters(sub.distilledDialoguesWithIndex, config.TheConfig.FallbackTranslationBatchLength),
+			config.TheConfig.FallbackTranslationBatchLength,
+			sub.distilledDialoguesWithIndex,
 			processor, true)
 		if err != nil {
 			return "", attempts, err
