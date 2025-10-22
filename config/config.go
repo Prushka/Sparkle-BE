@@ -66,7 +66,7 @@ type Config struct {
 	FallbackAIIsLocal              bool     `env:"FALLBACK_AI_IS_LOCAL" envDefault:"true"`
 	TranslationLanguages           []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
 	TranslationBatchLength         int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
-	FallbackTranslationBatchLength int      `env:"FALLBACK_TRANSLATION_BATCH_LENGTH" envDefault:"1200"`
+	FallbackTranslationBatchLength int      `env:"FALLBACK_TRANSLATION_BATCH_LENGTH" envDefault:"1400"`
 	TranslationAttempts            int      `env:"TRANSLATION_ATTEMPTS" envDefault:"5"`
 	TranslationInputLanguage       []string `env:"TRANSLATION_INPUT_LANGUAGE" envDefault:"eng"`
 
