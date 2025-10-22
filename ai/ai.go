@@ -32,14 +32,14 @@ func Init() {
 	if len(config.TheConfig.AIKeys) > 0 {
 		discord.Infof("Initializing %d AI clients", len(config.TheConfig.AIKeys))
 		for _, key := range config.TheConfig.AIKeys {
-			OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, key, config.TheConfig.HistoryCount))
+			OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, key, config.TheConfig.HistoryCount, config.TheConfig.AIIsLocal))
 		}
 	} else if config.TheConfig.AIUrl != "" {
 		discord.Infof("No OpenAI keys found, found custom url, initializing without key for custom url")
-		OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, "", config.TheConfig.HistoryCount))
+		OpenAIClis = append(OpenAIClis, NewOpenAI(config.TheConfig.AIUrl, config.TheConfig.AIModel, "", config.TheConfig.HistoryCount, config.TheConfig.AIIsLocal))
 	}
 	if config.TheConfig.FallbackAIUrl != "" && config.TheConfig.FallbackAIModel != "" {
-		FallbackAICli = NewOpenAI(config.TheConfig.FallbackAIUrl, config.TheConfig.FallbackAIModel, "", config.TheConfig.FallbackHistoryCount)
+		FallbackAICli = NewOpenAI(config.TheConfig.FallbackAIUrl, config.TheConfig.FallbackAIModel, "", config.TheConfig.FallbackHistoryCount, config.TheConfig.FallbackAIIsLocal)
 	}
 }
 
@@ -76,6 +76,7 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	totalAttempts := 0
 	run := func(a AI) ([]string, error) {
 		defaultLimit := 360000 / batchLength
+		// interspecies e3 365
 		if len(inputPairSlices) > defaultLimit {
 			return nil, fmt.Errorf("too many split segments: %d/%d", len(inputPairSlices), defaultLimit)
 		}

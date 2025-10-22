@@ -19,13 +19,14 @@ type gpt struct {
 	LastExhausted time.Time
 	model         string
 	historyCount  int
+	isLocal       bool
 }
 
 type gptResponse struct {
 	response *openai.ChatCompletion
 }
 
-func NewOpenAI(url, model, apiKey string, historyCount int) AI {
+func NewOpenAI(url, model, apiKey string, historyCount int, isLocal bool) AI {
 	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 	}
@@ -39,6 +40,7 @@ func NewOpenAI(url, model, apiKey string, historyCount int) AI {
 		),
 		model:        model,
 		historyCount: historyCount,
+		isLocal:      isLocal,
 	}
 }
 
@@ -113,7 +115,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	now := time.Now()
 	var err error
 	defer func() {
-		if IsErrorExhausted(err) || IsErrorProhibitedContent(err) {
+		if IsErrorExhausted(err) || IsErrorProhibitedContent(err) || o.isLocal {
 			return
 		}
 		utils.MakeUpSleep(now)
