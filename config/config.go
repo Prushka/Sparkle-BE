@@ -78,7 +78,7 @@ type Config struct {
 	OverSeerrUserIds []int  `env:"OVERSEERR_USER_IDS" envDefault:""`
 
 	OCRVLMUrl    string   `env:"OCRVLM_URL" envDefault:"http://192.168.1.244:11434/v1"` // ollama or openai compatible
-	OCRVLMModels []string `env:"OCRVLM_MODEL" envDefault:"gemma3:27b,mistral-small3.2:24b,llama4:16x17b"`
+	OCRVLMModels []string `env:"OCRVLM_MODEL" envDefault:"gemma3:27b,mistral-small3.2:24b,qwen3-vl:32b,llama4:16x17b"`
 	OCRVLMVotes  int      `env:"OCRVLM_VOTES" envDefault:"2"`
 }
 
