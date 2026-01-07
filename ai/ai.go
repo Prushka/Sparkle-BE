@@ -68,10 +68,12 @@ func splitByCharacters(lines []string, atChar int) []utils.PairSlice[string, int
 }
 
 func SendWithRetrySplit(ctx context.Context, systemMessage string,
-	batchLength int,
 	distilledDialoguesWithIndex []string,
 	processor func(inputPairSlice utils.PairSlice[string, int], output string) (string, error), isFallback bool) ([]string, int, error) {
-
+	batchLength := config.TheConfig.TranslationBatchLength
+	if isFallback {
+		batchLength = config.TheConfig.FallbackTranslationBatchLength
+	}
 	inputPairSlices := splitByCharacters(distilledDialoguesWithIndex, batchLength)
 	totalAttempts := 0
 	run := func(a AI) ([]string, error) {
