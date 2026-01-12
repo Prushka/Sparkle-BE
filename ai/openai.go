@@ -23,7 +23,7 @@ type gpt struct {
 }
 
 type gptResponse struct {
-	Resp *openai.ChatCompletion
+	response *openai.ChatCompletion
 }
 
 func NewOpenAI(url, model, apiKey string, historyCount int, isLocal bool) AI {
@@ -45,22 +45,22 @@ func NewOpenAI(url, model, apiKey string, historyCount int, isLocal bool) AI {
 }
 
 func (r *gptResponse) Usage() interface{} {
-	if r.Resp == nil {
+	if r.response == nil {
 		return nil
 	}
-	return r.Resp.Usage
+	return r.response.Usage
 }
 
 func (r *gptResponse) Text() string {
-	if r.Resp == nil || len(r.Resp.Choices) == 0 {
+	if r.response == nil || len(r.response.Choices) == 0 {
 		return ""
 	}
-	t := r.Resp.Choices[0].Message.Content
+	t := r.response.Choices[0].Message.Content
 	return utils.KeepOnlySubtitles(t)
 }
 
 func (r *gptResponse) Response() interface{} {
-	return r.Resp
+	return r.response
 }
 
 func (o *gpt) GetLastExhausted() time.Time {
@@ -134,8 +134,9 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model:    o.model,
 		Messages: append(o.messages, openai.UserMessage(input)),
+		//ReasoningEffort: openai.ReasoningEffortHigh,
 	})
-	result := &gptResponse{Resp: resp}
+	result := &gptResponse{response: resp}
 	if err != nil {
 		if IsErrorModelUnavailable(err) {
 			sl := 5 * time.Minute
@@ -147,7 +148,7 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 
 	resultText := result.Text()
 	if resultText == "" {
-		err = fmt.Errorf("no candidates found in Resp")
+		err = fmt.Errorf("no candidates found in response")
 		if strings.Contains(fmt.Sprintf("%s", utils.AsJson(resp)), "PROHIBITED_CONTENT") {
 			err = fmt.Errorf("PROHIBITED_CONTENT")
 		}
