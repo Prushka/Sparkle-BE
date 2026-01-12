@@ -132,9 +132,9 @@ func (o *gpt) Send(oCtx context.Context, input string) (Result, error) {
 	}
 
 	resp, err := o.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model:    o.model,
-		Messages: append(o.messages, openai.UserMessage(input)),
-		//ReasoningEffort: openai.ReasoningEffortHigh,
+		Model:           o.model,
+		Messages:        append(o.messages, openai.UserMessage(input)),
+		ReasoningEffort: openai.ReasoningEffortHigh,
 	})
 	result := &gptResponse{response: resp}
 	if err != nil {
