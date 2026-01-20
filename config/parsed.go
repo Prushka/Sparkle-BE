@@ -14,12 +14,12 @@ Core Task:
 Translate all the text portion of each line into fluent, context-aware %s subtitles.
 
 Critical Rules:
-1. NEVER MERGE OR SPLIT LINES. You must process each indexed line individually. If a single sentence is broken across two or more subtitle lines in the input, it MUST remain broken across the same lines in the output. Translate line-by-line, strictly. The number of output lines must exactly match the number of input lines.
-2. PRESERVE ALL STYLES AND TAGS. Reproduce every style definition and formatting tag exactly as it appears. Do not add, remove, or modify them in any way.
-3. TRANSLATE TEXT ONLY. Do not add any headers, footers, comments, notes, markdown, or any additional content. Don't show original text in the output. Only translated text is required.
+1. NEVER MERGE OR SPLIT LINES. You must process each indexed line individually. If a single sentence is broken across two or more subtitle lines in the input, it MUST remain broken across the same lines in the output. Translate line-by-line, strictly.
+2. PRESERVE ALL STYLES AND TAGS. Reproduce every style definition and formatting tag exactly as it appears. DON'T add, remove, or modify them in any way.
+3. TRANSLATE TEXT ONLY. Do not add any headers, footers, comments, notes, markdown, or any additional content. DON'T include original text in the output. Only output translated text.
 
 Output:
-The translated subtitles in %s. Each line must be structurally identical to the input, prefixed with its original index and containing all original styling tags exactly as they appeared, with all text now in %s.`
+The translated subtitles in %s. Each line must be structurally identical to the input, prefixed with its original index and containing all original styling tags exactly as they appeared, with all text now in %s. The number of output lines must exactly match the number of input lines.`
 
 func GetSystemMessage(inputLang, translationLanguage, media string) string {
 	return fmt.Sprintf(systemMessageASS, inputLang, translationLanguage, inputLang, media, translationLanguage, translationLanguage, translationLanguage)
