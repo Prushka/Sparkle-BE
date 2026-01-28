@@ -22,7 +22,7 @@ type Config struct {
 	ConstantQuality        string `env:"CONSTANT_QUALITY" envDefault:"18"`
 	VideoExt               string `env:"VIDEO_EXT" envDefault:"mp4"`
 	Host                   string `env:"HOST" envDefault:"http://localhost"`
-	Encoder                string `env:"ENCODER" envDefault:"av1"`
+	Encoder                string `env:"ENCODER" envDefault:"av1,hevc"`
 	AudioKbps              int    `env:"AUDIO_KBPS" envDefault:"144"`
 	Av1Encoder             string `env:"SVT_AV1_ENCODER" envDefault:"svt_av1_10bit"` // svt_av1_10bit,nvenc_av1_10bit
 	Av1Preset              string `env:"AV1_PRESET" envDefault:"4"`                  // 4,slowest
