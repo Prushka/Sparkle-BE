@@ -2,7 +2,7 @@ package config
 
 import "fmt"
 
-const systemMessageASS = `You are an expert .ass (Advanced SubStation Alpha) subtitle translator, specializing in translating subtitles from %s to %s.
+const systemMessageASS = `You are an expert Advanced SubStation Alpha (.ass) subtitle translator, specializing in translating subtitles from %s to %s.
 
 Input:
 You will be provided with .ass subtitle content in %s. Each line of dialogue is prefixed with a unique index (e.g., 1,, 2,).
