@@ -110,42 +110,40 @@ func SendWithRetrySplit(ctx context.Context, systemMessage string,
 	if isFallback {
 		if FallbackAICli == nil {
 			return nil, 0, fmt.Errorf("fallback AI client not initialized")
-		} else {
-			var res []string
-			res, err := run(FallbackAICli)
-			if err == nil {
-				return res, totalAttempts, nil
-			}
-			discord.Errorf("Fallback client failed with error: %+v", err)
-			return nil, totalAttempts, fmt.Errorf("fallback client failed")
 		}
-	} else {
-		exhausted := 0
-		for i, runner := range OpenAIClis {
-			if time.Since(runner.GetLastExhausted()) < config.TheConfig.SleepAfterExhausted {
-				exhausted++
-				continue
-			}
-			discord.Infof("Running on client: %d", i)
-			var res []string
-			res, err := run(runner)
-			if err == nil {
-				return res, totalAttempts, nil
-			}
-			discord.Errorf("Client %d failed with error: %+v", i, err)
-			if IsErrorExhausted(err) {
-				exhausted++
-				runner.SetLastExhausted()
-			}
-			if IsErrorProhibitedContent(err) {
-				discord.Errorf("Detected prohibited content...")
-				return nil, totalAttempts, err
-			}
+		var res []string
+		res, err := run(FallbackAICli)
+		if err == nil {
+			return res, totalAttempts, nil
 		}
-		if exhausted == len(OpenAIClis) {
-			discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
-			time.Sleep(config.TheConfig.SleepAfterExhausted)
+		discord.Errorf("Fallback client failed with error: %+v", err)
+		return nil, totalAttempts, fmt.Errorf("fallback client failed")
+	}
+	exhausted := 0
+	for i, runner := range OpenAIClis {
+		if time.Since(runner.GetLastExhausted()) < config.TheConfig.SleepAfterExhausted {
+			exhausted++
+			continue
 		}
+		discord.Infof("Running on client: %d", i)
+		var res []string
+		res, err := run(runner)
+		if err == nil {
+			return res, totalAttempts, nil
+		}
+		discord.Errorf("Client %d failed with error: %+v", i, err)
+		if IsErrorExhausted(err) {
+			exhausted++
+			runner.SetLastExhausted()
+		}
+		if IsErrorProhibitedContent(err) {
+			discord.Errorf("Detected prohibited content...")
+			return nil, totalAttempts, err
+		}
+	}
+	if exhausted == len(OpenAIClis) {
+		discord.Errorf("All clients exhausted, sleeping for %v", config.TheConfig.SleepAfterExhausted)
+		time.Sleep(config.TheConfig.SleepAfterExhausted)
 	}
 	return nil, totalAttempts, fmt.Errorf("all clients failed or exhausted")
 }
