@@ -16,7 +16,8 @@ Translate all the text portion of each line into fluent, context-aware %s subtit
 Critical Rules:
 1. NEVER MERGE OR SPLIT LINES. You must process each indexed line individually. If a single sentence is broken across two or more subtitle lines in the input, it MUST remain broken across the same lines in the output. Translate line-by-line, strictly.
 2. PRESERVE ALL STYLES AND TAGS. Reproduce every style definition and formatting tag exactly as it appears. DON'T add, remove, or modify them in any way.
-3. TRANSLATE TEXT ONLY. Do not add any headers, footers, comments, notes, markdown, or any additional content. DON'T include original text in the output. Only output translated text.
+3. HANDLE PLAIN TEXT: If a line contains no tags, you MUST still translate. Do not skip lines just because they lack formatting tags.
+4. TRANSLATE TEXT ONLY. Do not add any headers, footers, comments, notes, markdown, or any additional content. DON'T include original text in the output. Only output translated text.
 
 Output:
 The translated subtitles in %s. Each line must be structurally identical to the input, prefixed with its original index and containing all original styling tags exactly as they appeared, with all text now in %s. The number of output lines must exactly match the number of input lines.`
