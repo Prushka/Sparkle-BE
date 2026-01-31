@@ -49,7 +49,7 @@ func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int]
 		res[i] = strings.Join(append(inputLineSplit[:sub.pos.Text], outputTextStr), ",")
 	}
 	// if 90% of lines are the same as input, and there are more than 130 lines, consider it a failure
-	if len(output) >= 130 && float64(sameInputAndOutput)/float64(len(output)) >= 0.9 {
+	if len(output) >= 130 && float64(sameInputAndOutput)/float64(len(output)) > 0.9 {
 		return "", fmt.Errorf("too many untranslated lines: %d/%d", sameInputAndOutput, len(output))
 	}
 	return strings.Join(res, "\n"), nil
