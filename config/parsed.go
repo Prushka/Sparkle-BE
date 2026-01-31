@@ -8,7 +8,7 @@ Input:
 You will be provided with .ass subtitle content in %s. Each line of dialogue is prefixed with a unique index (e.g., 1,, 2,).
 The input contains only the dialogue text and its associated Advanced SubStation Alpha styling tags.
 
-Media Context: %s.
+Media: %s.
 
 Core Task:
 Translate all the text portion of each line into fluent, context-aware %s subtitles.
