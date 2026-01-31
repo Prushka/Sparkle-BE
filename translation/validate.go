@@ -18,6 +18,7 @@ func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int]
 		return "", fmt.Errorf("subtitle line count mismatch with input: expected %d, got %d", len(inputPairSlice), len(output))
 	}
 	res := make([]string, len(output))
+	sameInputAndOutput := 0
 	for i := range output {
 		inputLinePair := inputPairSlice[i]
 		inputLine := inputLinePair.Left
@@ -36,13 +37,20 @@ func (sub *ASSSubtitle) processIndex(inputPairSlice utils.PairSlice[string, int]
 		if len(outputTextStr) == 0 {
 			return "", fmt.Errorf("subtitle dialogue line has no text: %s", outputLine)
 		}
-
+		inputTextStr := strings.TrimSpace(inputParts[1])
+		if inputTextStr == outputTextStr {
+			sameInputAndOutput++
+		}
 		oriInput := sub.dialogues[inputLinePair.Right]
 		inputLineSplit := strings.Split(oriInput, ",")
 		if len(inputLineSplit) <= sub.pos.Text {
 			return "", fmt.Errorf("unable to find text field in input line: %s", inputLine)
 		}
 		res[i] = strings.Join(append(inputLineSplit[:sub.pos.Text], outputTextStr), ",")
+	}
+	// if 90% of lines are the same as input, and there are more than 130 lines, consider it a failure
+	if len(output) >= 130 && float64(sameInputAndOutput)/float64(len(output)) >= 0.9 {
+		return "", fmt.Errorf("too many untranslated lines: %d/%d", sameInputAndOutput, len(output))
 	}
 	return strings.Join(res, "\n"), nil
 }

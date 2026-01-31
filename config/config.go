@@ -65,7 +65,7 @@ type Config struct {
 	FallbackAIModel                string   `env:"FALLBACK_AI_MODEL" envDefault:"gpt-oss:120b"`
 	FallbackAIUrl                  string   `env:"FALLBACK_AI_URL" envDefault:"http://192.168.1.236:11434/v1"`
 	FallbackAIIsLocal              bool     `env:"FALLBACK_AI_IS_LOCAL" envDefault:"true"`
-	TranslationLanguages           []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus
+	TranslationLanguages           []string `env:"TRANSLATION_LANGUAGES" envDefault:"SIMPLIFIED Chinese/chi,Turkish/tur"` // Turkish/tur,Spanish/spa,Russian/rus,English/eng
 	TranslationBatchLength         int      `env:"TRANSLATION_BATCH_LENGTH" envDefault:"36000"`
 	FallbackTranslationBatchLength int      `env:"FALLBACK_TRANSLATION_BATCH_LENGTH" envDefault:"1600"`
 	TranslationAttempts            int      `env:"TRANSLATION_ATTEMPTS" envDefault:"5"`
