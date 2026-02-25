@@ -23,7 +23,7 @@ func initOpenAIClient() {
 		return
 	}
 	oaiClient = openai.NewClient(
-		option.WithRequestTimeout(5*time.Minute),
+		option.WithRequestTimeout(20*time.Minute),
 		option.WithBaseURL(config.TheConfig.OCRVLMUrl),
 	)
 	oaiInitialized = true
