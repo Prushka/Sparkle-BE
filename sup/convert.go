@@ -18,12 +18,14 @@ import (
 var oaiClient openai.Client
 var oaiInitialized bool
 
+const openaiTimeout = 30 * time.Minute
+
 func initOpenAIClient() {
 	if oaiInitialized {
 		return
 	}
 	oaiClient = openai.NewClient(
-		option.WithRequestTimeout(20*time.Minute),
+		option.WithRequestTimeout(openaiTimeout),
 		option.WithBaseURL(config.TheConfig.OCRVLMUrl),
 	)
 	oaiInitialized = true

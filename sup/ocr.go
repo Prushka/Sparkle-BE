@@ -184,7 +184,7 @@ func ExtractText(model string, img image.Image) (text string, promptTokens, comp
 			},
 		}),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), openaiTimeout)
 	defer cancel()
 	chatCompletion, err := oaiClient.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model: model,
