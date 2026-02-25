@@ -123,26 +123,30 @@ func OCR(imgSubs []ImageSubtitle) (VTTSubtitles, error) {
 			}
 			text, promptTokens, completionTokens, err := ExtractText(model, pg.Image)
 			if err != nil {
-				return nil, fmt.Errorf("failed to extract text from image #%d: %s", index+1, err)
-			}
-			text = lightProcess(text)
-			totalPromptTokens[model] += promptTokens
-			totalCompletionTokens[model] += completionTokens
+				log.Errorf("failed to extract text from image #%d: %s", index+1, err)
+			} else {
+				text = lightProcess(text)
+				totalPromptTokens[model] += promptTokens
+				totalCompletionTokens[model] += completionTokens
 
-			log.Debugf("%s #%d %s --> %s %s, %d -> %d", model, index+1, pg.StartTime, pg.EndTime, text, promptTokens, completionTokens)
-			if txtSubs[index] == nil {
-				txtSubs[index] = &Voting{
-					Start: VTTTimestamp(pg.StartTime),
-					End:   VTTTimestamp(pg.EndTime),
-					Texts: VT{},
+				log.Debugf("%s #%d %s --> %s %s, %d -> %d", model, index+1, pg.StartTime, pg.EndTime, text, promptTokens, completionTokens)
+				if txtSubs[index] == nil {
+					txtSubs[index] = &Voting{
+						Start: VTTTimestamp(pg.StartTime),
+						End:   VTTTimestamp(pg.EndTime),
+						Texts: VT{},
+					}
 				}
+				txtSubs[index].Texts[text] = append(txtSubs[index].Texts[text], model)
+				txtSubs[index].Texts = txtSubs[index].Texts.converge()
 			}
-			txtSubs[index].Texts[text] = append(txtSubs[index].Texts[text], model)
-			txtSubs[index].Texts = txtSubs[index].Texts.converge()
 		}
 	}
 	results := make(VTTSubtitles, len(imgSubs))
 	for i, v := range txtSubs {
+		if v == nil || len(v.Texts) == 0 {
+			return nil, fmt.Errorf("failed to extract VTT subtitle #%d contains no subtitle", i)
+		}
 		if t, ok := v.Texts.majorityVote(); ok {
 			results[i] = VTTSubtitle{
 				Start: v.Start,
